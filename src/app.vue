@@ -272,7 +272,7 @@ export default {
             ui: {
                 // Header configuration
                 header: {
-                    visible: true,
+                    visible: false,
                     showTitle: true,
                     showViewModeToggle: true,
                     showWidgetToggleButton: true,
@@ -327,10 +327,38 @@ export default {
             widgetVisibility: {
                 // Core widgets that are actually used
                 enhancedPartsPlanner: true,
-                releasePlanner: true,
-                bomViewer: true,
-                lineChart: true,
-                partsTable: true
+                releasePlanner: false,
+                bomViewer: false,
+                lineChart: false,
+                partsTable: false,
+                
+                // Chart widgets
+                pieChart: false,
+                scatterChart: false,
+                barChart: false,
+                areaChart: false,
+                doughnutChart: false,  // Fixed spelling to match registry
+                bubbleChart: false,
+                heatMap: false,
+                treeMap: false,
+                radarChart: false,
+                gaugeChart: false,
+                
+                // Additional dashboard widgets
+                kpiCard: false,
+                progressCard: false,
+                timelineWidget: false,
+                calendarWidget: false,
+                mapWidget: false,
+                dataGrid: false,
+                kanbanBoard: false,
+                notification: false,
+                weatherWidget: false,
+                clockWidget: false,
+                
+                // Forms and specialized widgets
+                partPlanningForm: false,
+                contactForm: false
             },
             
             // =================================================================

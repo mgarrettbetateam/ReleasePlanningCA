@@ -243,58 +243,8 @@ class ApiService {
     return this.fetchData(cacheKey, apiCall, {}, rowIndex);
   }
 
-  // Parts data fetching
-  async fetchParts(phase, options = {}) {
-    const cacheKey = `PARTS:${phase}`;
-    const apiCall = () => axios.get("/api/parts", {
-      params: { phase },
-      timeout: this.config.timeout
-    }).then(response => response.data);
-
-    return this.fetchData(cacheKey, apiCall, options);
-  }
-
-  // Programs data fetching
-  async fetchPrograms(options = {}) {
-    const cacheKey = "PROGRAMS";
-    const apiCall = () => axios.get("/api/programs", {
-      timeout: this.config.timeout
-    }).then(response => response.data);
-
-    return this.fetchData(cacheKey, apiCall, options);
-  }
-
-  // Phases data fetching
-  async fetchPhases(program, options = {}) {
-    const cacheKey = `PHASES:${program}`;
-    const apiCall = () => axios.get("/api/phases", {
-      params: { program },
-      timeout: this.config.timeout
-    }).then(response => response.data);
-
-    return this.fetchData(cacheKey, apiCall, options);
-  }
-
-  // Organizations data fetching
-  async fetchOrganizations(options = {}) {
-    const cacheKey = "ORGANIZATIONS";
-    const apiCall = () => axios.get("/api/organizations", {
-      timeout: this.config.timeout
-    }).then(response => response.data);
-
-    return this.fetchData(cacheKey, apiCall, options);
-  }
-
-  // CA Stats fetching
-  async fetchCAStats(physId, rowIndex = 0) {
-    const cacheKey = `CA_STATS:${physId}`;
-    const apiCall = () => axios.get("/api/ca-stats", {
-      params: { physId },
-      timeout: this.config.timeout
-    }).then(response => response.data);
-
-    return this.fetchData(cacheKey, apiCall, {}, rowIndex);
-  }
+  // Note: Specific data fetching methods (fetchParts, fetchPrograms, etc.) 
+  // are implemented in DataServiceBase.js with actual production endpoints
 }
 
 // Export singleton instance

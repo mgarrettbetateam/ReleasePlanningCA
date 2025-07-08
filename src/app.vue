@@ -3,7 +3,15 @@
     <v-app>
         <!-- App Header (conditionally shown) -->
         <v-app-bar v-if="ui.header.visible" color="primary" dark dense>
-            <v-toolbar-title v-if="ui.header.showTitle">Widget Development Template</v-toolbar-title>
+            <!-- App Icon (conditionally shown) -->
+            <v-icon v-if="ui.header.showAppIcon" class="mr-2">
+                mdi-clipboard-list
+            </v-icon>
+            
+            <!-- Title (conditionally shown with custom title option) -->
+            <v-toolbar-title v-if="ui.header.showTitle">
+                {{ ui.header.useCustomTitle ? ui.header.customTitle : 'Widget Development Template' }}
+            </v-toolbar-title>
             
             <v-spacer />
             
@@ -35,6 +43,15 @@
                 @click="ui.widgetPanel.visible = !ui.widgetPanel.visible"
             >
                 <v-icon>mdi-view-dashboard</v-icon>
+            </v-btn>
+            
+            <!-- Close Button (conditionally shown) -->
+            <v-btn
+                v-if="ui.header.showCloseButton"
+                icon
+                @click="handleHeaderClose"
+            >
+                <v-icon>mdi-close</v-icon>
             </v-btn>
         </v-app-bar>
 
@@ -195,6 +212,7 @@
                     v-else-if="ui.content.showDashboard && isDashboardMode && dashboardConfig"
                     ref="orchestrator"
                     :widget-config="dashboardConfig"
+                    :hide-widget-headers="ui.content.hideWidgetHeaders"
                     @toggle-widget="toggleWidget"
                     @row-click="handleRowClick"
                     @error="handleError"
@@ -272,11 +290,15 @@ export default {
             ui: {
                 // Header configuration
                 header: {
-                    visible: false,
+                    visible: false,             // Changed back to false to hide the header
                     showTitle: true,
                     showViewModeToggle: true,
                     showWidgetToggleButton: true,
-                    showIcons: true
+                    showIcons: true,
+                    showCloseButton: false,     // Set to false to hide X button
+                    showAppIcon: false,         // Set to false to hide icon
+                    customTitle: "Release Planning",  // Custom title text
+                    useCustomTitle: true       // Set to false to use default title
                 },
                 
                 // Widget panel configuration
@@ -292,12 +314,13 @@ export default {
                 content: {
                     showDashboard: true,
                     showDevelopmentArea: true,
-                    showReleasePlanning: true
+                    showReleasePlanning: true,
+                    hideWidgetHeaders: true     // New control to hide widget internal headers
                 },
                 
                 // Status bar
                 statusBar: {
-                    visible: true,
+                    visible: false,             // Changed to false to hide status bar
                     showWidgetCount: true,
                     showFilters: true
                 },
@@ -583,6 +606,12 @@ export default {
             this.errorMessage = error.message || "An error occurred";
             this.errorSnackbar = true;
             console.error("Dashboard error:", error);
+        },
+        handleHeaderClose() {
+            // Handle header close button click
+            // You can customize this behavior as needed
+            this.ui.header.visible = false;
+            this.$emit("header-closed");
         }
     }
 };

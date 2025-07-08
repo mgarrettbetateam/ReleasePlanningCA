@@ -8,7 +8,9 @@ export const WIDGET_DEFINITIONS = {
         icon: "mdi-clipboard-list",
         description: "Complete parts planning dashboard with filter dropdowns, chart, and table",
         category: "planner",
-        props: {},
+        props: {
+            hideHeader: true    // Hide the outer widget header, but keep the inner "Release Planning Dashboard" header
+        },
         dataSource: "parts",
         filters: ["program", "phase", "organization"],
         layout: { 

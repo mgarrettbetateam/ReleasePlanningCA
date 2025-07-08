@@ -12,8 +12,8 @@
                 :style="getWidgetStyle(widget)"
             >
                 <v-card class="widget-card" :loading="loading">
-                    <!-- Widget Header -->
-                    <v-card-title class="widget-header">
+                    <!-- Widget Header (conditionally shown) -->
+                    <v-card-title v-if="!widget.props?.hideHeader" class="widget-header">
                         <v-icon left :color="widget.color || 'primary'">
                             {{ widget.icon }}
                         </v-icon>

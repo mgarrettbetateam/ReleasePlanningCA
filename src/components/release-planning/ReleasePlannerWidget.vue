@@ -1,7 +1,7 @@
 <!-- Release Planning Widget - Self-contained with prominent filter dropdowns -->
 <template>
     <div class="enhanced-parts-planner">
-        <!-- Header with Title -->
+        <!-- Header with Title (always shown - this is the internal widget header) -->
         <v-card-title class="planner-header">
             <v-icon left color="primary">mdi-clipboard-list</v-icon>
             Release Planning Dashboard
@@ -971,6 +971,12 @@ export default {
         UniversalChart,
         UniversalFilterControls,
         ChangeActionCell
+    },
+    props: {
+        hideHeader: {
+            type: Boolean,
+            default: false
+        }
     },
     data() {
         return {

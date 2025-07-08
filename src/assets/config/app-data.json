@@ -1,0 +1,205 @@
+{
+  "parts": [
+    {
+      "partNumber": "PART-001",
+      "revision": "R1",
+      "title": "Demo Engine Component",
+      "description": "Primary engine component for CX300",
+      "quantity": 25,
+      "program": "CX300 Pre-Production Builds",
+      "phase": "Phase 1",
+      "organization": "Engineering",
+      "tgtRelease": "2025-01-15",
+      "actualRelease": "2025-01-18",
+      "currentState": "RELEASED",
+      "status": "Released",
+      "dueDate": "2025-01-15",
+      "physId": "phys-001"
+    },
+    {
+      "partNumber": "PART-002", 
+      "revision": "R2",
+      "title": "Transmission Assembly",
+      "description": "Main transmission unit",
+      "quantity": 12,
+      "program": "CX300 Pre-Production Builds",
+      "phase": "Phase 2",
+      "organization": "Manufacturing",
+      "tgtRelease": "2025-01-20",
+      "actualRelease": "N/A",
+      "currentState": "IN_WORK",
+      "status": "In Progress",
+      "dueDate": "2025-01-20",
+      "physId": "phys-002"
+    },
+    {
+      "partNumber": "PART-003",
+      "revision": "R1", 
+      "title": "Brake System Module",
+      "description": "Advanced braking system",
+      "quantity": 8,
+      "program": "Demo Program 1",
+      "phase": "Phase 1",
+      "organization": "Quality",
+      "tgtRelease": "2025-01-25",
+      "actualRelease": "2025-01-22",
+      "currentState": "RELEASED",
+      "status": "Released",
+      "dueDate": "2025-01-25",
+      "physId": "phys-003"
+    },
+    {
+      "partNumber": "PART-004",
+      "revision": "R3",
+      "title": "Suspension Component",
+      "description": "Front suspension system",
+      "quantity": 15,
+      "program": "Demo Program 2",
+      "phase": "Phase 2",
+      "organization": "Engineering",
+      "tgtRelease": "2025-02-01",
+      "actualRelease": "N/A",
+      "currentState": "PLANNING",
+      "status": "Planning",
+      "dueDate": "2025-02-01",
+      "physId": "phys-004"
+    },
+    {
+      "partNumber": "PART-005",
+      "revision": "R1",
+      "title": "Dashboard Electronics",
+      "description": "Electronic control unit for dashboard",
+      "quantity": 30,
+      "program": "CX300 Pre-Production Builds",
+      "phase": "Phase 3",
+      "organization": "Procurement",
+      "tgtRelease": "2025-02-10",
+      "actualRelease": "N/A",
+      "currentState": "ON_HOLD",
+      "status": "On Hold",
+      "dueDate": "2025-02-10",
+      "physId": "phys-005"
+    }
+  ],
+  "stats": {
+    "totalParts": 156,
+    "releasedParts": 89,
+    "pendingParts": 45,
+    "overdueParts": 22,
+    "organizations": {
+      "Engineering": 67,
+      "Manufacturing": 34,
+      "Quality": 28,
+      "Procurement": 27
+    },
+    "statusBreakdown": {
+      "Released": 89,
+      "In Progress": 45,
+      "Planning": 15,
+      "On Hold": 7
+    },
+    "monthlyProgress": [
+      { "month": "Jan", "target": 20, "actual": 18 },
+      { "month": "Feb", "target": 25, "actual": 23 },
+      { "month": "Mar", "target": 30, "actual": 28 },
+      { "month": "Apr", "target": 35, "actual": 32 },
+      { "month": "May", "target": 40, "actual": 38 },
+      { "month": "Jun", "target": 45, "actual": 42 }
+    ]
+  },
+  "bom": [
+    {
+      "id": 1,
+      "name": "Root Assembly",
+      "partNumber": "RA-1000",
+      "availability": "In Stock",
+      "owner": "Engineering",
+      "cadModelUrl": "https://example.com/models/root_asm.cgr",
+      "children": [
+        {
+          "id": 2,
+          "name": "Sub Assembly 1",
+          "partNumber": "SA-1100",
+          "availability": "Low Stock",
+          "owner": "Design",
+          "cadModelUrl": "https://example.com/models/sub_asm_1.cgr",
+          "children": [
+            {
+              "id": 3,
+              "name": "Sub Sub Assembly 1A",
+              "partNumber": "SSA-1110",
+              "availability": "Limited",
+              "owner": "Advanced R&D",
+              "cadModelUrl": "https://example.com/models/sub_sub_asm_1a.cgr",
+              "children": [
+                {
+                  "id": 4,
+                  "name": "Part A",
+                  "partNumber": "PA-1111",
+                  "availability": "In Stock",
+                  "owner": "Supplier X",
+                  "cadModelUrl": "https://example.com/models/part_a.cgr"
+                },
+                {
+                  "id": 5,
+                  "name": "Part B",
+                  "partNumber": "PB-1112",
+                  "availability": "Out of Stock",
+                  "owner": "Supplier Y",
+                  "cadModelUrl": "https://example.com/models/part_b.cgr"
+                }
+              ]
+            },
+            {
+              "id": 6,
+              "name": "Part C",
+              "partNumber": "PC-1113",
+              "availability": "In Stock",
+              "owner": "Supplier Z",
+              "cadModelUrl": "https://example.com/models/part_c.cgr"
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "name": "Sub Assembly 2",
+          "partNumber": "SA-1200",
+          "availability": "In Stock",
+          "owner": "Design",
+          "cadModelUrl": "https://example.com/models/sub_asm_2.cgr",
+          "children": [
+            {
+              "id": 8,
+              "name": "Part D",
+              "partNumber": "PD-1211",
+              "availability": "In Production",
+              "owner": "Supplier X",
+              "cadModelUrl": "https://example.com/models/part_d.cgr"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "partPlanner": {
+    "partData": {
+      "partNumber": "P5700324-101 rev A",
+      "partName": "RIB 12, LH, WING",
+      "owner": "",
+      "organization": "",
+      "deliverableFor": "CX300 CAST Delivery",
+      "materialRequiredDate": "May 4, 2025",
+      "mfgSeqGroup": "",
+      "requiredDateMod": "3 wks",
+      "targetRelease": "Jan 31, 2025",
+      "toolLeadTime": "6 wks",
+      "partLeadTime": "10 wks",
+      "expediteMod": "2 wks",
+      "estMaterialReadyDate": "May 17, 2025",
+      "onTimeStatus": "",
+      "releaseVia": "",
+      "status": "",
+      "statusComment": ""
+    }
+  }
+}

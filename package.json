@@ -1,0 +1,87 @@
+{
+    "name": "widget-template-vue",
+    "version": "1.1.4",
+    "description": "Widget Template using Vue.js & Vuetify",
+    "main": "index.html",
+    "scripts": {
+        "postinstall": "node node_modules/@widget-lab/widget-templates-config/bin/copy-template.js",
+        "build": "npx webpack --config-name prod",
+        "start": "npx webpack serve --config-name dev --port 8084 --open",
+        "start:alt": "npx webpack serve --config-name dev --port 8084 --open",
+        "startS3": "npx webpack serve --config-name devS3",
+        "lint": "eslint src/**/*.{js,vue}",
+        "lintFix": "eslint src/**/*.{js,vue} --fix",
+        "lintMark": "markdownlint --config .markdownlint.json --ignore ./node_modules/** ./**/*.md",
+        "lintMarkFix": "markdownlint --fix --config .markdownlint.json --ignore ./node_modules/** ./**/*.md",
+        "postversion": "git push --follow-tags"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git@itgit.dsone.3ds.com:widget-lab/widget-template-vue.git"
+    },
+    "author": "widget-lab",
+    "license": "",
+    "eslintConfig": {
+        "extends": [
+            "@widget-lab/eslint-config-widgetlab/widget-vue"
+        ]
+    },
+    "eslintIgnore": [
+        "src/index.html",
+        "src/static/*",
+        "dist",
+        "node_modules"
+    ],
+    "prettier": "@widget-lab/prettier-config-widgetlab",
+    "browserslist": [
+        "extends @widget-lab/browserslist-config-widgetlab"
+    ],
+    "dependenciesComments": {
+        "css-loader": "vuetify / mdi-font font won't load if above 5.2.7 with vuetify 2.6.12",
+        "sass": "will give warning if above 1.32.13 due to vuetify 2.6.12",
+        "vue": "remain in 2.x",
+        "vue-i18n": "remain in 8.x for vue 2 compatibility, above 8.27.2 will give compile errors",
+        "vue-loader": "remain in 15.x for vue 2 compatibility",
+        "vue-template-compiler": "same as vue",
+        "vue-router": "remain in 3.x for vue 2 compatibility",
+        "vuetify": "remain in 2.x for vue 2 compatibility",
+        "vuex": "remain in 3.x for vue 2 compatibility"
+    },
+    "devDependencies": {
+        "@babel/core": "7.19.1",
+        "@babel/preset-env": "7.19.1",
+        "@mdi/font": "7.0.96",
+        "@widget-lab/browserslist-config-widgetlab": "https://btcc.s3-eu-west-1.amazonaws.com/widget-lab/npm/browserslist-config-widgetlab/dist/widget-lab-browserslist-config-widgetlab-0.2.5.tgz",
+        "@widget-lab/eslint-config-widgetlab": "https://btcc.s3-eu-west-1.amazonaws.com/widget-lab/npm/eslint-config-widgetlab/dist/widget-lab-eslint-config-widgetlab-2.5.2.tgz",
+        "@widget-lab/prettier-config-widgetlab": "https://btcc.s3-eu-west-1.amazonaws.com/widget-lab/npm/prettier-config-widgetlab/dist/widget-lab-prettier-config-widgetlab-1.0.6.tgz",
+        "@widget-lab/widget-templates-config": "https://btcc.s3-eu-west-1.amazonaws.com/widget-lab/npm/widget-templates-config/dist/widget-lab-widget-templates-config-2.3.2.tgz",
+        "@widget-lab/widget-templates-webpack-configs": "https://btcc.s3-eu-west-1.amazonaws.com/widget-lab/npm/widget-templates-webpack-configs/dist/widget-lab-widget-templates-webpack-configs-2.2.2.tgz",
+        "babel-loader": "8.2.5",
+        "css-loader": "5.2.7",
+        "deepmerge": "4.2.2",
+        "eslint": "8.23.1",
+        "eslint-plugin-vue": "^8.7.1",
+        "file-loader": "6.2.0",
+        "sass": "1.32.13",
+        "sass-loader": "11.0.1",
+        "style-loader": "3.3.1",
+        "vue-loader": "15.x",
+        "vue-template-compiler": "2.x",
+        "vuetify-loader": "1.9.2",
+        "webpack": "5.x",
+        "webpack-cli": "4.10.0",
+        "webpack-dev-server": "4.11.1",
+        "webpack-merge": "5.8.0"
+    },
+    "dependencies": {
+        "@widget-lab/3ddashboard-utils": "https://btcc.s3-eu-west-1.amazonaws.com/widget-lab/npm/3ddashboard-utils/dist/widget-lab-3ddashboard-utils-2.2.2.tgz",
+        "axios": "^1.10.0",
+        "chart.js": "^3.9.1",
+        "core-js": "3.26.0",
+        "regenerator-runtime": "0.13.10",
+        "vue": "2.x",
+        "vue-chartjs": "^4.1.2",
+        "vuetify": "2.x",
+        "vuex": "3.x"
+    }
+}

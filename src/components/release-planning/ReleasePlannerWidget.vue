@@ -1574,15 +1574,15 @@ export default {
                 this.updateChartFromFiltered();
 
             } catch (error) {
-                if (process.env.NODE_ENV === "development") {
-                    console.warn("API not available, using mock data for parts. Error:", error.message);
-                }
-                // Fallback to mock data for template demo
-                this.tableData = this.generateMockPartsData();
+                console.error("Error fetching data:", {
+                    message: error.message,
+                    phase,
+                    fullError: error
+                });
                 
-                const orgSet = new Set(this.tableData.map(r => r.organization));
-                this.organizations = ["All", ...orgSet];
-                
+                // Don't use mock data - leave table empty to see real API behavior
+                this.tableData = [];
+                this.organizations = ["All"];
                 this.updateChartFromFiltered();
             } finally {
                 this.loading = false;

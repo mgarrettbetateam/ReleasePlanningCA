@@ -1,5 +1,6 @@
 /* eslint-disable no-console */
 import axios from "axios";
+import { getApiBaseUrl } from "../config/ApiConfig.js";
 
 class ApiService {
   constructor() {
@@ -228,7 +229,7 @@ class ApiService {
   // Change Action specific method (backwards compatibility)
   async fetchChangeAction(objectId, rowIndex = 0) {
     const apiCall = () => axios.get(
-      "https://3dspace-prod.beta.team/internal/resources/AttributeValQuery/retrieveReleaseChangeAction",
+      `${getApiBaseUrl()}/internal/resources/AttributeValQuery/retrieveReleaseChangeAction`,
       { 
         params: { objectId },
         timeout: this.config.timeout

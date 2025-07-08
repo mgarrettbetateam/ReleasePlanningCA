@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 
 import ApiService from "../services/ApiService.js";
+import { API_BASE_URL } from "../config/ApiConfig.js";
 
 const log = (...args) => {
   // Simple logger, can be enhanced or replaced with a logging library
@@ -133,11 +134,11 @@ const dataService = {
   async fetchPrograms() {
     log("Fetching programs...");
     try {
-      // Use ApiService with the original working endpoint
+      // Use ApiService with the environment-specific endpoint
       const cacheKey = "PROGRAMS";
       const apiCall = async () => {
         const axios = (await import("axios")).default;
-        const response = await axios.get("https://3dspace-prod.beta.team/internal/resources/AttributeValQuery/retrievePrograms");
+        const response = await axios.get(`${API_BASE_URL}/internal/resources/AttributeValQuery/retrievePrograms`);
         return response.data.programs;
       };
       
@@ -153,11 +154,11 @@ const dataService = {
   async fetchPhases(program) {
     log("Fetching phases for program:", program);
     try {
-      // Use ApiService with the original working endpoint
+      // Use ApiService with the environment-specific endpoint
       const cacheKey = `PHASES:${program}`;
       const apiCall = async () => {
         const axios = (await import("axios")).default;
-        const response = await axios.get("https://3dspace-prod.beta.team/internal/resources/AttributeValQuery/retrievePhases", {
+        const response = await axios.get(`${API_BASE_URL}/internal/resources/AttributeValQuery/retrievePhases`, {
           params: { program }
         });
         return response.data.phases;
@@ -173,23 +174,58 @@ const dataService = {
   },
 
   async fetchParts(phase) {
-    log("Fetching parts for phase:", phase);
+    log("Fetching CAs for phase:", phase);
     try {
-      // Use ApiService with the original working endpoint
-      const cacheKey = `PARTS:${phase}`;
+      // Use the new fetchCAs method instead
+      return await this.fetchCAs(phase);
+    } catch (error) {
+      log("Error fetching CAs:", error);
+      throw error;
+    }
+  },
+
+  async fetchCAs(phase) {
+    log("Fetching CAs for phase:", phase);
+    try {
+      // Use ApiService with the environment-specific endpoint
+      const cacheKey = `CAS:${phase}`;
       const apiCall = async () => {
         const axios = (await import("axios")).default;
-        const response = await axios.get("https://3dspace-prod.beta.team/internal/resources/AttributeValQuery/retrievePhaseParts", {
+        log("Making API call to retrievePhaseCAs with phase:", phase);
+        const response = await axios.get(`${API_BASE_URL}/internal/resources/AttributeValQuery/retrievePhaseCAs`, {
           params: { phase }
         });
-        return response.data.parts;
+        
+        // Check if response contains an error
+        if (response.data && response.data.error) {
+          throw new Error(`API Error: ${response.data.error}`);
+        }
+        
+        log("API Response received from retrievePhaseCAs:", {
+          status: response.status,
+          dataKeys: Object.keys(response.data || {}),
+          dataType: typeof response.data,
+          fullResponse: response.data
+        });
+        
+        return response.data.parts || response.data.cas || response.data;
       };
       
-      const parts = await ApiService.fetchData(cacheKey, apiCall);
-      log("Parts fetched:", parts);
-      return parts;
+      const cas = await ApiService.fetchData(cacheKey, apiCall);
+      log("CAs fetched successfully:", {
+        count: Array.isArray(cas) ? cas.length : "Not an array",
+        type: typeof cas,
+        isArray: Array.isArray(cas),
+        data: cas
+      });
+      return cas;
     } catch (error) {
-      log("Error fetching parts:", error);
+      log("Error fetching CAs:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        fullError: error
+      });
       throw error;
     }
   },

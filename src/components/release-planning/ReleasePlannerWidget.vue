@@ -4,7 +4,7 @@
         <!-- Header with Title (always shown - this is the internal widget header) -->
         <v-card-title class="planner-header">
             <v-icon left color="primary">mdi-clipboard-list</v-icon>
-            Release Planning Dashboard
+            Release Planning CA Dashboard
             <v-spacer />
             <v-chip 
                 color="success" 
@@ -32,7 +32,7 @@
                 <v-card class="chart-card" :loading="loading" elevation="4">
                     <v-card-title class="chart-header">
                         <v-icon left color="primary" size="28">mdi-chart-line</v-icon>
-                        <span class="chart-title">Parts Release Timeline</span>
+                        <span class="chart-title">CA Completion Timeline</span>
                         <v-spacer />
                         <div class="chart-meta">
                             <v-chip 
@@ -64,7 +64,7 @@
                                 @click="toggleTargetLine"
                             >
                                 <div class="legend-color-bar target-color" :class="{ 'disabled': !showTargetLine }"></div>
-                                <span class="legend-label">Target Release Timeline</span>
+                                <span class="legend-label">Target Completion Timeline</span>
                                 <v-icon 
                                     small 
                                     :color="showTargetLine ? 'success' : 'grey'"
@@ -79,7 +79,7 @@
                                 @click="toggleActualLine"
                             >
                                 <div class="legend-color-bar actual-color" :class="{ 'disabled': !showActualLine }"></div>
-                                <span class="legend-label">Actual Release Timeline</span>
+                                <span class="legend-label">Actual Completion Timeline</span>
                                 <v-icon 
                                     small 
                                     :color="showActualLine ? 'success' : 'grey'"
@@ -998,17 +998,18 @@ export default {
             // Data for chart and filtered display
             chartData: { labels: [], datasets: [] },
             
+            // TODO: Replace with actual data for CA's
             // Table headers matching the original pattern with color indicators
             tableHeaders: [
-                { text: "Part Number", value: "partNo", sortable: true },
-                { text: "Rev", value: "rev", sortable: true },
+                { text: "CA Number", value: "partNo", sortable: true },
+                //{ text: "Rev", value: "rev", sortable: true },
                 { text: "Description", value: "description", sortable: true },
-                { text: "Organization", value: "organization", sortable: true },
-                { text: "Target Release", value: "tgtRelease", sortable: true, class: "target-release-header" },
-                { text: "Actual Release", value: "actualRelease", sortable: true, class: "actual-release-header" },
-                { text: "State", value: "currentState", sortable: true },
-                { text: "Change Action", value: "caNumber", sortable: true },
-                { text: "CA State", value: "caState", sortable: true }
+                { text: "Resp Engr", value: "organization", sortable: true },
+                { text: "Status", value: "tgtRelease", sortable: true, class: "target-release-header" },
+                { text: "Target Complete Date", value: "actualRelease", sortable: true, class: "actual-release-header" },
+                { text: "Actual Approved Date", value: "currentState", sortable: true },
+                { text: "Actual Complete Date", value: "caNumber", sortable: true }
+                //{ text: "CA State", value: "caState", sortable: true }
             ],
             
             // Chart configuration - Amazing design with no overlapping

@@ -4,9 +4,9 @@
 export const WIDGET_DEFINITIONS = {
     enhancedPartsPlanner: {
         component: "ReleasePlannerWidget",
-        title: "Release Planning",
+        title: "Release Planning CA",
         icon: "mdi-clipboard-list",
-        description: "Complete parts planning dashboard with filter dropdowns, chart, and table",
+        description: "Complete CA planning dashboard with filter dropdowns, chart, and table",
         category: "planner",
         props: {
             hideHeader: true    // Hide the outer widget header, but keep the inner "Release Planning Dashboard" header

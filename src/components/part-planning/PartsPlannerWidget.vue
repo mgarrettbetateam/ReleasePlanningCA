@@ -249,6 +249,7 @@ export default {
                 { text: "Actual Release", value: "actualRelease", type: "date", sortable: true }
             ],
             
+            // TODO: update for CA data
             // Chart configuration
             chartOptions: {
                 responsive: true,

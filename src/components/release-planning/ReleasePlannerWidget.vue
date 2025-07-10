@@ -1001,15 +1001,15 @@ export default {
             // TODO: Replace with actual data for CA's
             // Table headers matching the original pattern with color indicators
             tableHeaders: [
-                { text: "CA Number", value: "partNo", sortable: true },
-                //{ text: "Rev", value: "rev", sortable: true },
-                { text: "Description", value: "description", sortable: true },
-                { text: "Resp Engr", value: "organization", sortable: true },
-                { text: "Status", value: "tgtRelease", sortable: true, class: "target-release-header" },
-                { text: "Target Complete Date", value: "actualRelease", sortable: true, class: "actual-release-header" },
-                { text: "Actual Approved Date", value: "currentState", sortable: true },
-                { text: "Actual Complete Date", value: "caNumber", sortable: true }
-                //{ text: "CA State", value: "caState", sortable: true }
+                { text: "CA Number", value: "caNumber", sortable: true },
+                { text: "Rev", value: "revision", sortable: true },
+                { text: "Description", value: "changeSummary", sortable: true },
+                { text: "Resp Engr", value: "name", sortable: true },
+                { text: "Status", value: "currentState", sortable: true, class: "target-release-header" },
+                { text: "Target Complete Date", value: "targetReleaseDate", sortable: true, class: "actual-release-header" },
+                { text: "Actual Approved Date", value: "approvedDate", sortable: true },
+                { text: "Actual Complete Date", value: "actualReleaseDate", sortable: true },
+                { text: "CA State", value: "currentState", sortable: true }
             ],
             
             // Chart configuration - Amazing design with no overlapping
@@ -1553,19 +1553,221 @@ export default {
         async fetchData(phase) {
             this.loading = true;
             try {
+                console.log("=== FETCHDATA START ===");
+                console.log("Phase parameter:", phase);
+                
                 const parts = await dataService.fetchParts(phase);
-                this.tableData = Array.isArray(parts)
-                    ? parts.map(p => ({
-                        partNo: p.partNumber,
-                        rev: p.revision,
-                        description: p.description,
-                        organization: p.organization || "Unknown",
-                        tgtRelease: p.targetReleaseDate,
-                        actualRelease: p.actualReleaseDate || "N/A",
-                        currentState: p.currentState,
-                        physId: p.physId
-                    }))
+                
+                console.log("=== RAW API RESPONSE ===");
+                console.log("Type of parts:", typeof parts);
+                console.log("Is Array:", Array.isArray(parts));
+                console.log("Parts length:", parts?.length);
+                console.log("Raw parts data:", parts);
+                
+                // Initialize conversion variable
+                let convertedParts = null;
+                
+                // Check if parts is null/undefined
+                if (parts === null) {
+                    console.log("⚠️  WARNING: parts is null");
+                } else if (parts === undefined) {
+                    console.log("⚠️  WARNING: parts is undefined");
+                } else if (typeof parts === "string") {
+                    console.log("⚠️  WARNING: parts is a string:", parts);
+                } else if (typeof parts === "object" && !Array.isArray(parts)) {
+                    console.log("⚠️  WARNING: parts is an object but not an array");
+                    console.log("Object keys:", Object.keys(parts));
+                    console.log("Object values:", Object.values(parts));
+                    // Check if it has an error property
+                    if (parts.error) {
+                        console.log("🔴 ERROR in response:", parts.error);
+                    }
+                    // Check if it has a message property
+                    if (parts.message) {
+                        console.log("📝 MESSAGE in response:", parts.message);
+                    }
+                }
+                
+                if (Array.isArray(parts)) {
+                    console.log("✅ Parts is a valid array");
+                    if (parts.length > 0) {
+                        console.log("=== FIRST ITEM STRUCTURE ===");
+                        console.log("First item:", parts[0]);
+                        console.log("First item keys:", Object.keys(parts[0]));
+                        console.log("First item values:", Object.values(parts[0]));
+                    } else {
+                        console.log("⚠️  Array is empty");
+                    }
+                } else {
+                    console.log("❌ Parts is NOT an array - cannot process with .map()");
+                }
+                
+                // Try to convert to array if it looks like an array-like object
+                if (!Array.isArray(parts) && typeof parts === "object" && parts !== null) {
+                    console.log("🔄 Attempting to convert non-array object to array");
+                    console.log("Object type:", typeof parts);
+                    console.log("Object keys:", Object.keys(parts));
+                    console.log("Object values preview:", Object.values(parts).slice(0, 3));
+                    
+                    if (typeof parts === "object" && parts !== null) {
+                        // Check if it's an array-like object (has numeric keys)
+                        const keys = Object.keys(parts);
+                        const isArrayLike = keys.every(key => !isNaN(key) && parseInt(key) >= 0);
+                        
+                        if (isArrayLike && keys.length > 0) {
+                            console.log("🔄 Attempting to convert array-like object to array");
+                            console.log("Object keys (should be numeric):", keys);
+                            
+                            // Convert to array using Object.values()
+                            convertedParts = Object.values(parts);
+                            console.log("✅ Converted to array:", convertedParts);
+                            console.log("Converted array length:", convertedParts.length);
+                        } else if (parts.data && Array.isArray(parts.data)) {
+                            // Check if it's wrapped in a 'data' property
+                            console.log("🔄 Found data property that is an array");
+                            convertedParts = parts.data;
+                            console.log("✅ Using parts.data as array:", convertedParts);
+                        } else if (parts.items && Array.isArray(parts.items)) {
+                            // Check if it's wrapped in an 'items' property
+                            console.log("🔄 Found items property that is an array");
+                            convertedParts = parts.items;
+                            console.log("✅ Using parts.items as array:", convertedParts);
+                        } else if (parts.results && Array.isArray(parts.results)) {
+                            // Check if it's wrapped in a 'results' property
+                            console.log("🔄 Found results property that is an array");
+                            convertedParts = parts.results;
+                            console.log("✅ Using parts.results as array:", convertedParts);
+                        } else if (parts.response && Array.isArray(parts.response)) {
+                            // Check if it's wrapped in a 'response' property
+                            console.log("🔄 Found response property that is an array");
+                            convertedParts = parts.response;
+                            console.log("✅ Using parts.response as array:", convertedParts);
+                        } else if (parts.list && Array.isArray(parts.list)) {
+                            // Check if it's wrapped in a 'list' property
+                            console.log("🔄 Found list property that is an array");
+                            convertedParts = parts.list;
+                            console.log("✅ Using parts.list as array:", convertedParts);
+                        } else if (parts.records && Array.isArray(parts.records)) {
+                            // Check if it's wrapped in a 'records' property
+                            console.log("🔄 Found records property that is an array");
+                            convertedParts = parts.records;
+                            console.log("✅ Using parts.records as array:", convertedParts);
+                        } else if (parts.content && Array.isArray(parts.content)) {
+                            // Check if it's wrapped in a 'content' property
+                            console.log("🔄 Found content property that is an array");
+                            convertedParts = parts.content;
+                            console.log("✅ Using parts.content as array:", convertedParts);
+                        } else {
+                            console.log("❌ Cannot convert to array - not array-like");
+                            console.log("Available properties:", Object.keys(parts));
+                            
+                            // Try to find any property that might be an array
+                            const arrayProperties = Object.keys(parts).filter(key => Array.isArray(parts[key]));
+                            if (arrayProperties.length > 0) {
+                                console.log("🔍 Found array properties:", arrayProperties);
+                                console.log("🔄 Using first array property:", arrayProperties[0]);
+                                convertedParts = parts[arrayProperties[0]];
+                                console.log("✅ Converted using property", arrayProperties[0] + ":", convertedParts);
+                            } else {
+                                console.log("❌ No array properties found in object");
+                            }
+                        }
+                    }
+                    
+                    // If we successfully converted, use the converted array
+                    if (convertedParts && Array.isArray(convertedParts)) {
+                        console.log("🎉 Successfully converted to array, proceeding with conversion");
+                        
+                        if (convertedParts.length > 0) {
+                            console.log("=== FIRST ITEM STRUCTURE (from converted array) ===");
+                            console.log("First item:", convertedParts[0]);
+                            console.log("First item keys:", Object.keys(convertedParts[0]));
+                            console.log("First item values:", Object.values(convertedParts[0]));
+                        }
+                    }
+                }
+                
+                console.log("=== MAPPING PARTS TO TABLE DATA ===");
+                
+                // Use converted parts if available, otherwise use original parts
+                const finalParts = convertedParts && Array.isArray(convertedParts) ? convertedParts : parts;
+                
+                console.log("=== CONVERSION RESULT ANALYSIS ===");
+                console.log("convertedParts is null/undefined:", convertedParts === null || convertedParts === undefined);
+                console.log("convertedParts is array:", Array.isArray(convertedParts));
+                console.log("convertedParts length:", convertedParts?.length);
+                
+                if (Array.isArray(convertedParts)) {
+                    if (convertedParts.length === 0) {
+                        console.log("🔴 WARNING: convertedParts is an empty array!");
+                        console.log("Possible reasons:");
+                        console.log("1. The original object had no array properties");
+                        console.log("2. The found array property was empty");
+                        console.log("3. The conversion logic didn't match the actual structure");
+                        console.log("4. The object structure is different than expected");
+                        
+                        // Re-examine the original object structure
+                        if (typeof parts === "object" && parts !== null) {
+                            console.log("=== RE-EXAMINING ORIGINAL OBJECT ===");
+                            console.log("Original object keys:", Object.keys(parts));
+                            console.log("Original object values sample:", Object.values(parts).slice(0, 3));
+                            
+                            // Check each property to see if any are arrays
+                            Object.keys(parts).forEach(key => {
+                                const value = parts[key];
+                                console.log(`Property '${key}':`, {
+                                    type: typeof value,
+                                    isArray: Array.isArray(value),
+                                    length: Array.isArray(value) ? value.length : 'N/A',
+                                    sample: Array.isArray(value) ? value.slice(0, 2) : value
+                                });
+                            });
+                        }
+                    } else {
+                        console.log("✅ convertedParts has", convertedParts.length, "items");
+                    }
+                } else {
+                    console.log("❌ convertedParts is not an array, using original parts");
+                }
+                
+                console.log("Final parts to be used:", finalParts);
+                console.log("Final parts length:", Array.isArray(finalParts) ? finalParts.length : "Not an array");
+                
+                this.tableData = Array.isArray(finalParts)
+                    ? finalParts.map((p, index) => {
+                        console.log(`--- Processing part ${index + 1} ---`);
+                        console.log("Original part object:", p);
+                        
+                        const mappedItem = {
+                            partNo: p.partNumber,
+                            rev: p.revision,
+                            description: p.description,
+                            organization: p.organization || "Unknown",
+                            tgtRelease: p.targetReleaseDate,
+                            actualRelease: p.actualReleaseDate || "N/A",
+                            currentState: p.currentState,
+                            physId: p.physId
+                        };
+                        
+                        console.log("Mapped item:", mappedItem);
+                        console.log("Field mappings:");
+                        console.log("  partNumber -> partNo:", p.partNumber, "->", mappedItem.partNo);
+                        console.log("  revision -> rev:", p.revision, "->", mappedItem.rev);
+                        console.log("  description -> description:", p.description, "->", mappedItem.description);
+                        console.log("  organization -> organization:", p.organization, "->", mappedItem.organization);
+                        console.log("  targetReleaseDate -> tgtRelease:", p.targetReleaseDate, "->", mappedItem.tgtRelease);
+                        console.log("  actualReleaseDate -> actualRelease:", p.actualReleaseDate, "->", mappedItem.actualRelease);
+                        console.log("  currentState -> currentState:", p.currentState, "->", mappedItem.currentState);
+                        console.log("  physId -> physId:", p.physId, "->", mappedItem.physId);
+                        
+                        return mappedItem;
+                    })
                     : [];
+                
+                console.log("=== FINAL TABLE DATA ===");
+                console.log("Final tableData array length:", this.tableData.length);
+                console.log("Final tableData contents:", this.tableData);
+                console.log("=== FETCHDATA END ===");
 
                 // Update organizations from the parts data
                 const orgSet = new Set(this.tableData.map(r => r.organization));

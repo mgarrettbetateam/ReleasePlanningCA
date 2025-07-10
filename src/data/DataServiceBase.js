@@ -186,46 +186,124 @@ const dataService = {
 
   async fetchCAs(phase) {
     log("Fetching CAs for phase:", phase);
+    log("Phase details:", {
+      value: phase,
+      type: typeof phase,
+      length: phase?.length,
+      string: String(phase),
+      encoded: encodeURIComponent(phase || "")
+    });
+    
     try {
       // Use ApiService with the environment-specific endpoint
       const cacheKey = `CAS:${phase}`;
+      log("Cache key:", cacheKey);
+      
       const apiCall = async () => {
         const axios = (await import("axios")).default;
-        log("Making API call to retrievePhaseCAs with phase:", phase);
-        const response = await axios.get(`${API_BASE_URL}/internal/resources/AttributeValQuery/retrievePhaseCAs`, {
-          params: { phase }
+        const url = `${API_BASE_URL}/internal/resources/AttributeValQuery/retrievePhaseCAs`;
+        const params = { phase };
+        
+        log("Making API call details:", {
+          url,
+          params,
+          phase,
+          API_BASE_URL
         });
         
-        // Check if response contains an error
-        if (response.data && response.data.error) {
-          throw new Error(`API Error: ${response.data.error}`);
+        try {
+          const response = await axios.get(url, {
+            params,
+            timeout: 30000
+          });
+          
+          log("API call successful - Response details:", {
+            status: response.status,
+            statusText: response.statusText,
+            headers: response.headers,
+            dataType: typeof response.data,
+            dataKeys: response.data ? Object.keys(response.data) : "No data keys",
+            hasError: !!(response.data && response.data.error),
+            fullResponse: response.data
+          });
+          
+          // Check if response contains an error
+          if (response.data && response.data.error) {
+            log("API returned server-side error:", response.data.error);
+            throw new Error(`API Error: ${response.data.error}`);
+          }
+          
+          // Try to extract data from different possible structures
+          let extractedData = null;
+          if (response.data.parts && Array.isArray(response.data.parts)) {
+            extractedData = response.data.parts;
+            log("Extracted data from response.data.parts (array with", extractedData.length, "items)");
+          } else if (response.data.cas && Array.isArray(response.data.cas)) {
+            extractedData = response.data.cas;
+            log("Extracted data from response.data.cas (array with", extractedData.length, "items)");
+          } else if (Array.isArray(response.data)) {
+            extractedData = response.data;
+            log("Using response.data directly (array with", extractedData.length, "items)");
+          } else {
+            extractedData = response.data;
+            log("Using response.data as-is (type:", typeof extractedData, ")");
+          }
+          
+          log("Final extracted data:", {
+            type: typeof extractedData,
+            isArray: Array.isArray(extractedData),
+            length: Array.isArray(extractedData) ? extractedData.length : "Not an array",
+            keys: extractedData && typeof extractedData === "object" ? Object.keys(extractedData) : "Not an object",
+            sample: Array.isArray(extractedData) && extractedData.length > 0 ? extractedData[0] : extractedData
+          });
+          
+          return extractedData;
+          
+        } catch (axiosError) {
+          log("Axios request failed:", {
+            message: axiosError.message,
+            code: axiosError.code,
+            response: axiosError.response?.data,
+            status: axiosError.response?.status,
+            statusText: axiosError.response?.statusText,
+            config: {
+              url: axiosError.config?.url,
+              method: axiosError.config?.method,
+              params: axiosError.config?.params
+            }
+          });
+          throw axiosError;
         }
-        
-        log("API Response received from retrievePhaseCAs:", {
-          status: response.status,
-          dataKeys: Object.keys(response.data || {}),
-          dataType: typeof response.data,
-          fullResponse: response.data
-        });
-        
-        return response.data.parts || response.data.cas || response.data;
       };
       
+      log("About to call ApiService.fetchData with cache key:", cacheKey);
       const cas = await ApiService.fetchData(cacheKey, apiCall);
-      log("CAs fetched successfully:", {
+      
+      log("ApiService.fetchData completed. Result:", {
         count: Array.isArray(cas) ? cas.length : "Not an array",
         type: typeof cas,
         isArray: Array.isArray(cas),
-        data: cas
+        hasData: !!cas,
+        sample: Array.isArray(cas) && cas.length > 0 ? cas.slice(0, 2) : cas
       });
+      
       return cas;
+      
     } catch (error) {
-      log("Error fetching CAs:", {
+      log("Error in fetchCAs - Complete error details:", {
         message: error.message,
+        name: error.name,
+        stack: error.stack,
+        phase,
+        phaseType: typeof phase,
+        apiBaseUrl: API_BASE_URL,
         response: error.response?.data,
         status: error.response?.status,
-        fullError: error
+        isApiError: error.message.includes("API Error"),
+        isNetworkError: error.code === "ECONNABORTED" || error.message.includes("Network"),
+        isTimeoutError: error.message.includes("timeout")
       });
+      
       throw error;
     }
   },

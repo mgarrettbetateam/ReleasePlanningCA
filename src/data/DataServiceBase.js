@@ -173,64 +173,43 @@ const dataService = {
     }
   },
 
-   async fetchParts(phase) {
-    log("Fetching parts for phase:", phase);
+  /**
+   * Generic method to fetch items for a given phase
+   * Can be configured to fetch different types of data (parts, CAs, etc.)
+   * @param {string} phase - The phase to fetch items for
+   * @param {string} itemType - The type of items to fetch ('parts' or 'cas')
+   * @returns {Promise} - Array of items
+   */
+  async fetchItems(phase, itemType = "parts") {
+    log(`Fetching ${itemType} for phase:`, phase);
     try {
-      // Use ApiService with the original working endpoint
-      const cacheKey = `PARTS:${phase}`;
-      const apiCall = async () => {
-        const axios = (await import("axios")).default;
-        const response = await axios.get(`${API_BASE_URL}/internal/resources/AttributeValQuery/retrievePhaseParts`, {
-          params: { phase }
-        });
-        return response.data.parts;
+      // Determine endpoint and cache key based on item type
+      const endpointMap = {
+        parts: "/internal/resources/AttributeValQuery/retrievePhaseParts",
+        cas: "/internal/resources/AttributeValQuery/retrievePhaseCAs"
       };
-      
-      const parts = await ApiService.fetchData(cacheKey, apiCall);
-      log("Parts fetched:", parts);
-      return parts;
-    } catch (error) {
-      log("Error fetching parts:", error);
-      throw error;
-    }
-  }, 
 
-  /* // TODO: this was 
-  async fetchParts(phase) {
-    log("Fetching CAs for phase:", phase);
-    try {
-      // Use the new fetchCAs method instead
-      return await this.fetchCAs(phase);
-    } catch (error) {
-      log("Error fetching CAs:", error);
-      throw error;
-    }
-  }, */
+      const responseKeyMap = {
+        parts: "parts",
+        cas: ["parts", "cas"] // Multiple possible response keys for CAs
+      };
 
-  async fetchCAs(phase) {
-    log("Fetching CAs for phase:", phase);
-    log("Phase details:", {
-      value: phase,
-      type: typeof phase,
-      length: phase?.length,
-      string: String(phase),
-      encoded: encodeURIComponent(phase || "")
-    });
-    
-    try {
-      // Use ApiService with the environment-specific endpoint
-      const cacheKey = `CAS:${phase}`;
-      log("Cache key:", cacheKey);
-      
+      const endpoint = endpointMap[itemType] || endpointMap.parts;
+      const responseKeys = responseKeyMap[itemType] || responseKeyMap.parts;
+      const cacheKey = `${itemType.toUpperCase()}:${phase}`;
+
+      log(`Using endpoint: ${endpoint}, cache key: ${cacheKey}`);
+
       const apiCall = async () => {
         const axios = (await import("axios")).default;
-        const url = `${API_BASE_URL}/internal/resources/AttributeValQuery/retrievePhaseCAs`;
+        const url = `${API_BASE_URL}${endpoint}`;
         const params = { phase };
         
         log("Making API call details:", {
           url,
           params,
           phase,
+          itemType,
           API_BASE_URL
         });
         
@@ -243,11 +222,10 @@ const dataService = {
           log("API call successful - Response details:", {
             status: response.status,
             statusText: response.statusText,
-            headers: response.headers,
             dataType: typeof response.data,
             dataKeys: response.data ? Object.keys(response.data) : "No data keys",
             hasError: !!(response.data && response.data.error),
-            fullResponse: response.data
+            itemType
           });
           
           // Check if response contains an error
@@ -258,18 +236,27 @@ const dataService = {
           
           // Try to extract data from different possible structures
           let extractedData = null;
-          if (response.data.parts && Array.isArray(response.data.parts)) {
-            extractedData = response.data.parts;
-            log("Extracted data from response.data.parts (array with", extractedData.length, "items)");
-          } else if (response.data.cas && Array.isArray(response.data.cas)) {
-            extractedData = response.data.cas;
-            log("Extracted data from response.data.cas (array with", extractedData.length, "items)");
-          } else if (Array.isArray(response.data)) {
+          const keysToTry = Array.isArray(responseKeys) ? responseKeys : [responseKeys];
+          
+          // Try each configured response key
+          for (const key of keysToTry) {
+            if (response.data[key] && Array.isArray(response.data[key])) {
+              extractedData = response.data[key];
+              log(`Extracted data from response.data.${key} (array with ${extractedData.length} items)`);
+              break;
+            }
+          }
+          
+          // If no specific key worked, try direct array response
+          if (!extractedData && Array.isArray(response.data)) {
             extractedData = response.data;
-            log("Using response.data directly (array with", extractedData.length, "items)");
-          } else {
+            log(`Using response.data directly (array with ${extractedData.length} items)`);
+          }
+          
+          // If still no array, use the response as-is
+          if (!extractedData) {
             extractedData = response.data;
-            log("Using response.data as-is (type:", typeof extractedData, ")");
+            log(`Using response.data as-is (type: ${typeof extractedData})`);
           }
           
           log("Final extracted data:", {
@@ -289,36 +276,31 @@ const dataService = {
             response: axiosError.response?.data,
             status: axiosError.response?.status,
             statusText: axiosError.response?.statusText,
-            config: {
-              url: axiosError.config?.url,
-              method: axiosError.config?.method,
-              params: axiosError.config?.params
-            }
+            itemType
           });
           throw axiosError;
         }
       };
       
       log("About to call ApiService.fetchData with cache key:", cacheKey);
-      const cas = await ApiService.fetchData(cacheKey, apiCall);
+      const items = await ApiService.fetchData(cacheKey, apiCall);
       
       log("ApiService.fetchData completed. Result:", {
-        count: Array.isArray(cas) ? cas.length : "Not an array",
-        type: typeof cas,
-        isArray: Array.isArray(cas),
-        hasData: !!cas,
-        sample: Array.isArray(cas) && cas.length > 0 ? cas.slice(0, 2) : cas
+        count: Array.isArray(items) ? items.length : "Not an array",
+        type: typeof items,
+        isArray: Array.isArray(items),
+        hasData: !!items,
+        itemType
       });
       
-      return cas;
+      return items;
       
     } catch (error) {
-      log("Error in fetchCAs - Complete error details:", {
+      log(`Error in fetchItems (${itemType}) - Complete error details:`, {
         message: error.message,
         name: error.name,
-        stack: error.stack,
         phase,
-        phaseType: typeof phase,
+        itemType,
         apiBaseUrl: API_BASE_URL,
         response: error.response?.data,
         status: error.response?.status,
@@ -329,6 +311,18 @@ const dataService = {
       
       throw error;
     }
+  },
+
+  // Legacy method for backward compatibility - now uses generic fetchItems
+  async fetchParts(phase) {
+    log("fetchParts called - delegating to fetchItems('parts')");
+    return await this.fetchItems(phase, "parts");
+  },
+
+  // Legacy method for backward compatibility - now uses generic fetchItems
+  async fetchCAs(phase) {
+    log("fetchCAs called - delegating to fetchItems('cas')");
+    return await this.fetchItems(phase, "cas");
   },
 
   filterData(data, predicate) {

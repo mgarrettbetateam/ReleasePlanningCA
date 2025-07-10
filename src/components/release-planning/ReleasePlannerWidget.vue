@@ -1558,7 +1558,9 @@ export default {
                 console.log("=== FETCHDATA START ===");
                 console.log("Phase parameter:", phase);
                 
-                const parts = await dataService.fetchParts(phase);
+                // Use the generic fetchItems method - can be configured for different data types
+                // Change 'cas' to 'parts' if you want to fetch parts data instead
+                const parts = await dataService.fetchItems(phase, "cas");
                 
                 console.log("=== RAW API RESPONSE ===");
                 console.log("Type of parts:", typeof parts);

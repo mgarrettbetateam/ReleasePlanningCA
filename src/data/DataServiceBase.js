@@ -186,12 +186,14 @@ const dataService = {
       // Determine endpoint and cache key based on item type
       const endpointMap = {
         parts: "/internal/resources/AttributeValQuery/retrievePhaseParts",
-        cas: "/internal/resources/AttributeValQuery/retrievePhaseCAs"
+        cas: "/internal/resources/AttributeValQuery/retrievePhaseCAs",
+        crs: "/internal/resources/AttributeValQuery/retrievePhaseCRs"
       };
 
       const responseKeyMap = {
         parts: "parts",
-        cas: ["parts", "cas"] // Multiple possible response keys for CAs
+        cas: ["parts", "cas"], // Multiple possible response keys for CAs
+        crs: ["parts", "crs", "changeRequests"] // Multiple possible response keys for CRs
       };
 
       const endpoint = endpointMap[itemType] || endpointMap.parts;
@@ -323,6 +325,12 @@ const dataService = {
   async fetchCAs(phase) {
     log("fetchCAs called - delegating to fetchItems('cas')");
     return await this.fetchItems(phase, "cas");
+  },
+
+  // Legacy method for backward compatibility - now uses generic fetchItems
+  async fetchCRs(phase) {
+    log("fetchCRs called - delegating to fetchItems('crs')");
+    return await this.fetchItems(phase, "crs");
   },
 
   filterData(data, predicate) {

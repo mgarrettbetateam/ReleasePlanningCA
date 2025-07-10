@@ -966,6 +966,7 @@ import UniversalChart from "@/components/universal/UniversalChart.vue";
 import UniversalFilterControls from "@/components/universal/UniversalFilterControls.vue";
 import ChangeActionCell from "@/components/release-planning/ChangeActionCell.vue";
 import dataService from "@/data/DataServiceBase.js";
+import { USE_MOCK_DATA } from "@/config/ApiConfig.js";
 
 export default {
     name: "EnhancedPartsPlannerWidget",
@@ -1504,7 +1505,7 @@ export default {
                     await this.fetchPhases();
                 }
             } catch (err) {
-                if (process.env.NODE_ENV === "development") {
+                if (USE_MOCK_DATA) {
                     console.warn("API not available, using mock data for programs. Error:", err.message);
                 }
                 // Fallback to mock data for template demo
@@ -1529,11 +1530,11 @@ export default {
                 if (this.phases.length > 0) {
                     this.filterValues.phase = this.phases[0];
                     await this.fetchData(this.filterValues.phase);
-                } else if (process.env.NODE_ENV === "development") {
+                } else if (USE_MOCK_DATA) {
                     console.warn("No phases retrieved");
                 }
             } catch (error) {
-                if (process.env.NODE_ENV === "development") {
+                if (USE_MOCK_DATA) {
                     console.warn("API not available, using mock data for phases. Error:", error.message);
                 }
                 // Fallback to mock data
@@ -1558,6 +1559,7 @@ export default {
                 console.log("=== FETCHDATA START ===");
                 console.log("Phase parameter:", phase);
                 
+                // TODO: modify the second parameter to fetch data
                 // Use the generic fetchItems method - can be configured for different data types
                 // Change 'cas' to 'parts' if you want to fetch parts data instead
                 const parts = await dataService.fetchItems(phase, "cas");

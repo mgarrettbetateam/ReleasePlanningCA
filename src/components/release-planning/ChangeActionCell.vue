@@ -21,6 +21,7 @@
 <script>
 /* eslint-disable no-console */
 import ApiService from "../../services/ApiService.js";
+import { USE_MOCK_DATA } from "../../config/ApiConfig.js";
 
 export default {
     name: "ChangeActionCell",
@@ -71,8 +72,8 @@ export default {
     handleError(err) {
       console.error("Error fetching CA data after all retries:", err);
       
-      // Only use mock data in development or after all retries failed
-      if (process.env.NODE_ENV === "development") {
+      // Use global mock data flag instead of hardcoded environment check
+      if (USE_MOCK_DATA) {
         console.warn("Using mock data for CA:", err.message);
         
         // Generate mock data for template demo

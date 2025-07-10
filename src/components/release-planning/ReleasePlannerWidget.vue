@@ -351,6 +351,24 @@
   display: flex;
   flex-direction: column;
 }
+
+/* Ensure all filter dropdowns (program, phase, organization) are visually consistent in size */
+.universal-filter-controls .v-select,
+.universal-filter-controls .v-input,
+.universal-filter-controls .v-select__slot {
+  min-width: 220px !important;
+  max-width: 240px !important;
+  width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* Optional: ensure the filter controls are aligned horizontally and spaced evenly */
+.universal-filter-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
 </style>
 
 <script>

@@ -1,4 +1,5 @@
 <!-- Release Planning Widget - Self-contained with prominent filter dropdowns -->
+ 
 <template>
     <div class="enhanced-parts-planner">
         <!-- Header with Title (always shown - this is the internal widget header) -->
@@ -960,6 +961,7 @@
 </style>
 
 <script>
+/* eslint-disable no-console */
 import UniversalChart from "@/components/universal/UniversalChart.vue";
 import UniversalFilterControls from "@/components/universal/UniversalFilterControls.vue";
 import ChangeActionCell from "@/components/release-planning/ChangeActionCell.vue";
@@ -1753,7 +1755,7 @@ export default {
                         console.log("Field mappings:");
                         console.log("  partNumber -> partNo:", p.partNumber, "->", mappedItem.partNo);
                         console.log("  revision -> rev:", p.revision, "->", mappedItem.rev);
-                        console.log("  description -> description:", p.description, "->", mappedItem.description);
+                        console.log("  desciption -> description:", p.description, "->", mappedItem.description);
                         console.log("  organization -> organization:", p.organization, "->", mappedItem.organization);
                         console.log("  targetReleaseDate -> tgtRelease:", p.targetReleaseDate, "->", mappedItem.tgtRelease);
                         console.log("  actualReleaseDate -> actualRelease:", p.actualReleaseDate, "->", mappedItem.actualRelease);

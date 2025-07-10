@@ -173,6 +173,29 @@ const dataService = {
     }
   },
 
+   async fetchParts(phase) {
+    log("Fetching parts for phase:", phase);
+    try {
+      // Use ApiService with the original working endpoint
+      const cacheKey = `PARTS:${phase}`;
+      const apiCall = async () => {
+        const axios = (await import("axios")).default;
+        const response = await axios.get(`${API_BASE_URL}/internal/resources/AttributeValQuery/retrievePhaseParts`, {
+          params: { phase }
+        });
+        return response.data.parts;
+      };
+      
+      const parts = await ApiService.fetchData(cacheKey, apiCall);
+      log("Parts fetched:", parts);
+      return parts;
+    } catch (error) {
+      log("Error fetching parts:", error);
+      throw error;
+    }
+  }, 
+
+  /* // TODO: this was 
   async fetchParts(phase) {
     log("Fetching CAs for phase:", phase);
     try {
@@ -182,7 +205,7 @@ const dataService = {
       log("Error fetching CAs:", error);
       throw error;
     }
-  },
+  }, */
 
   async fetchCAs(phase) {
     log("Fetching CAs for phase:", phase);

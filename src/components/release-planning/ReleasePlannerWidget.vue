@@ -337,44 +337,6 @@
   display: flex;
   flex-direction: column;
 }
-
-/* Deep selector overrides for Vuetify components */
-.table-container :deep(.target-release-header) {
-  position: relative;
-}
-
-.table-container :deep(.target-release-header)::before {
-  content: '';
-  position: absolute;
-  left: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 12px;
-  height: 3px;
-  background: #1976d2;
-  border-radius: 2px;
-}
-
-.table-container :deep(.actual-release-header) {
-  position: relative;
-}
-
-.table-container :deep(.actual-release-header)::before {
-  content: '';
-  position: absolute;
-  left: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 12px;
-  height: 3px;
-  background: #388e3c;
-  border-radius: 2px;
-}
-
-.table-container :deep(.target-release-header .v-data-table-header__content),
-.table-container :deep(.actual-release-header .v-data-table-header__content) {
-  padding-left: 24px;
-}
 </style>
 
 <script>
@@ -419,17 +381,17 @@ export default {
             chartData: { labels: [], datasets: [] },
             
             // TODO: Replace with actual data for CA's
-            // Table headers for Change Actions - removed color indicators that don't apply
+            // Table headers for Change Actions - no color indicators
             tableHeaders: [
-                { text: "CA Number", value: "caNumber", sortable: true },
-                { text: "Rev", value: "revision", sortable: true },
-                { text: "Description", value: "changeSummary", sortable: true },
-                { text: "Resp Engr", value: "name", sortable: true },
-                { text: "Status", value: "currentState", sortable: true },
-                { text: "Target Complete Date", value: "targetReleaseDate", sortable: true },
-                { text: "Actual Approved Date", value: "approvedDate", sortable: true },
-                { text: "Actual Complete Date", value: "actualReleaseDate", sortable: true },
-                { text: "CA State", value: "currentState", sortable: true }
+                { text: "Part Number", value: "partNo", sortable: true },
+                { text: "Rev", value: "rev", sortable: true },
+                { text: "Description", value: "description", sortable: true },
+                { text: "Organization", value: "organization", sortable: true },
+                { text: "Target Release", value: "tgtRelease", sortable: true },
+                { text: "Actual Release", value: "actualRelease", sortable: true },
+                { text: "State", value: "currentState", sortable: true },
+                { text: "Change Action", value: "caNumber", sortable: true },
+                { text: "CA State", value: "caState", sortable: true }
             ],
             
             // Chart configuration - Amazing design with no overlapping
@@ -1141,7 +1103,7 @@ export default {
                                 console.log(`Property '${key}':`, {
                                     type: typeof value,
                                     isArray: Array.isArray(value),
-                                    length: Array.isArray(value) ? value.length : 'N/A',
+                                    length: Array.isArray(value) ? value.length : "N/A",
                                     sample: Array.isArray(value) ? value.slice(0, 2) : value
                                 });
                             });

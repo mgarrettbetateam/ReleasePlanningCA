@@ -3,6 +3,8 @@ import { widget, disableDefaultCSS, requirejs, onVisibilityChange } from "@widge
 import Vue from "vue";
 import App from "./app.vue";
 import vuetify from "./plugins/vuetify";
+// Import global styles
+import "./assets/styles/BetaStyles.css";
 
 const start = () => {
     disableDefaultCSS(true);

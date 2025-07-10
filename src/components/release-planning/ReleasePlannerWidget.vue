@@ -24,34 +24,24 @@
             :filters="filterConfig"
             :filter-values="filterValues"
             @filter-change="handleFilterChange"
-        />
-
-        <!-- Debug: Data Type Switcher (remove in production) -->
-        <v-card class="ma-2" outlined>
-            <v-card-subtitle class="pb-2">
-                <v-icon small left>mdi-bug</v-icon>
-                Debug: Data Type Configuration
-            </v-card-subtitle>
-            <v-card-text class="py-2">
-                <v-chip-group v-model="currentDataType" mandatory column>
-                    <v-chip
-                        v-for="dataType in getAvailableDataTypes()"
-                        :key="dataType"
-                        :value="dataType"
-                        small
-                        @click="switchDataType(dataType)"
-                    >
-                        {{ dataType.toUpperCase() }}
-                    </v-chip>
-                </v-chip-group>
-                <div class="caption mt-2">
-                    <strong>Current:</strong> {{ currentDataType }} | 
-                    <strong>Headers:</strong> {{ tableHeaders.length }} | 
-                    <strong>Data:</strong> {{ tableData.length }} items |
-                    <strong>Phase:</strong> {{ filterValues.phase || 'None' }}
+        >
+            <!-- Debug: Data Type Switcher (move here for dev/testing) -->
+            <template #after-filters>
+                <div class="data-type-switcher">
+                    <v-chip-group v-model="currentDataType" mandatory column>
+                        <v-chip
+                            v-for="dataType in getAvailableDataTypes()"
+                            :key="dataType"
+                            :value="dataType"
+                            small
+                            @click="switchDataType(dataType)"
+                        >
+                            {{ dataType.toUpperCase() }}
+                        </v-chip>
+                    </v-chip-group>
                 </div>
-            </v-card-text>
-        </v-card>
+            </template>
+        </UniversalFilterControls>
 
         <!-- Charts and Tables Section -->
         <v-row class="content-section">
@@ -63,60 +53,60 @@
                         <span class="chart-title">Cumulative Release Timeline</span>
                         <v-spacer />
                         <div class="chart-meta">
-                          <v-chip 
-                            small 
-                            color="primary" 
-                            outlined
-                            class="mr-2"
-                          >
-                            <v-icon small left>mdi-chart-bell-curve</v-icon>
-                            {{ chartData.datasets?.[0]?.data?.length || 0 }} Points
-                          </v-chip>
-                          <v-chip 
-                            small 
-                            color="success" 
-                            outlined
-                          >
-                            <v-icon small left>mdi-calendar-range</v-icon>
-                            Live Data
-                          </v-chip>
+                            <v-chip 
+                                small 
+                                color="primary" 
+                                outlined
+                                class="mr-2"
+                            >
+                                <v-icon small left>mdi-chart-bell-curve</v-icon>
+                                {{ chartData.datasets?.[0]?.data?.length || 0 }} Points
+                            </v-chip>
+                            <v-chip 
+                                small 
+                                color="success" 
+                                outlined
+                            >
+                                <v-icon small left>mdi-calendar-range</v-icon>
+                                Live Data
+                            </v-chip>
                         </div>
                     </v-card-title>
                     
                     <!-- Move legend here, inside the chart card but below the header -->
                     <div class="legend-container legend-row chart-legend-inside">
-                      <div class="legend-item clickable-legend" :class="{ 'legend-disabled': !showTargetLine }">
-                        <div class="legend-color-bar" style="background-color: #1976d2;" :style="{ opacity: showTargetLine ? 1 : 0.3 }"></div>
-                        <span class="legend-label" :style="{ opacity: showTargetLine ? 1 : 0.5 }" @click="toggleTargetLine">
-                          Target Releases
-                          <v-btn
-                            icon
-                            x-small
-                            class="legend-eye-btn"
-                            tabindex="-1"
-                            :color="showTargetLine ? 'primary' : 'grey'"
-                            @click.stop="toggleTargetLine"
-                          >
-                            <v-icon small>{{ showTargetLine ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
-                          </v-btn>
-                        </span>
-                      </div>
-                      <div class="legend-item clickable-legend" :class="{ 'legend-disabled': !showActualLine }">
-                        <div class="legend-color-bar" style="background-color: #4caf50;" :style="{ opacity: showActualLine ? 1 : 0.3 }"></div>
-                        <span class="legend-label" :style="{ opacity: showActualLine ? 1 : 0.5 }" @click="toggleActualLine">
-                          Actual Releases
-                          <v-btn
-                            icon
-                            x-small
-                            class="legend-eye-btn"
-                            tabindex="-1"
-                            :color="showActualLine ? 'success' : 'grey'"
-                            @click.stop="toggleActualLine"
-                          >
-                            <v-icon small>{{ showActualLine ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
-                          </v-btn>
-                        </span>
-                      </div>
+                        <div class="legend-item clickable-legend" :class="{ 'legend-disabled': !showTargetLine }">
+                            <div class="legend-color-bar" style="background-color: #1976d2;" :style="{ opacity: showTargetLine ? 1 : 0.3 }"></div>
+                            <span class="legend-label" :style="{ opacity: showTargetLine ? 1 : 0.5 }" @click="toggleTargetLine">
+                                Target Releases
+                                <v-btn
+                                    icon
+                                    x-small
+                                    class="legend-eye-btn"
+                                    tabindex="-1"
+                                    :color="showTargetLine ? 'primary' : 'grey'"
+                                    @click.stop="toggleTargetLine"
+                                >
+                                    <v-icon small>{{ showTargetLine ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
+                                </v-btn>
+                            </span>
+                        </div>
+                        <div class="legend-item clickable-legend" :class="{ 'legend-disabled': !showActualLine }">
+                            <div class="legend-color-bar" style="background-color: #4caf50;" :style="{ opacity: showActualLine ? 1 : 0.3 }"></div>
+                            <span class="legend-label" :style="{ opacity: showActualLine ? 1 : 0.5 }" @click="toggleActualLine">
+                                Actual Releases
+                                <v-btn
+                                    icon
+                                    x-small
+                                    class="legend-eye-btn"
+                                    tabindex="-1"
+                                    :color="showActualLine ? 'success' : 'grey'"
+                                    @click.stop="toggleActualLine"
+                                >
+                                    <v-icon small>{{ showActualLine ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
+                                </v-btn>
+                            </span>
+                        </div>
                     </div>
                     
                     <v-card-text class="chart-content-wrapper">
@@ -153,191 +143,191 @@
 
             <!-- Headliners and Table Side by Side -->
             <v-col cols="12" md="4">
-              <v-card class="headliners-card">
-                  <v-card-title class="headliners-header compact-header">
-                      <v-icon left color="info" size="20">mdi-star</v-icon>
-                      <span class="compact-title">Release Headliners</span>
-                      <v-spacer />
-                      <div class="headliner-chips">
-                          <v-chip 
-                              v-if="selectedStatFilter !== 'all'" 
-                              x-small 
-                              color="primary" 
-                              class="mr-1"
-                              @click="filterByReleaseStatus('all')"
-                          >
-                              <v-icon x-small left>mdi-filter-off</v-icon>
-                              Clear
-                          </v-chip>
-                          <v-chip x-small color="info" outlined>
-                              {{ filteredTableData.length }} 
-                              {{ selectedStatFilter === 'all' ? 'Total' : getFilterDisplayName(selectedStatFilter) }}
-                          </v-chip>
-                      </div>
-                  </v-card-title>
+                <v-card class="headliners-card">
+                    <v-card-title class="headliners-header compact-header">
+                        <v-icon left color="info" size="20">mdi-star</v-icon>
+                        <span class="compact-title">Release Headliners</span>
+                        <v-spacer />
+                        <div class="headliner-chips">
+                            <v-chip 
+                                v-if="selectedStatFilter !== 'all'" 
+                                x-small 
+                                color="primary" 
+                                class="mr-1"
+                                @click="filterByReleaseStatus('all')"
+                            >
+                                <v-icon x-small left>mdi-filter-off</v-icon>
+                                Clear
+                            </v-chip>
+                            <v-chip x-small color="info" outlined>
+                                {{ filteredTableData.length }} 
+                                {{ selectedStatFilter === 'all' ? 'Total' : getFilterDisplayName(selectedStatFilter) }}
+                            </v-chip>
+                        </div>
+                    </v-card-title>
                   
-                  <v-card-text class="headliners-content compact-content">
-                      <div v-if="releaseStats" class="stats-grid compact-grid">
-                          <div 
-                              class="stat-item compact-stat" 
-                              :class="{ 
-                                  'clickable-stat': releaseStats.releasedCount > 0,
-                                  'stat-active': selectedStatFilter === 'released',
-                                  'stat-disabled': releaseStats.releasedCount === 0
-                              }"
-                              @click="releaseStats.releasedCount > 0 ? filterByReleaseStatus('released') : null"
-                          >
-                              <div class="stat-number compact-number">{{ releaseStats.releasedCount }}</div>
-                              <div class="stat-label compact-label">Released</div>
-                          </div>
-                          <div 
-                              class="stat-item compact-stat" 
-                              :class="{ 
-                                  'clickable-stat': releaseStats.thisWeekCount > 0,
-                                  'stat-active': selectedStatFilter === 'thisWeek',
-                                  'stat-disabled': releaseStats.thisWeekCount === 0
-                              }"
-                              @click="releaseStats.thisWeekCount > 0 ? filterByReleaseStatus('thisWeek') : null"
-                          >
-                              <div class="stat-number compact-number">{{ releaseStats.thisWeekCount }}</div>
-                              <div class="stat-label compact-label">This Week</div>
-                          </div>
-                          <div 
-                              class="stat-item compact-stat" 
-                              :class="{ 
-                                  'clickable-stat': releaseStats.nextWeekCount > 0,
-                                  'stat-active': selectedStatFilter === 'nextWeek',
-                                  'stat-disabled': releaseStats.nextWeekCount === 0
-                              }"
-                              @click="releaseStats.nextWeekCount > 0 ? filterByReleaseStatus('nextWeek') : null"
-                          >
-                              <div class="stat-number compact-number">{{ releaseStats.nextWeekCount }}</div>
-                              <div class="stat-label compact-label">Next Week</div>
-                          </div>
-                          <div 
-                              class="stat-item compact-stat" 
-                              :class="{ 
-                                  'clickable-stat': releaseStats.overdueCount > 0,
-                                  'stat-active': selectedStatFilter === 'overdue',
-                                  'stat-disabled': releaseStats.overdueCount === 0
-                              }"
-                              @click="releaseStats.overdueCount > 0 ? filterByReleaseStatus('overdue') : null"
-                          >
-                              <div class="stat-number compact-number">{{ releaseStats.overdueCount }}</div>
-                              <div class="stat-label compact-label">Overdue</div>
-                          </div>
-                          <div 
-                              class="stat-item compact-stat" 
-                              :class="{ 
-                                  'clickable-stat': releaseStats.next30DaysCount > 0,
-                                  'stat-active': selectedStatFilter === 'next30Days',
-                                  'stat-disabled': releaseStats.next30DaysCount === 0
-                              }"
-                              @click="releaseStats.next30DaysCount > 0 ? filterByReleaseStatus('next30Days') : null"
-                          >
-                              <div class="stat-number compact-number">{{ releaseStats.next30DaysCount }}</div>
-                              <div class="stat-label compact-label">Next 30 Days</div>
-                          </div>
-                          <div 
-                              class="stat-item compact-stat clickable-stat" 
-                              :class="{ 'stat-active': selectedStatFilter === 'all' }"
-                              @click="filterByReleaseStatus('all')"
-                          >
-                              <div class="stat-number compact-number">{{ releaseStats.totalCount }}</div>
-                              <div class="stat-label compact-label">Total Parts</div>
-                          </div>
-                      </div>
-                      <div v-else class="no-stats-message">
-                          <v-icon color="grey">mdi-chart-bar</v-icon>
-                          <p class="caption">No statistics available</p>
-                      </div>
-                  </v-card-text>
-              </v-card>
+                    <v-card-text class="headliners-content compact-content">
+                        <div v-if="releaseStats" class="stats-grid compact-grid">
+                            <div 
+                                class="stat-item compact-stat" 
+                                :class="{ 
+                                    'clickable-stat': releaseStats.releasedCount > 0,
+                                    'stat-active': selectedStatFilter === 'released',
+                                    'stat-disabled': releaseStats.releasedCount === 0
+                                }"
+                                @click="releaseStats.releasedCount > 0 ? filterByReleaseStatus('released') : null"
+                            >
+                                <div class="stat-number compact-number">{{ releaseStats.releasedCount }}</div>
+                                <div class="stat-label compact-label">Released</div>
+                            </div>
+                            <div 
+                                class="stat-item compact-stat" 
+                                :class="{ 
+                                    'clickable-stat': releaseStats.thisWeekCount > 0,
+                                    'stat-active': selectedStatFilter === 'thisWeek',
+                                    'stat-disabled': releaseStats.thisWeekCount === 0
+                                }"
+                                @click="releaseStats.thisWeekCount > 0 ? filterByReleaseStatus('thisWeek') : null"
+                            >
+                                <div class="stat-number compact-number">{{ releaseStats.thisWeekCount }}</div>
+                                <div class="stat-label compact-label">This Week</div>
+                            </div>
+                            <div 
+                                class="stat-item compact-stat" 
+                                :class="{ 
+                                    'clickable-stat': releaseStats.nextWeekCount > 0,
+                                    'stat-active': selectedStatFilter === 'nextWeek',
+                                    'stat-disabled': releaseStats.nextWeekCount === 0
+                                }"
+                                @click="releaseStats.nextWeekCount > 0 ? filterByReleaseStatus('nextWeek') : null"
+                            >
+                                <div class="stat-number compact-number">{{ releaseStats.nextWeekCount }}</div>
+                                <div class="stat-label compact-label">Next Week</div>
+                            </div>
+                            <div 
+                                class="stat-item compact-stat" 
+                                :class="{ 
+                                    'clickable-stat': releaseStats.overdueCount > 0,
+                                    'stat-active': selectedStatFilter === 'overdue',
+                                    'stat-disabled': releaseStats.overdueCount === 0
+                                }"
+                                @click="releaseStats.overdueCount > 0 ? filterByReleaseStatus('overdue') : null"
+                            >
+                                <div class="stat-number compact-number">{{ releaseStats.overdueCount }}</div>
+                                <div class="stat-label compact-label">Overdue</div>
+                            </div>
+                            <div 
+                                class="stat-item compact-stat" 
+                                :class="{ 
+                                    'clickable-stat': releaseStats.next30DaysCount > 0,
+                                    'stat-active': selectedStatFilter === 'next30Days',
+                                    'stat-disabled': releaseStats.next30DaysCount === 0
+                                }"
+                                @click="releaseStats.next30DaysCount > 0 ? filterByReleaseStatus('next30Days') : null"
+                            >
+                                <div class="stat-number compact-number">{{ releaseStats.next30DaysCount }}</div>
+                                <div class="stat-label compact-label">Next 30 Days</div>
+                            </div>
+                            <div 
+                                class="stat-item compact-stat clickable-stat" 
+                                :class="{ 'stat-active': selectedStatFilter === 'all' }"
+                                @click="filterByReleaseStatus('all')"
+                            >
+                                <div class="stat-number compact-number">{{ releaseStats.totalCount }}</div>
+                                <div class="stat-label compact-label">Total Parts</div>
+                            </div>
+                        </div>
+                        <div v-else class="no-stats-message">
+                            <v-icon color="grey">mdi-chart-bar</v-icon>
+                            <p class="caption">No statistics available</p>
+                        </div>
+                    </v-card-text>
+                </v-card>
             </v-col>
             <v-col cols="12" md="8">
-              <v-card class="table-card" :loading="loading">
-                  <v-card-title class="table-header">
-                      <v-icon left>mdi-table</v-icon>
-                      {{ currentDataType.toUpperCase() }} Data Table
-                      <v-spacer />
-                      <v-chip small color="success" outlined class="mr-2">
-                          {{ filteredTableData.length }} Items
-                      </v-chip>
+                <v-card class="table-card" :loading="loading">
+                    <v-card-title class="table-header">
+                        <v-icon left>mdi-table</v-icon>
+                        {{ currentDataType.toUpperCase() }} Data Table
+                        <v-spacer />
+                        <v-chip small color="success" outlined class="mr-2">
+                            {{ filteredTableData.length }} Items
+                        </v-chip>
                       
-                      <!-- Export Button -->
-                      <v-menu v-if="filteredTableData.length > 0" bottom left>
-                          <template #activator="{ on, attrs }">
-                              <v-btn
-                                  icon
-                                  small
-                                  color="primary"
-                                  class="export-btn"
-                                  title="Export Data"
-                                  v-bind="attrs"
-                                  v-on="on"
-                              >
-                                  <v-icon small>mdi-download</v-icon>
-                              </v-btn>
-                          </template>
-                          <v-list>
-                              <v-list-item @click="exportTableData('pdf')">
-                                  <v-list-item-icon>
-                                      <v-icon>mdi-file-pdf-box</v-icon>
-                                  </v-list-item-icon>
-                                  <v-list-item-title>Export as PDF</v-list-item-title>
-                              </v-list-item>
-                              <v-list-item @click="exportTableData('csv')">
-                                  <v-list-item-icon>
-                                      <v-icon>mdi-file-delimited</v-icon>
-                                  </v-list-item-icon>
-                                  <v-list-item-title>Export as CSV</v-list-item-title>
-                              </v-list-item>
-                          </v-list>
-                      </v-menu>
-                  </v-card-title>
+                        <!-- Export Button -->
+                        <v-menu v-if="filteredTableData.length > 0" bottom left>
+                            <template #activator="{ on, attrs }">
+                                <v-btn
+                                    icon
+                                    small
+                                    color="primary"
+                                    class="export-btn"
+                                    title="Export Data"
+                                    v-bind="attrs"
+                                    v-on="on"
+                                >
+                                    <v-icon small>mdi-download</v-icon>
+                                </v-btn>
+                            </template>
+                            <v-list>
+                                <v-list-item @click="exportTableData('pdf')">
+                                    <v-list-item-icon>
+                                        <v-icon>mdi-file-pdf-box</v-icon>
+                                    </v-list-item-icon>
+                                    <v-list-item-title>Export as PDF</v-list-item-title>
+                                </v-list-item>
+                                <v-list-item @click="exportTableData('csv')">
+                                    <v-list-item-icon>
+                                        <v-icon>mdi-file-delimited</v-icon>
+                                    </v-list-item-icon>
+                                    <v-list-item-title>Export as CSV</v-list-item-title>
+                                </v-list-item>
+                            </v-list>
+                        </v-menu>
+                    </v-card-title>
                   
-                  <v-card-text class="table-content">
-                      <v-data-table
-                          v-if="filteredTableData.length > 0"
-                          :headers="tableHeaders"
-                          :items="filteredTableData"
-                          :loading="loading"
-                          dense
-                          :items-per-page="10"
-                          :footer-props="{ itemsPerPageOptions: [5, 10, 25, 50] }"
-                          item-value="partNo"
-                          @click:row="handleRowClick"
-                      >
-                          <template #body="{ items }">
-                              <tbody>
-                                  <tr
-                                      v-for="(item, index) in items"
-                                      :key="item.partNo || item.caNumber || item.crNumber || item.itemNumber || index"
-                                      @click="handleRowClick(item)"
-                                  >
-                                      <td v-for="header in tableHeaders" :key="header.value">
-                                          <!-- Use ChangeActionCell component for CA fields (only in parts data) -->
-                                          <ChangeActionCell
-                                              v-if="header.component === 'ChangeActionCell'"
-                                              :obj-id="item.physId"
-                                              :row-index="index"
-                                              :field="header.componentProps.field"
-                                              @ca-number-loaded="onCaNumberLoaded"
-                                          />
-                                          <!-- Regular cell for all other data -->
-                                          <span v-else>{{ item[header.value] || 'N/A' }}</span>
-                                      </td>
-                                  </tr>
-                              </tbody>
-                          </template>
-                      </v-data-table>
-                      <div v-else class="no-data-message">
-                          <v-icon size="48" color="grey">mdi-table-off</v-icon>
-                          <p>No table data available for current filters</p>
-                          <p class="caption">Try adjusting your filter selections</p>
-                      </div>
-                  </v-card-text>
-              </v-card>
+                    <v-card-text class="table-content">
+                        <v-data-table
+                            v-if="filteredTableData.length > 0"
+                            :headers="tableHeaders"
+                            :items="filteredTableData"
+                            :loading="loading"
+                            dense
+                            :items-per-page="10"
+                            :footer-props="{ itemsPerPageOptions: [5, 10, 25, 50] }"
+                            item-value="partNo"
+                            @click:row="handleRowClick"
+                        >
+                            <template #body="{ items }">
+                                <tbody>
+                                    <tr
+                                        v-for="(item, index) in items"
+                                        :key="item.partNo || item.caNumber || item.crNumber || item.itemNumber || index"
+                                        @click="handleRowClick(item)"
+                                    >
+                                        <td v-for="header in tableHeaders" :key="header.value">
+                                            <!-- Use ChangeActionCell component for CA fields (only in parts data) -->
+                                            <ChangeActionCell
+                                                v-if="header.component === 'ChangeActionCell'"
+                                                :obj-id="item.physId"
+                                                :row-index="index"
+                                                :field="header.componentProps.field"
+                                                @ca-number-loaded="onCaNumberLoaded"
+                                            />
+                                            <!-- Regular cell for all other data -->
+                                            <span v-else>{{ item[header.value] || 'N/A' }}</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </template>
+                        </v-data-table>
+                        <div v-else class="no-data-message">
+                            <v-icon size="48" color="grey">mdi-table-off</v-icon>
+                            <p>No table data available for current filters</p>
+                            <p class="caption">Try adjusting your filter selections</p>
+                        </div>
+                    </v-card-text>
+                </v-card>
             </v-col>
         </v-row>
     </div>
@@ -356,10 +346,32 @@
 .universal-filter-controls .v-select,
 .universal-filter-controls .v-input,
 .universal-filter-controls .v-select__slot {
-  min-width: 220px !important;
-  max-width: 240px !important;
-  width: 100% !important;
+  min-width: 320px !important;
+  width: auto !important;
+  max-width: none !important;
   box-sizing: border-box;
+  height: 44px !important;
+  min-height: 44px !important;
+  line-height: 44px !important;
+  white-space: nowrap !important;
+}
+
+/* Ensure the input and label inside the dropdown are vertically centered */
+.universal-filter-controls .v-input__slot,
+.universal-filter-controls .v-select__selections {
+  height: 44px !important;
+  min-height: 44px !important;
+  display: flex;
+  align-items: center;
+}
+
+/* Optional: Adjust the label and icon for vertical alignment */
+.universal-filter-controls .v-label,
+.universal-filter-controls .v-icon {
+  line-height: 44px !important;
+  height: 44px !important;
+  display: flex;
+  align-items: center;
 }
 
 /* Optional: ensure the filter controls are aligned horizontally and spaced evenly */
@@ -1597,7 +1609,7 @@ export default {
             // Force reactivity by deep cloning chartData
             this.chartData = JSON.parse(JSON.stringify({
                 labels: sortedDates,
-                datasets: datasets
+                datasets
             }));
 
             console.log("✅ Chart data updated (unified timeline):", {

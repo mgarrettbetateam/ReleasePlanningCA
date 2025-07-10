@@ -50,6 +50,11 @@
                 </v-row>
             </v-container>
 
+            <!-- Slot for custom controls after filters -->
+            <div class="after-filters-slot">
+                <slot name="after-filters"></slot>
+            </div>
+
             <!-- Current Filter Summary -->
             <v-expand-transition>
                 <div v-if="showSummary && hasActiveFilters" class="filter-summary-section">

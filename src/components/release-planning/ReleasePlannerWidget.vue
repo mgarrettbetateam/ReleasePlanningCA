@@ -5,7 +5,7 @@
         <!-- Header with Title (always shown - this is the internal widget header) -->
         <v-card-title class="planner-header">
             <v-icon left color="primary">mdi-clipboard-list</v-icon>
-            Release Planning CA Dashboard
+            {{ widgetTitle }}
             <v-spacer />
             <v-chip 
                 color="success" 
@@ -26,6 +26,33 @@
             @filter-change="handleFilterChange"
         />
 
+        <!-- Debug: Data Type Switcher (remove in production) -->
+        <v-card class="ma-2" outlined>
+            <v-card-subtitle class="pb-2">
+                <v-icon small left>mdi-bug</v-icon>
+                Debug: Data Type Configuration
+            </v-card-subtitle>
+            <v-card-text class="py-2">
+                <v-chip-group v-model="currentDataType" mandatory column>
+                    <v-chip
+                        v-for="dataType in getAvailableDataTypes()"
+                        :key="dataType"
+                        :value="dataType"
+                        small
+                        @click="switchDataType(dataType)"
+                    >
+                        {{ dataType.toUpperCase() }}
+                    </v-chip>
+                </v-chip-group>
+                <div class="caption mt-2">
+                    <strong>Current:</strong> {{ currentDataType }} | 
+                    <strong>Headers:</strong> {{ tableHeaders.length }} | 
+                    <strong>Data:</strong> {{ tableData.length }} items |
+                    <strong>Phase:</strong> {{ filterValues.phase || 'None' }}
+                </div>
+            </v-card-text>
+        </v-card>
+
         <!-- Charts and Tables Section -->
         <v-row class="content-section">
             <!-- Line Chart Widget - Full Width -->
@@ -33,7 +60,7 @@
                 <v-card class="chart-card" :loading="loading" elevation="4">
                     <v-card-title class="chart-header">
                         <v-icon left color="primary" size="28">mdi-chart-line</v-icon>
-                        <span class="chart-title">CA Completion Timeline</span>
+                        <span class="chart-title">Cumulative Release Timeline</span>
                         <v-spacer />
                         <div class="chart-meta">
                             <v-chip 
@@ -59,35 +86,29 @@
                     <!-- Custom Chart Legend -->
                     <v-card-subtitle class="chart-legend-section">
                         <div class="legend-container">
-                            <div 
-                                class="legend-item clickable-legend" 
-                                :class="{ 'legend-disabled': !showTargetLine }"
-                                @click="toggleTargetLine"
-                            >
-                                <div class="legend-color-bar target-color" :class="{ 'disabled': !showTargetLine }"></div>
-                                <span class="legend-label">Target Completion Timeline</span>
-                                <v-icon 
-                                    small 
-                                    :color="showTargetLine ? 'success' : 'grey'"
+                            <div v-if="showTargetLine" class="legend-item">
+                                <div class="legend-color-bar" style="background-color: #1976d2;"></div>
+                                <span class="legend-label">Target Releases (Blue)</span>
+                                <v-btn 
+                                    icon 
+                                    x-small 
                                     class="ml-2"
+                                    @click="toggleTargetLine"
                                 >
-                                    {{ showTargetLine ? 'mdi-eye' : 'mdi-eye-off' }}
-                                </v-icon>
+                                    <v-icon small color="primary">mdi-eye</v-icon>
+                                </v-btn>
                             </div>
-                            <div 
-                                class="legend-item clickable-legend" 
-                                :class="{ 'legend-disabled': !showActualLine }"
-                                @click="toggleActualLine"
-                            >
-                                <div class="legend-color-bar actual-color" :class="{ 'disabled': !showActualLine }"></div>
-                                <span class="legend-label">Actual Completion Timeline</span>
-                                <v-icon 
-                                    small 
-                                    :color="showActualLine ? 'success' : 'grey'"
+                            <div v-if="showActualLine" class="legend-item">
+                                <div class="legend-color-bar" style="background-color: #4caf50;"></div>
+                                <span class="legend-label">Actual Releases (Green)</span>
+                                <v-btn 
+                                    icon 
+                                    x-small 
                                     class="ml-2"
+                                    @click="toggleActualLine"
                                 >
-                                    {{ showActualLine ? 'mdi-eye' : 'mdi-eye-off' }}
-                                </v-icon>
+                                    <v-icon small color="success">mdi-eye</v-icon>
+                                </v-btn>
                             </div>
                         </div>
                     </v-card-subtitle>
@@ -97,7 +118,7 @@
                             <UniversalChart
                                 v-if="chartData.labels && chartData.labels.length > 0"
                                 :data="chartData"
-                                :options="chartOptions"
+                                :options="dynamicChartOptions"
                                 type="line"
                                 :height="360"
                             />
@@ -233,7 +254,7 @@
                 <v-card class="table-card" :loading="loading">
                     <v-card-title class="table-header">
                         <v-icon left>mdi-table</v-icon>
-                        Parts Data Table
+                        {{ currentDataType.toUpperCase() }} Data Table
                         <v-spacer />
                         <v-chip small color="success" outlined class="mr-2">
                             {{ filteredTableData.length }} Items
@@ -287,31 +308,20 @@
                                 <tbody>
                                     <tr
                                         v-for="(item, index) in items"
-                                        :key="item.partNo"
+                                        :key="item.partNo || item.caNumber || item.crNumber || item.itemNumber || index"
                                         @click="handleRowClick(item)"
                                     >
-                                        <td>{{ item.partNo }}</td>
-                                        <td>{{ item.rev }}</td>
-                                        <td>{{ item.description }}</td>
-                                        <td>{{ item.organization }}</td>
-                                        <td>{{ item.tgtRelease }}</td>
-                                        <td>{{ item.actualRelease }}</td>
-                                        <td>{{ item.currentState }}</td>
-                                        <td>
+                                        <td v-for="header in tableHeaders" :key="header.value">
+                                            <!-- Use ChangeActionCell component for CA fields (only in parts data) -->
                                             <ChangeActionCell
+                                                v-if="header.component === 'ChangeActionCell'"
                                                 :obj-id="item.physId"
                                                 :row-index="index"
-                                                field="number"
+                                                :field="header.componentProps.field"
                                                 @ca-number-loaded="onCaNumberLoaded"
                                             />
-                                        </td>
-                                        <td>
-                                            <ChangeActionCell
-                                                :obj-id="item.physId"
-                                                :row-index="index"
-                                                field="state"
-                                                @ca-number-loaded="onCaNumberLoaded"
-                                            />
+                                            <!-- Regular cell for all other data -->
+                                            <span v-else>{{ item[header.value] || 'N/A' }}</span>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -380,22 +390,168 @@ export default {
             // Data for chart and filtered display
             chartData: { labels: [], datasets: [] },
             
-            // TODO: Replace with actual data for CA's
-            // Table headers for Change Actions - no color indicators
-            tableHeaders: [
-                { text: "Part Number", value: "partNo", sortable: true },
-                { text: "Rev", value: "rev", sortable: true },
-                { text: "Description", value: "description", sortable: true },
-                { text: "Organization", value: "organization", sortable: true },
-                { text: "Target Release", value: "tgtRelease", sortable: true },
-                { text: "Actual Release", value: "actualRelease", sortable: true },
-                { text: "State", value: "currentState", sortable: true },
-                { text: "Change Action", value: "caNumber", sortable: true },
-                { text: "CA State", value: "caState", sortable: true }
-            ],
+            // Current data type being displayed - determines which header configuration to use
+            currentDataType: "parts", // "parts", "cas", "crs", etc.
             
-            // Chart configuration - Amazing design with no overlapping
-            chartOptions: {
+            // Configuration for different data types - easily extensible
+            headerConfigurations: {
+                parts: [
+                    { text: "Part Number", value: "partNo", sortable: true, required: true, icon: "mdi-barcode" },
+                    { text: "Rev", value: "rev", sortable: true, icon: "mdi-source-branch" },
+                    { text: "Description", value: "description", sortable: true, icon: "mdi-text" },
+                    { text: "Organization", value: "organization", sortable: true, icon: "mdi-domain" },
+                    { text: "Target Release", value: "tgtRelease", sortable: true, icon: "mdi-calendar-clock" },
+                    { text: "Actual Release", value: "actualRelease", sortable: true, icon: "mdi-calendar-check" },
+                    { text: "State", value: "currentState", sortable: true, icon: "mdi-flag" },
+                    { text: "Change Action", value: "caNumber", sortable: false, component: "ChangeActionCell", componentProps: { field: "number" } },
+                    { text: "CA State", value: "caState", sortable: false, component: "ChangeActionCell", componentProps: { field: "state" } }
+                ],
+                cas: [
+                    { text: "CA Number", value: "caNumber", sortable: true, required: true, icon: "mdi-file-document" },
+                    // { text: "Rev", value: "revision", sortable: true, icon: "mdi-source-branch" },
+                    { text: "Description", value: "changeSummary", sortable: true, icon: "mdi-text" },
+                    { text: "Resp Engr", value: "name", sortable: true, icon: "mdi-account" },
+                   // { text: "Organization", value: "organization", sortable: true, icon: "mdi-domain" },
+                    { text: "Status", value: "currentState", sortable: true, icon: "mdi-flag" },
+                    { text: "Target Complete Date", value: "targetReleaseDate", sortable: true, icon: "mdi-calendar-clock" },
+                    { text: "Actual Approved Date", value: "approvedDate", sortable: true, icon: "mdi-calendar-check" },
+                    { text: "Actual Complete Date", value: "actualReleaseDate", sortable: true, icon: "mdi-calendar-check" }
+                ],
+                crs: [
+                    { text: "CR Number", value: "crNumber", sortable: true, required: true, icon: "mdi-file-document-outline" },
+                    { text: "Title", value: "title", sortable: true, icon: "mdi-format-title" },
+                    { text: "Status", value: "status", sortable: true, icon: "mdi-flag" },
+                    { text: "Priority", value: "priority", sortable: true, icon: "mdi-alert" },
+                    { text: "Requester", value: "requester", sortable: true, icon: "mdi-account" },
+                    { text: "Created Date", value: "createdDate", sortable: true, icon: "mdi-calendar-plus" },
+                    { text: "Due Date", value: "dueDate", sortable: true, icon: "mdi-calendar-clock" },
+                    { text: "Completed Date", value: "completedDate", sortable: true, icon: "mdi-calendar-check" }
+                ]
+            },
+            
+            // UI state
+            loading: false,
+            lastUpdated: new Date().toLocaleTimeString(),
+            
+            // Chart line visibility
+            showTargetLine: true,
+            showActualLine: true,
+            
+            // Release headliner filter
+            selectedStatFilter: "all"
+        };
+    },
+    
+    computed: {
+        // Dynamic widget title based on current data type
+        widgetTitle() {
+            const titles = {
+                parts: "Release Planning Parts Dashboard",
+                cas: "Release Planning CA Dashboard", 
+                crs: "Change Request Dashboard"
+            };
+            
+            return titles[this.currentDataType] || "Release Planning Dashboard";
+        },
+
+        // Dynamic table headers based on current data type and available data
+        tableHeaders() {
+            // Get base configuration for current data type
+            const baseConfig = this.headerConfigurations[this.currentDataType] || [];
+            
+            if (!this.tableData || this.tableData.length === 0) {
+                // Return only required headers when no data is available
+                return baseConfig.filter(h => h.required);
+            }
+
+            // Get available fields from the actual data
+            const availableFields = Object.keys(this.tableData[0]);
+            
+            // Filter headers based on available data fields
+            const filteredHeaders = baseConfig.filter(headerConfig => {
+                // Always include required headers
+                if (headerConfig.required) return true;
+                
+                // Always include component-based headers (like ChangeActionCell)
+                if (headerConfig.component) return true;
+                
+                // Include if the field exists in the data
+                return availableFields.includes(headerConfig.value);
+            });
+
+            console.log("=== DYNAMIC HEADERS DEBUG ===");
+            console.log("Current data type:", this.currentDataType);
+            console.log("Available fields in data:", availableFields);
+            console.log("Base config headers:", baseConfig.map(h => h.value));
+            console.log("Filtered headers:", filteredHeaders.map(h => h.value));
+            console.log("Final header count:", filteredHeaders.length);
+
+            return filteredHeaders;
+        },
+
+        filterConfig() {
+            return [
+                {
+                    key: "program",
+                    label: "Program",
+                    icon: "mdi-briefcase",
+                    placeholder: "Select Program",
+                    options: this.programs,
+                    color: "primary"
+                },
+                {
+                    key: "phase",
+                    label: "Phase", 
+                    icon: "mdi-timeline",
+                    placeholder: "Select Phase",
+                    options: this.phases,
+                    color: "secondary"
+                },
+                {
+                    key: "organization",
+                    label: "Organization",
+                    icon: "mdi-domain", 
+                    placeholder: "Select Organization",
+                    options: this.organizations,
+                    color: "accent"
+                }
+            ];
+        },
+        
+        hasActiveFilters() {
+            return (this.filterValues.program && this.filterValues.program !== "") ||
+                   (this.filterValues.phase && this.filterValues.phase !== "") ||
+                   (this.filterValues.organization && this.filterValues.organization !== "All");
+        },
+        
+        activeFilterCount() {
+            let count = 0;
+            if (this.filterValues.program && this.filterValues.program !== "") count++;
+            if (this.filterValues.phase && this.filterValues.phase !== "") count++;
+            if (this.filterValues.organization && this.filterValues.organization !== "All") count++;
+            return count;
+        },
+
+        // Dynamic chart options based on current data type
+        dynamicChartOptions() {
+            const dataTypeConfig = {
+                parts: {
+                    yAxisTitle: "Cumulative Parts Count",
+                    tooltipLabel: "total parts"
+                },
+                cas: {
+                    yAxisTitle: "Cumulative CAs Count", 
+                    tooltipLabel: "total CAs"
+                },
+                crs: {
+                    yAxisTitle: "Cumulative CRs Count",
+                    tooltipLabel: "total CRs" 
+                }
+            };
+
+            const config = dataTypeConfig[this.currentDataType] || dataTypeConfig.parts;
+
+            return {
                 responsive: true,
                 maintainAspectRatio: false,
                 interaction: {
@@ -444,7 +600,7 @@ export default {
                     y: { 
                         title: { 
                             display: true, 
-                            text: "Cumulative Parts Count",
+                            text: config.yAxisTitle,
                             font: {
                                 size: 14,
                                 weight: "bold"
@@ -491,10 +647,10 @@ export default {
                         displayColors: true,
                         callbacks: {
                             title(context) {
-                                return "Date: " + context[0].label;
+                                return "Release Date: " + context[0].label;
                             },
                             label(context) {
-                                return context.dataset.label + ": " + context.parsed.y + " parts";
+                                return `Total Released: ${context.parsed.y} ${config.tooltipLabel}`;
                             }
                         }
                     }
@@ -511,79 +667,85 @@ export default {
                         hoverBorderWidth: 3
                     }
                 }
-            },
-            
-            // UI state
-            loading: false,
-            lastUpdated: new Date().toLocaleTimeString(),
-            
-            // Chart line visibility
-            showTargetLine: true,
-            showActualLine: true,
-            
-            // Release headliner filter
-            selectedStatFilter: "all"
-        };
-    },
-    
-    computed: {
-        filterConfig() {
-            return [
-                {
-                    key: "program",
-                    label: "Program",
-                    icon: "mdi-briefcase",
-                    placeholder: "Select Program",
-                    options: this.programs,
-                    color: "primary"
-                },
-                {
-                    key: "phase",
-                    label: "Phase", 
-                    icon: "mdi-timeline",
-                    placeholder: "Select Phase",
-                    options: this.phases,
-                    color: "secondary"
-                },
-                {
-                    key: "organization",
-                    label: "Organization",
-                    icon: "mdi-domain", 
-                    placeholder: "Select Organization",
-                    options: this.organizations,
-                    color: "accent"
-                }
-            ];
-        },
-        
-        hasActiveFilters() {
-            return (this.filterValues.program && this.filterValues.program !== "") ||
-                   (this.filterValues.phase && this.filterValues.phase !== "") ||
-                   (this.filterValues.organization && this.filterValues.organization !== "All");
-        },
-        
-        activeFilterCount() {
-            let count = 0;
-            if (this.filterValues.program && this.filterValues.program !== "") count++;
-            if (this.filterValues.phase && this.filterValues.phase !== "") count++;
-            if (this.filterValues.organization && this.filterValues.organization !== "All") count++;
-            return count;
+            };
         },
 
+        // Filter table data based on current filters and selected stat filter
         filteredTableData() {
-            let result = [...this.tableData];
+            console.log("🔍 FILTEREDTABLEDATA DEBUG START");
+            console.log("tableData length:", this.tableData?.length || 0);
+            console.log("filterValues:", this.filterValues);
+            console.log("selectedStatFilter:", this.selectedStatFilter);
             
-            // Apply organization filter
-            if (this.filterValues.organization !== "All") {
-                result = result.filter(r => r.organization === this.filterValues.organization);
+            if (!this.tableData || this.tableData.length === 0) {
+                console.log("❌ No tableData available");
+                return [];
             }
-            
-            // Apply stat filter
-            if (this.selectedStatFilter !== "all") {
-                result = this.applyStatFilter(result, this.selectedStatFilter);
+
+            let filtered = [...this.tableData];
+            console.log("Starting with", filtered.length, "items");
+
+            // Apply filter values (program, phase, organization) - only if they would not eliminate all data
+            if (this.filterValues.program && this.filterValues.program !== "") {
+                const beforeCount = filtered.length;
+                // Check if any items would match this filter before applying it
+                const wouldMatch = filtered.some(item => 
+                    item.program === this.filterValues.program ||
+                    item.organization === this.filterValues.program
+                );
+                
+                if (wouldMatch) {
+                    filtered = filtered.filter(item => 
+                        item.program === this.filterValues.program ||
+                        item.organization === this.filterValues.program
+                    );
+                    console.log(`Program filter (${this.filterValues.program}): ${beforeCount} -> ${filtered.length}`);
+                } else {
+                    console.log(`⚠️ Skipping program filter - no items would match: ${this.filterValues.program}`);
+                }
             }
-            
-            return result;
+
+            if (this.filterValues.phase && this.filterValues.phase !== "") {
+                const beforeCount = filtered.length;
+                // Check if any items would match this filter before applying it
+                const wouldMatch = filtered.some(item => 
+                    item.phase === this.filterValues.phase ||
+                    item.currentState === this.filterValues.phase
+                );
+                
+                if (wouldMatch) {
+                    filtered = filtered.filter(item => 
+                        item.phase === this.filterValues.phase ||
+                        item.currentState === this.filterValues.phase
+                    );
+                    console.log(`Phase filter (${this.filterValues.phase}): ${beforeCount} -> ${filtered.length}`);
+                } else {
+                    console.log(`⚠️ Skipping phase filter - no items would match: ${this.filterValues.phase}`);
+                }
+            }
+
+            if (this.filterValues.organization && this.filterValues.organization !== "All") {
+                const beforeCount = filtered.length;
+                filtered = filtered.filter(item => 
+                    item.organization === this.filterValues.organization
+                );
+                console.log(`Organization filter (${this.filterValues.organization}): ${beforeCount} -> ${filtered.length}`);
+            }
+
+            // Apply statistical filter (released, thisWeek, nextWeek, etc.)
+            if (this.selectedStatFilter && this.selectedStatFilter !== "all") {
+                const beforeCount = filtered.length;
+                filtered = this.applyStatFilter(filtered, this.selectedStatFilter);
+                console.log(`Stat filter (${this.selectedStatFilter}): ${beforeCount} -> ${filtered.length}`);
+            }
+
+            console.log("🔍 FILTEREDTABLEDATA FINAL:", filtered.length, "items");
+            if (filtered.length > 0) {
+                console.log("Sample filtered item:", filtered[0]);
+            }
+            console.log("🔍 FILTEREDTABLEDATA DEBUG END");
+
+            return filtered;
         },
 
         releaseStats() {
@@ -591,6 +753,17 @@ export default {
                 return null;
             }
             return this.computeStatsForArray(this.filteredTableData);
+        },
+
+        // Dynamic chart legend label based on data type  
+        chartLegendLabel() {
+            const labels = {
+                parts: "Actual Parts Released",
+                cas: "Actual CAs Released", 
+                crs: "Actual CRs Released"
+            };
+            
+            return labels[this.currentDataType] || "Actual Items Released";
         }
     },
     
@@ -600,6 +773,19 @@ export default {
     },
     
     methods: {
+        // Chart legend toggle methods
+        toggleTargetLine() {
+            this.showTargetLine = !this.showTargetLine;
+            console.log("Target line visibility toggled:", this.showTargetLine);
+            this.updateChartFromFiltered(); // Regenerate chart with new visibility
+        },
+
+        toggleActualLine() {
+            this.showActualLine = !this.showActualLine;
+            console.log("Actual line visibility toggled:", this.showActualLine);
+            this.updateChartFromFiltered(); // Regenerate chart with new visibility
+        },
+
         // Handle filter changes from UniversalFilterControls
         handleFilterChange(filterEvent) {
             this.filterValues = { ...filterEvent.allFilters };
@@ -886,11 +1072,16 @@ export default {
             } catch (err) {
                 if (USE_MOCK_DATA) {
                     console.warn("API not available, using mock data for programs. Error:", err.message);
+                    // Fallback to mock data for template demo
+                    this.programs = ["CX300 Pre-Production Builds", "Demo Program 1", "Demo Program 2"];
+                    this.filterValues.program = "CX300 Pre-Production Builds";
+                    await this.fetchPhases();
+                } else {
+                    console.error("Failed to fetch programs:", err.message);
+                    // Leave empty when API fails and mock data is disabled
+                    this.programs = [];
+                    this.filterValues.program = "";
                 }
-                // Fallback to mock data for template demo
-                this.programs = ["CX300 Pre-Production Builds", "Demo Program 1", "Demo Program 2"];
-                this.filterValues.program = "CX300 Pre-Production Builds";
-                await this.fetchPhases();
             }
         },
 
@@ -913,13 +1104,21 @@ export default {
                     console.warn("No phases retrieved");
                 }
             } catch (error) {
+                console.error("Failed to fetch phases:", error.message);
                 if (USE_MOCK_DATA) {
                     console.warn("API not available, using mock data for phases. Error:", error.message);
+                    // Fallback to mock data
+                    this.phases = ["Phase 1", "Phase 2", "Phase 3"];
+                    this.filterValues.phase = "Phase 1";
+                    await this.fetchData(this.filterValues.phase);
+                } else {
+                    console.error("Failed to fetch phases:", error.message);
+                    // Leave empty when API fails and mock data is disabled
+                    this.phases = [];
+                    this.filterValues.phase = "";
+                    // Initialize empty chart data
+                    this.updateChartFromFiltered();
                 }
-                // Fallback to mock data
-                this.phases = ["Phase 1", "Phase 2", "Phase 3"];
-                this.filterValues.phase = "Phase 1";
-                await this.fetchData(this.filterValues.phase);
             } finally {
                 this.loading = false;
             }
@@ -937,225 +1136,68 @@ export default {
             try {
                 console.log("=== FETCHDATA START ===");
                 console.log("Phase parameter:", phase);
+                console.log("Current data type:", this.currentDataType);
+                console.log("🔥 CRITICAL: About to call fetchItems with itemType:", this.currentDataType);
+                console.log("USE_MOCK_DATA flag:", USE_MOCK_DATA);
                 
-                // TODO: modify the second parameter to fetch data
-                // Use the generic fetchItems method - can be configured for different data types
-                // Change 'cas' to 'parts' if you want to fetch parts data instead
-                const parts = await dataService.fetchItems(phase, "parts");
+                // Use the generic fetchItems method with the current data type
+                const items = await dataService.fetchItems(phase, this.currentDataType);
                 
                 console.log("=== RAW API RESPONSE ===");
-                console.log("Type of parts:", typeof parts);
-                console.log("Is Array:", Array.isArray(parts));
-                console.log("Parts length:", parts?.length);
-                console.log("Raw parts data:", parts);
+                console.log("Type of items:", typeof items);
+                console.log("Is Array:", Array.isArray(items));
+                console.log("Items length:", items?.length);
+                console.log("Raw items data:", items);
                 
-                // Initialize conversion variable
-                let convertedParts = null;
+                // Use the original simple processing logic that was working
+                let finalParts = items;
                 
-                // Check if parts is null/undefined
-                if (parts === null) {
-                    console.log("⚠️  WARNING: parts is null");
-                } else if (parts === undefined) {
-                    console.log("⚠️  WARNING: parts is undefined");
-                } else if (typeof parts === "string") {
-                    console.log("⚠️  WARNING: parts is a string:", parts);
-                } else if (typeof parts === "object" && !Array.isArray(parts)) {
-                    console.log("⚠️  WARNING: parts is an object but not an array");
-                    console.log("Object keys:", Object.keys(parts));
-                    console.log("Object values:", Object.values(parts));
-                    // Check if it has an error property
-                    if (parts.error) {
-                        console.log("🔴 ERROR in response:", parts.error);
-                    }
-                    // Check if it has a message property
-                    if (parts.message) {
-                        console.log("📝 MESSAGE in response:", parts.message);
-                    }
-                }
-                
-                if (Array.isArray(parts)) {
-                    console.log("✅ Parts is a valid array");
-                    if (parts.length > 0) {
-                        console.log("=== FIRST ITEM STRUCTURE ===");
-                        console.log("First item:", parts[0]);
-                        console.log("First item keys:", Object.keys(parts[0]));
-                        console.log("First item values:", Object.values(parts[0]));
-                    } else {
-                        console.log("⚠️  Array is empty");
-                    }
-                } else {
-                    console.log("❌ Parts is NOT an array - cannot process with .map()");
-                }
-                
-                // Try to convert to array if it looks like an array-like object
-                if (!Array.isArray(parts) && typeof parts === "object" && parts !== null) {
-                    console.log("🔄 Attempting to convert non-array object to array");
-                    console.log("Object type:", typeof parts);
-                    console.log("Object keys:", Object.keys(parts));
-                    console.log("Object values preview:", Object.values(parts).slice(0, 3));
+                // Convert to array if needed using the original logic
+                if (!Array.isArray(items) && typeof items === "object" && items !== null) {
+                    console.log("🔄 Converting non-array response to array using enhanced logic");
                     
-                    if (typeof parts === "object" && parts !== null) {
-                        // Check if it's an array-like object (has numeric keys)
-                        const keys = Object.keys(parts);
-                        const isArrayLike = keys.every(key => !isNaN(key) && parseInt(key) >= 0);
-                        
-                        if (isArrayLike && keys.length > 0) {
-                            console.log("🔄 Attempting to convert array-like object to array");
-                            console.log("Object keys (should be numeric):", keys);
-                            
-                            // Convert to array using Object.values()
-                            convertedParts = Object.values(parts);
-                            console.log("✅ Converted to array:", convertedParts);
-                            console.log("Converted array length:", convertedParts.length);
-                        } else if (parts.data && Array.isArray(parts.data)) {
-                            // Check if it's wrapped in a 'data' property
-                            console.log("🔄 Found data property that is an array");
-                            convertedParts = parts.data;
-                            console.log("✅ Using parts.data as array:", convertedParts);
-                        } else if (parts.items && Array.isArray(parts.items)) {
-                            // Check if it's wrapped in an 'items' property
-                            console.log("🔄 Found items property that is an array");
-                            convertedParts = parts.items;
-                            console.log("✅ Using parts.items as array:", convertedParts);
-                        } else if (parts.results && Array.isArray(parts.results)) {
-                            // Check if it's wrapped in a 'results' property
-                            console.log("🔄 Found results property that is an array");
-                            convertedParts = parts.results;
-                            console.log("✅ Using parts.results as array:", convertedParts);
-                        } else if (parts.response && Array.isArray(parts.response)) {
-                            // Check if it's wrapped in a 'response' property
-                            console.log("🔄 Found response property that is an array");
-                            convertedParts = parts.response;
-                            console.log("✅ Using parts.response as array:", convertedParts);
-                        } else if (parts.list && Array.isArray(parts.list)) {
-                            // Check if it's wrapped in a 'list' property
-                            console.log("🔄 Found list property that is an array");
-                            convertedParts = parts.list;
-                            console.log("✅ Using parts.list as array:", convertedParts);
-                        } else if (parts.records && Array.isArray(parts.records)) {
-                            // Check if it's wrapped in a 'records' property
-                            console.log("🔄 Found records property that is an array");
-                            convertedParts = parts.records;
-                            console.log("✅ Using parts.records as array:", convertedParts);
-                        } else if (parts.content && Array.isArray(parts.content)) {
-                            // Check if it's wrapped in a 'content' property
-                            console.log("🔄 Found content property that is an array");
-                            convertedParts = parts.content;
-                            console.log("✅ Using parts.content as array:", convertedParts);
-                        } else {
-                            console.log("❌ Cannot convert to array - not array-like");
-                            console.log("Available properties:", Object.keys(parts));
-                            
-                            // Try to find any property that might be an array
-                            const arrayProperties = Object.keys(parts).filter(key => Array.isArray(parts[key]));
-                            if (arrayProperties.length > 0) {
-                                console.log("🔍 Found array properties:", arrayProperties);
-                                console.log("🔄 Using first array property:", arrayProperties[0]);
-                                convertedParts = parts[arrayProperties[0]];
-                                console.log("✅ Converted using property", arrayProperties[0] + ":", convertedParts);
-                            } else {
-                                console.log("❌ No array properties found in object");
-                            }
+                    // Try different common property names based on data type
+                    const dataTypeKeys = {
+                        parts: ["parts", "data", "items", "results"],
+                        cas: ["CAs", "cas", "parts", "data", "items", "results"], // API returns "CAs" (capital)
+                        crs: ["CRs", "crs", "parts", "data", "items", "results"] // API likely returns "CRs" (capital)
+                    };
+                    
+                    const keysToTry = dataTypeKeys[this.currentDataType] || dataTypeKeys.parts;
+                    console.log("🔍 Trying keys for", this.currentDataType, ":", keysToTry);
+                    console.log("🔍 Available keys in response:", Object.keys(items));
+                    
+                    for (const key of keysToTry) {
+                        if (items[key] && Array.isArray(items[key])) {
+                            finalParts = items[key];
+                            console.log(`✅ Using items.${key} (${finalParts.length} items)`);
+                            break;
                         }
                     }
                     
-                    // If we successfully converted, use the converted array
-                    if (convertedParts && Array.isArray(convertedParts)) {
-                        console.log("🎉 Successfully converted to array, proceeding with conversion");
-                        
-                        if (convertedParts.length > 0) {
-                            console.log("=== FIRST ITEM STRUCTURE (from converted array) ===");
-                            console.log("First item:", convertedParts[0]);
-                            console.log("First item keys:", Object.keys(convertedParts[0]));
-                            console.log("First item values:", Object.values(convertedParts[0]));
-                        }
+                    if (!Array.isArray(finalParts)) {
+                        console.log("❌ Could not find array in response, using empty array");
+                        finalParts = [];
                     }
                 }
                 
-                console.log("=== MAPPING PARTS TO TABLE DATA ===");
-                
-                // Use converted parts if available, otherwise use original parts
-                const finalParts = convertedParts && Array.isArray(convertedParts) ? convertedParts : parts;
-                
-                console.log("=== CONVERSION RESULT ANALYSIS ===");
-                console.log("convertedParts is null/undefined:", convertedParts === null || convertedParts === undefined);
-                console.log("convertedParts is array:", Array.isArray(convertedParts));
-                console.log("convertedParts length:", convertedParts?.length);
-                
-                if (Array.isArray(convertedParts)) {
-                    if (convertedParts.length === 0) {
-                        console.log("🔴 WARNING: convertedParts is an empty array!");
-                        console.log("Possible reasons:");
-                        console.log("1. The original object had no array properties");
-                        console.log("2. The found array property was empty");
-                        console.log("3. The conversion logic didn't match the actual structure");
-                        console.log("4. The object structure is different than expected");
-                        
-                        // Re-examine the original object structure
-                        if (typeof parts === "object" && parts !== null) {
-                            console.log("=== RE-EXAMINING ORIGINAL OBJECT ===");
-                            console.log("Original object keys:", Object.keys(parts));
-                            console.log("Original object values sample:", Object.values(parts).slice(0, 3));
-                            
-                            // Check each property to see if any are arrays
-                            Object.keys(parts).forEach(key => {
-                                const value = parts[key];
-                                console.log(`Property '${key}':`, {
-                                    type: typeof value,
-                                    isArray: Array.isArray(value),
-                                    length: Array.isArray(value) ? value.length : "N/A",
-                                    sample: Array.isArray(value) ? value.slice(0, 2) : value
-                                });
-                            });
-                        }
-                    } else {
-                        console.log("✅ convertedParts has", convertedParts.length, "items");
-                    }
-                } else {
-                    console.log("❌ convertedParts is not an array, using original parts");
-                }
-                
-                console.log("Final parts to be used:", finalParts);
-                console.log("Final parts length:", Array.isArray(finalParts) ? finalParts.length : "Not an array");
-                
+                // Use data mapping logic based on the current data type
                 this.tableData = Array.isArray(finalParts)
-                    ? finalParts.map((p, index) => {
-                        console.log(`--- Processing part ${index + 1} ---`);
-                        console.log("Original part object:", p);
-                        
-                        const mappedItem = {
-                            partNo: p.partNumber,
-                            rev: p.revision,
-                            description: p.description,
-                            organization: p.organization || "Unknown",
-                            tgtRelease: p.targetReleaseDate,
-                            actualRelease: p.actualReleaseDate || "N/A",
-                            currentState: p.currentState,
-                            physId: p.physId
-                        };
-                        
-                        console.log("Mapped item:", mappedItem);
-                        console.log("Field mappings:");
-                        console.log("  partNumber -> partNo:", p.partNumber, "->", mappedItem.partNo);
-                        console.log("  revision -> rev:", p.revision, "->", mappedItem.rev);
-                        console.log("  desciption -> description:", p.description, "->", mappedItem.description);
-                        console.log("  organization -> organization:", p.organization, "->", mappedItem.organization);
-                        console.log("  targetReleaseDate -> tgtRelease:", p.targetReleaseDate, "->", mappedItem.tgtRelease);
-                        console.log("  actualReleaseDate -> actualRelease:", p.actualReleaseDate, "->", mappedItem.actualRelease);
-                        console.log("  currentState -> currentState:", p.currentState, "->", mappedItem.currentState);
-                        console.log("  physId -> physId:", p.physId, "->", mappedItem.physId);
-                        
-                        return mappedItem;
-                    })
+                    ? finalParts.map(item => this.mapItemToTableData(item))
                     : [];
                 
                 console.log("=== FINAL TABLE DATA ===");
                 console.log("Final tableData array length:", this.tableData.length);
-                console.log("Final tableData contents:", this.tableData);
+                if (this.tableData.length > 0) {
+                    console.log("Sample mapped item:", this.tableData[0]);
+                    console.log("Sample mapped item keys:", Object.keys(this.tableData[0]));
+                } else {
+                    console.log("❌ No items in tableData after mapping");
+                }
                 console.log("=== FETCHDATA END ===");
 
                 // Update organizations from the parts data
-                const orgSet = new Set(this.tableData.map(r => r.organization));
+                const orgSet = new Set(this.tableData.map(r => r.organization).filter(org => org));
                 this.organizations = ["All", ...orgSet];
 
                 // Update chart data from the filtered table data
@@ -1165,10 +1207,96 @@ export default {
                 console.error("Error fetching data:", {
                     message: error.message,
                     phase,
+                    currentDataType: this.currentDataType,
+                    USE_MOCK_DATA,
                     fullError: error
                 });
                 
-                // Don't use mock data - leave table empty to see real API behavior
+                // Check if this is the specific "Array index out of range" error
+                if (error.message && error.message.includes("Array index out of range")) {
+                    console.warn("API backend error - likely issue with phase name format:", phase);
+                    console.warn("This might be caused by special characters in the phase name");
+                    
+                    // Try with a simplified phase name if the original contains special characters
+                    if (phase && (phase.includes("(") || phase.includes(".") || phase.includes(" "))) {
+                        console.log("Attempting to fetch data with simplified phase name...");
+                        try {
+                            // Create a simplified version of the phase name
+                            const simplifiedPhase = phase
+                                .replace(/\([^)]*\)/g, "") // Remove parentheses and their contents
+                                .replace(/\./g, "") // Remove periods
+                                .replace(/\s+/g, " ") // Normalize spaces
+                                .trim();
+                            
+                            console.log("Trying simplified phase name:", simplifiedPhase);
+                            
+                            if (simplifiedPhase && simplifiedPhase !== phase) {
+                                const items = await dataService.fetchItems(simplifiedPhase, this.currentDataType);
+                                
+                                // Process the response same as before
+                                let finalParts = items;
+                                
+                                if (!Array.isArray(items) && typeof items === "object" && items !== null) {
+                                    console.log("🔄 Converting non-array response to array using enhanced logic (retry)");
+                                    
+                                    // Try different common property names based on data type
+                                    const dataTypeKeys = {
+                                        parts: ["parts", "data", "items", "results"],
+                                        cas: ["CAs", "cas", "parts", "data", "items", "results"], // API returns "CAs" (capital)
+                                        crs: ["CRs", "crs", "parts", "data", "items", "results"] // API likely returns "CRs" (capital)
+                                    };
+                                    
+                                    const keysToTry = dataTypeKeys[this.currentDataType] || dataTypeKeys.parts;
+                                    console.log("🔍 Retry: Trying keys for", this.currentDataType, ":", keysToTry);
+                                    console.log("🔍 Retry: Available keys in response:", Object.keys(items));
+                                    
+                                    for (const key of keysToTry) {
+                                        if (items[key] && Array.isArray(items[key])) {
+                                            finalParts = items[key];
+                                            console.log(`✅ Retry: Using items.${key} (${finalParts.length} items)`);
+                                            break;
+                                        }
+                                    }
+                                    
+                                    if (!Array.isArray(finalParts)) {
+                                        console.log("❌ Retry: Could not find array in response, using empty array");
+                                        finalParts = [];
+                                    }
+                                }
+                                
+                                this.tableData = Array.isArray(finalParts)
+                                    ? finalParts.map(item => this.mapItemToTableData(item))
+                                    : [];
+                                
+                                console.log("✅ Successfully fetched data with simplified phase name");
+                                
+                                // Update organizations and chart
+                                const orgSet = new Set(this.tableData.map(r => r.organization).filter(org => org));
+                                this.organizations = ["All", ...orgSet];
+                                this.updateChartFromFiltered();
+                                
+                                return; // Exit the function successfully
+                            }
+                        } catch (retryError) {
+                            console.error("Retry with simplified phase name also failed:", retryError);
+                        }
+                    }
+                }
+                
+                // Check if this is an API error with null response
+                if (error.message && error.message.includes("API Error") && error.message.includes("null")) {
+                    console.warn("🚨 API returned null error - this usually indicates backend API issues");
+                    console.warn("Phase name:", phase);
+                    console.warn("Data type:", this.currentDataType);
+                    console.warn("This might be due to:");
+                    console.warn("  1. Invalid phase name format");
+                    console.warn("  2. Missing data for the requested phase");
+                    console.warn("  3. Backend API database connectivity issues");
+                    console.warn("  4. Backend API application errors");
+                }
+                
+                // Leave table empty when API fails - no mock data unless enabled
+                console.log("Setting empty data due to API failure");
                 this.tableData = [];
                 this.organizations = ["All"];
                 this.updateChartFromFiltered();
@@ -1178,271 +1306,412 @@ export default {
             }
         },
 
-        generateMockPartsData() {
-            const organizations = ["Engineering", "Manufacturing", "Quality", "Procurement"];
-            const states = ["IN_WORK", "RELEASED", "REVIEW", "PENDING"];
-            const mockData = [];
-            
-            const MOCK_PARTS_COUNT = 25;
-            const DATE_RANGE_DAYS = 60;
-            const DATE_OFFSET_DAYS = 30;
-            const ACTUAL_DATE_VARIANCE = 10;
-            const ACTUAL_DATE_OFFSET = 5;
-            const PART_NUMBER_PAD_LENGTH = 3;
-            const MAX_REVISION_NUMBER = 5;
-            const ACTUAL_RELEASE_PROBABILITY = 0.3;
-            
-            for (let i = 1; i <= MOCK_PARTS_COUNT; i++) {
-                const baseDate = new Date();
-                const randomDays = Math.floor(Math.random() * DATE_RANGE_DAYS) - DATE_OFFSET_DAYS;
-                const targetDate = new Date(baseDate);
-                targetDate.setDate(baseDate.getDate() + randomDays);
-                
-                const actualDate = new Date(targetDate);
-                actualDate.setDate(targetDate.getDate() + Math.floor(Math.random() * ACTUAL_DATE_VARIANCE) - ACTUAL_DATE_OFFSET);
-                
-                mockData.push({
-                    partNo: `PART-${String(i).padStart(PART_NUMBER_PAD_LENGTH, "0")}`,
-                    rev: `R${Math.floor(Math.random() * MAX_REVISION_NUMBER) + 1}`,
-                    description: `Demo Part ${i} Description`,
-                    organization: organizations[Math.floor(Math.random() * organizations.length)],
-                    tgtRelease: targetDate.toISOString().split("T")[0],
-                    actualRelease: Math.random() > ACTUAL_RELEASE_PROBABILITY ? actualDate.toISOString().split("T")[0] : "N/A",
-                    currentState: states[Math.floor(Math.random() * states.length)],
-                    physId: `phys-id-${i}`
-                });
-            }
-            
-            return mockData;
-        },
-
-        onCaNumberLoaded({ objectId, caNumber, caState, caLink }) {
-            const row = this.tableData.find(i => i.physId === objectId);
-            if (row) {
-                row.caNumber = caNumber;
-                row.caState = caState;
-                row.caLink = caLink;
+        // Dynamically set the data type based on API response or user selection
+        setDataType(dataType) {
+            if (this.headerConfigurations[dataType]) {
+                this.currentDataType = dataType;
+                console.log(`✅ Data type set to: ${dataType}`);
+                console.log(`✅ Widget title will automatically update to: ${this.widgetTitle}`);
+            } else {
+                console.warn(`⚠️  Unknown data type: ${dataType}. Available types:`, Object.keys(this.headerConfigurations));
             }
         },
 
+        // Method to manually switch data types for testing
+        switchDataType(newDataType) {
+            console.log("🔄 DEBUG: Switching data type from", this.currentDataType, "to", newDataType);
+            
+            if (this.headerConfigurations[newDataType]) {
+                this.setDataType(newDataType);
+                
+                // Clear existing data to show the change
+                this.tableData = [];
+                
+                // Re-fetch data with the new type
+                if (this.filterValues.phase) {
+                    console.log("🔄 DEBUG: Re-fetching data for phase:", this.filterValues.phase, "with type:", newDataType);
+                    this.fetchData(this.filterValues.phase);
+                } else {
+                    console.warn("⚠️  DEBUG: No phase selected, cannot fetch data");
+                }
+            } else {
+                console.error("❌ DEBUG: Invalid data type:", newDataType);
+            }
+        },
+
+        // Get available data types
+        getAvailableDataTypes() {
+            return Object.keys(this.headerConfigurations);
+        },
+
+        /**
+         * Refresh data - re-fetch current data with current filters
+         */
+        refreshData() {
+            console.log("🔄 Refreshing data...");
+            if (this.filterValues.phase) {
+                this.fetchData(this.filterValues.phase);
+            } else {
+                console.warn("⚠️  No phase selected for refresh");
+            }
+        },
+
+        /**
+         * Filter table data by release status
+         */
+        filterByReleaseStatus(statusFilter) {
+            console.log("🔍 Filtering by release status:", statusFilter);
+            this.selectedStatFilter = statusFilter;
+            
+            // The filteredTableData computed property will automatically update
+            // based on the selectedStatFilter value
+        },
+
+        /**
+         * Handle table row click events
+         */
+        handleRowClick(item) {
+            console.log("🖱️  Row clicked:", item);
+            // You can add custom logic here for row selection, detail views, etc.
+            // For now, just log the clicked item
+        },
+
+        /**
+         * Get display name for filter type
+         */
+        getFilterDisplayName(filterType) {
+            const displayNames = {
+                all: "Items",
+                released: "Released",
+                thisWeek: "This Week",
+                nextWeek: "Next Week",
+                overdue: "Overdue",
+                next30Days: "Next 30 Days"
+            };
+            return displayNames[filterType] || "Items";
+        },
+
+        /**
+         * Update chart data from filtered table data
+         */
         updateChartFromFiltered() {
-            const parts = this.filteredTableData;
-            if (!parts || parts.length === 0) {
-                this.chartData.labels = [];
-                this.chartData.datasets = [];
+            console.log("🔄 Updating chart from filtered data...");
+            
+            if (!this.filteredTableData || this.filteredTableData.length === 0) {
+                this.chartData = { labels: [], datasets: [] };
                 return;
             }
 
-            const DASH_SIZE = 5;
-
-            const dateStamps = parts.map(part => {
-                const d = new Date(part.tgtRelease);
-                d.setHours(0, 0, 0, 0);
-                return d.getTime();
-            });
-            const minDate = Math.min(...dateStamps);
-            const maxDate = Math.max(...dateStamps);
-
-            const timeLabels = [];
-            const MS_PER_SECOND = 1000;
-            const MINUTES_PER_HOUR = 60;
-            const SECONDS_PER_MINUTE = 60;
-            const HOURS_PER_DAY = 24;
-            const MS_PER_DAY = HOURS_PER_DAY * MINUTES_PER_HOUR * SECONDS_PER_MINUTE * MS_PER_SECOND;
-            for (let day = minDate; day <= maxDate; day += MS_PER_DAY) {
-                const d = new Date(day);
-                d.setHours(0, 0, 0, 0);
-                timeLabels.push(d.toLocaleDateString());
-            }
-
-            const targetCumulativeData = [];
-            const actualCumulativeData = [];
-
-            timeLabels.forEach(label => {
-                const labelDateMs = new Date(label).getTime();
-                const tgtCount = parts.filter(part => {
-                    const dt = new Date(part.tgtRelease);
-                    dt.setHours(0, 0, 0, 0);
-                    return dt.getTime() <= labelDateMs;
-                }).length;
-
-                const actCount = parts.filter(part => {
-                    if (part.actualRelease === "N/A") return false;
-                    const dt = new Date(part.actualRelease);
-                    dt.setHours(0, 0, 0, 0);
-                    return dt.getTime() <= labelDateMs;
-                }).length;
-
-                targetCumulativeData.push(tgtCount);
-                actualCumulativeData.push(actCount);
-            });
-
-            if (targetCumulativeData[targetCumulativeData.length - 1] !== parts.length) {
-                targetCumulativeData[targetCumulativeData.length - 1] = parts.length;
-            }
-
-            this.chartData.labels = timeLabels;
-            this.chartData.datasets = [
-                {
-                    label: "Target Release Progression",
-                    data: targetCumulativeData,
-                    borderColor: "#1976d2",
-                    backgroundColor: "rgba(25, 118, 210, 0.1)",
-                    fill: false,
-                    tension: 0.2,
-                    borderWidth: 3,
-                    pointBackgroundColor: "#1976d2",
-                    pointBorderColor: "#ffffff",
-                    pointBorderWidth: 2,
-                    pointRadius: 4,
-                    pointHoverRadius: 8,
-                    pointHoverBackgroundColor: "#1976d2",
-                    pointHoverBorderColor: "#ffffff",
-                    pointHoverBorderWidth: 3,
-                    hidden: !this.showTargetLine
-                },
-                {
-                    label: "Actual Release Progression",
-                    data: actualCumulativeData.map((val, index) => {
-                        const dayMs = new Date(timeLabels[index]).getTime();
-                        return dayMs <= Date.now() ? val : null;
-                    }),
-                    borderColor: "#4caf50",
-                    backgroundColor: "rgba(76, 175, 80, 0.1)",
-                    fill: false,
-                    tension: 0.2,
-                    borderWidth: 3,
-                    pointBackgroundColor: "#4caf50",
-                    pointBorderColor: "#ffffff",
-                    pointBorderWidth: 2,
-                    pointRadius: 4,
-                    pointHoverRadius: 8,
-                    pointHoverBackgroundColor: "#4caf50",
-                    pointHoverBorderColor: "#ffffff",
-                    pointHoverBorderWidth: 3,
-                    borderDash: [DASH_SIZE, DASH_SIZE],
-                    spanGaps: true,
-                    hidden: !this.showActualLine
-                }
-            ];
-        },
-        
-        async refreshData() {
-            // Clear all data and reload from programs
-            this.programs = [];
-            this.phases = [];
-            this.organizations = [];
-            this.tableData = [];
-            this.chartData = { labels: [], datasets: [] };
-            this.filterValues.program = "";
-            this.filterValues.phase = "";
-            this.filterValues.organization = "All";
+            // Collect release dates for both target and actual
+            const targetDates = [];
+            const actualDates = [];
             
-            await this.fetchPrograms();
-        },
-        
-        resetFilters() {
-            this.filterValues.organization = "All";
-            this.selectedStatFilter = "all";
-            this.updateChartFromFiltered();
-            this.lastUpdated = new Date().toLocaleTimeString();
-        },
-        
-        handleRowClick(row) {
-            this.$emit("row-click", row);
-            // Could also show detail dialog, etc.
-        },
-        
-        toggleTargetLine() {
-            this.showTargetLine = !this.showTargetLine;
-            this.updateChartVisibility();
-        },
-        
-        toggleActualLine() {
-            this.showActualLine = !this.showActualLine;
-            this.updateChartVisibility();
-        },
-        
-        updateChartVisibility() {
-            if (this.chartData.datasets && this.chartData.datasets.length >= 2) {
-                // Update dataset visibility
-                this.chartData.datasets[0].hidden = !this.showTargetLine;
-                this.chartData.datasets[1].hidden = !this.showActualLine;
+            this.filteredTableData.forEach(item => {
+                // Target release dates
+                let targetDate = null;
+                switch (this.currentDataType) {
+                    case "parts":
+                        targetDate = item.tgtRelease || item.targetReleaseDate;
+                        break;
+                    case "cas":
+                        targetDate = item.targetReleaseDate;
+                        break;
+                    case "crs":
+                        targetDate = item.dueDate;
+                        break;
+                    default:
+                        targetDate = item.tgtRelease || item.targetReleaseDate || item.dueDate;
+                }
                 
-                // Force chart update by creating new chartData object
-                this.chartData = { ...this.chartData };
+                if (targetDate && targetDate !== "N/A" && targetDate !== null && targetDate !== "") {
+                    try {
+                        const dateObj = new Date(targetDate);
+                        if (!isNaN(dateObj.getTime())) {
+                            targetDates.push({
+                                date: dateObj,
+                                dateString: dateObj.toLocaleDateString(),
+                                item
+                            });
+                        }
+                    } catch (error) {
+                        console.warn("Invalid target date format:", targetDate);
+                    }
+                }
+
+                // Actual release dates
+                let actualDate = null;
+                switch (this.currentDataType) {
+                    case "parts":
+                        actualDate = item.actualRelease || item.actualReleaseDate;
+                        break;
+                    case "cas":
+                        actualDate = item.actualReleaseDate;
+                        break;
+                    case "crs":
+                        actualDate = item.completedDate;
+                        break;
+                    default:
+                        actualDate = item.actualRelease || item.actualReleaseDate || item.completedDate;
+                }
+                
+                // Only count items that are actually released/completed
+                if (actualDate && actualDate !== "N/A" && actualDate !== null && actualDate !== "") {
+                    try {
+                        const dateObj = new Date(actualDate);
+                        if (!isNaN(dateObj.getTime())) {
+                            actualDates.push({
+                                date: dateObj,
+                                dateString: dateObj.toLocaleDateString(),
+                                item
+                            });
+                        }
+                    } catch (error) {
+                        console.warn("Invalid actual date format:", actualDate);
+                    }
+                }
+            });
+
+            if (targetDates.length === 0 && actualDates.length === 0) {
+                console.log("No valid release dates found");
+                this.chartData = { labels: [], datasets: [] };
+                return;
+            }
+
+            // Create a unified timeline covering all dates from both target and actual
+            const allDates = new Set();
+            
+            // Add all target dates
+            targetDates.forEach(item => allDates.add(item.dateString));
+            // Add all actual dates  
+            actualDates.forEach(item => allDates.add(item.dateString));
+            
+            // Sort all dates chronologically
+            const sortedDates = Array.from(allDates).sort((a, b) => new Date(a) - new Date(b));
+            
+            console.log("📅 Unified timeline:", sortedDates);
+
+            // Create cumulative datasets using the unified timeline
+            const createUnifiedCumulativeDataset = (dates, label, color, backgroundColor) => {
+                // Group releases by date
+                const dateGroups = new Map();
+                dates.forEach(release => {
+                    const dateStr = release.dateString;
+                    if (!dateGroups.has(dateStr)) {
+                        dateGroups.set(dateStr, 0);
+                    }
+                    dateGroups.set(dateStr, dateGroups.get(dateStr) + 1);
+                });
+
+                // Create cumulative data for the unified timeline
+                const cumulativeData = [];
+                let runningTotal = 0;
+
+                sortedDates.forEach(dateStr => {
+                    // Add any releases that occurred on this date
+                    if (dateGroups.has(dateStr)) {
+                        runningTotal += dateGroups.get(dateStr);
+                    }
+                    cumulativeData.push(runningTotal);
+                });
+
+                console.log(`📊 ${label} cumulative data:`, cumulativeData);
+
+                return {
+                    label,
+                    data: cumulativeData,
+                    borderColor: color,
+                    backgroundColor,
+                    tension: 0.2,
+                    fill: false,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    borderWidth: 3
+                };
+            };
+
+            // Determine the appropriate labels based on data type
+            const dataTypeLabels = {
+                parts: {
+                    target: "Target Parts Release",
+                    actual: "Actual Parts Released"
+                },
+                cas: {
+                    target: "Target CAs Release", 
+                    actual: "Actual CAs Released"
+                },
+                crs: {
+                    target: "Target CRs Release",
+                    actual: "Actual CRs Released"
+                }
+            };
+            
+            const labels = dataTypeLabels[this.currentDataType] || {
+                target: "Target Items",
+                actual: "Actual Items"
+            };
+
+            // Create datasets using the unified timeline
+            const datasets = [];
+            
+            if (targetDates.length > 0 && this.showTargetLine) {
+                const targetDataset = createUnifiedCumulativeDataset(
+                    targetDates, 
+                    labels.target, 
+                    "#1976d2", // Blue for target
+                    "rgba(25, 118, 210, 0.1)"
+                );
+                datasets.push(targetDataset);
+            }
+            
+            if (actualDates.length > 0 && this.showActualLine) {
+                const actualDataset = createUnifiedCumulativeDataset(
+                    actualDates, 
+                    labels.actual, 
+                    "#4caf50", // Green for actual
+                    "rgba(76, 175, 80, 0.1)"
+                );
+                datasets.push(actualDataset);
+            }
+
+            this.chartData = {
+                labels: sortedDates,
+                datasets
+            };
+
+            console.log("✅ Chart data updated (unified timeline):", {
+                targetDataPoints: targetDates.length,
+                actualDataPoints: actualDates.length,
+                totalLabels: sortedDates.length,
+                datasets: datasets.length,
+                datasetLabels: datasets.map(d => d.label),
+                firstDate: sortedDates[0],
+                lastDate: sortedDates[sortedDates.length - 1]
+            });
+        },
+
+        /**
+         * Map API response item to table data format based on current data type
+         */
+        mapItemToTableData(item) {
+            console.log("🔄 Mapping item for data type:", this.currentDataType, "Item:", item);
+            
+            switch (this.currentDataType) {
+                case "parts":
+                    return {
+                        partNo: item.partNumber || item.partNo,
+                        rev: item.revision || item.rev,
+                        description: item.description,
+                        organization: item.organization || "Unknown",
+                        tgtRelease: item.targetReleaseDate || item.tgtRelease,
+                        actualRelease: item.actualReleaseDate || item.actualRelease || "N/A",
+                        currentState: item.currentState || item.state,
+                        physId: item.physId || item.id,
+                        // CA fields will be populated by ChangeActionCell component
+                        caNumber: "",
+                        caState: ""
+                    };
+                    
+                case "cas":
+                    return {
+                        caNumber: item.caNumber || item.changeActionNumber,
+                        changeSummary: item.changeSummary || item.description,
+                        name: item.name || item.responsibleEngineer,
+                        currentState: item.currentState || item.status,
+                        targetReleaseDate: item.targetReleaseDate || item.targetCompleteDate,
+                        approvedDate: item.approvedDate,
+                        actualReleaseDate: item.actualReleaseDate || item.actualCompleteDate,
+                        organization: item.organization || "Unknown"
+                    };
+                    
+                case "crs":
+                    return {
+                        crNumber: item.crNumber || item.changeRequestNumber,
+                        title: item.title || item.summary,
+                        status: item.status,
+                        priority: item.priority,
+                        requester: item.requester,
+                        createdDate: item.createdDate,
+                        dueDate: item.dueDate,
+                        completedDate: item.completedDate,
+                        organization: item.organization || "Unknown"
+                    };
+                    
+                default:
+                    console.warn("⚠️  Unknown data type for mapping:", this.currentDataType);
+                    return item;
             }
         },
-        
-        filterByReleaseStatus(filterType) {
-            this.selectedStatFilter = filterType;
-            this.updateChartFromFiltered();
-            this.lastUpdated = new Date().toLocaleTimeString();
-        },
-        
-        applyStatFilter(partsArray, filterType) {
+
+        /**
+         * Apply statistical filter to data array
+         */
+        applyStatFilter(dataArray, filterType) {
             const currentDate = new Date();
             currentDate.setHours(0, 0, 0, 0);
+            const currentMs = currentDate.getTime();
             
             switch (filterType) {
                 case "released":
-                    return partsArray.filter(p => p.currentState === "RELEASED");
+                    return dataArray.filter(item => item.currentState === "RELEASED");
                     
                 case "thisWeek": {
                     const [startOfWeek, endOfWeek] = this.getCurrentWeekRange(currentDate);
-                    return partsArray.filter(part => {
-                        const tgt = new Date(part.tgtRelease);
+                    return dataArray.filter(item => {
+                        const tgt = new Date(item.tgtRelease || item.targetReleaseDate);
                         tgt.setHours(0, 0, 0, 0);
-                        return tgt.getTime() >= startOfWeek && tgt.getTime() <= endOfWeek;
+                        const tgtMs = tgt.getTime();
+                        return tgtMs >= startOfWeek && tgtMs <= endOfWeek;
                     });
                 }
-                
+                    
                 case "nextWeek": {
                     const [startNextWeek, endNextWeek] = this.getNextWeekRange(currentDate);
-                    return partsArray.filter(part => {
-                        const tgt = new Date(part.tgtRelease);
+                    return dataArray.filter(item => {
+                        const tgt = new Date(item.tgtRelease || item.targetReleaseDate);
                         tgt.setHours(0, 0, 0, 0);
-                        return tgt.getTime() >= startNextWeek && tgt.getTime() <= endNextWeek;
+                        const tgtMs = tgt.getTime();
+                        return tgtMs >= startNextWeek && tgtMs <= endNextWeek;
                     });
                 }
-                
+                    
                 case "overdue":
-                    return partsArray.filter(part => {
-                        const tgt = new Date(part.tgtRelease);
+                    return dataArray.filter(item => {
+                        const tgt = new Date(item.tgtRelease || item.targetReleaseDate);
                         tgt.setHours(0, 0, 0, 0);
-                        return tgt.getTime() < currentDate.getTime() && part.currentState !== "RELEASED";
+                        return tgt.getTime() < currentMs && item.currentState !== "RELEASED";
                     });
                     
                 case "next30Days": {
                     const DAYS_IN_30 = 30;
-                    const nowMs = currentDate.getTime();
                     const next30 = new Date(currentDate);
                     next30.setDate(next30.getDate() + DAYS_IN_30);
                     const next30Ms = next30.getTime();
                     
-                    return partsArray.filter(part => {
-                        const tgt = new Date(part.tgtRelease);
+                    return dataArray.filter(item => {
+                        const tgt = new Date(item.tgtRelease || item.targetReleaseDate);
                         tgt.setHours(0, 0, 0, 0);
-                        return tgt.getTime() >= nowMs && tgt.getTime() <= next30Ms;
+                        const tgtMs = tgt.getTime();
+                        return tgtMs >= currentMs && tgtMs <= next30Ms;
                     });
                 }
-                
+                    
                 case "all":
                 default:
-                    return partsArray;
+                    return dataArray;
             }
         },
-        
-        getFilterDisplayName(filterType) {
-            const displayNames = {
-                released: "Released",
-                thisWeek: "This Week",
-                nextWeek: "Next Week", 
-                overdue: "Overdue",
-                next30Days: "Next 30 Days",
-                all: "Total"
-            };
-            return displayNames[filterType] || "Total";
+
+        /**
+         * Handle CA number loaded event from ChangeActionCell component
+         */
+        onCaNumberLoaded(caData) {
+            console.log("📝 CA data loaded:", caData);
+            // Find the corresponding row and update the CA data
+            const rowIndex = this.tableData.findIndex(row => row.physId === caData.objectId);
+            if (rowIndex !== -1) {
+                this.$set(this.tableData[rowIndex], "caNumber", caData.caNumber);
+                this.$set(this.tableData[rowIndex], "caState", caData.caState);
+            }
         }
     }
 };

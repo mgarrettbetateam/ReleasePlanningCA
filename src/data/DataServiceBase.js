@@ -192,8 +192,8 @@ const dataService = {
 
       const responseKeyMap = {
         parts: "parts",
-        cas: ["parts", "cas"], // Multiple possible response keys for CAs
-        crs: ["parts", "crs", "changeRequests"] // Multiple possible response keys for CRs
+        cas: ["CAs", "cas", "parts"], // API returns "CAs" (capital), try that first
+        crs: ["CRs", "crs", "parts"] // API likely returns "CRs" (capital)
       };
 
       const endpoint = endpointMap[itemType] || endpointMap.parts;
@@ -212,7 +212,8 @@ const dataService = {
           params,
           phase,
           itemType,
-          API_BASE_URL
+          API_BASE_URL,
+          encodedPhase: encodeURIComponent(phase)
         });
         
         try {
@@ -240,11 +241,15 @@ const dataService = {
           let extractedData = null;
           const keysToTry = Array.isArray(responseKeys) ? responseKeys : [responseKeys];
           
+          log(`Trying to extract data with keys: ${keysToTry.join(", ")}`);
+          log(`Available response keys: ${Object.keys(response.data).join(", ")}`);
+          
           // Try each configured response key
           for (const key of keysToTry) {
+            log(`Checking key: ${key}, exists: ${!!response.data[key]}, isArray: ${Array.isArray(response.data[key])}`);
             if (response.data[key] && Array.isArray(response.data[key])) {
               extractedData = response.data[key];
-              log(`Extracted data from response.data.${key} (array with ${extractedData.length} items)`);
+              log(`✅ Extracted data from response.data.${key} (array with ${extractedData.length} items)`);
               break;
             }
           }

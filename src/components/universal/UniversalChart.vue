@@ -153,8 +153,12 @@ export default {
                     legend: {
                         display: true,
                         position: "top"
+                    },
+                    decimation: {
+                        enabled: false // Disable decimation to show all points
                     }
                 },
+                spanGaps: false, // Do not skip points
                 ...this.getThemeOptions()
             };
             

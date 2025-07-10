@@ -142,7 +142,7 @@
             </v-col>
 
             <!-- Headliners and Table Side by Side -->
-            <v-col cols="12" md="4">
+            <v-col cols="12" md="3">
                 <v-card class="headliners-card">
                     <v-card-title class="headliners-header compact-header">
                         <v-icon left color="info" size="20">mdi-star</v-icon>
@@ -244,7 +244,7 @@
                     </v-card-text>
                 </v-card>
             </v-col>
-            <v-col cols="12" md="8">
+            <v-col cols="12" md="9">
                 <v-card class="table-card" :loading="loading">
                     <v-card-title class="table-header">
                         <v-icon left>mdi-table</v-icon>
@@ -481,7 +481,7 @@ export default {
             const titles = {
                 parts: "Release Planning Parts Dashboard",
                 cas: "Release Planning CA Dashboard", 
-                crs: "Change Request Dashboard"
+                crs: "Release Planning CR Dashboard"
             };
             
             return titles[this.currentDataType] || "Release Planning Dashboard";

@@ -63,57 +63,61 @@
                         <span class="chart-title">Cumulative Release Timeline</span>
                         <v-spacer />
                         <div class="chart-meta">
-                            <v-chip 
-                                small 
-                                color="primary" 
-                                outlined
-                                class="mr-2"
-                            >
-                                <v-icon small left>mdi-chart-bell-curve</v-icon>
-                                {{ chartData.datasets?.[0]?.data?.length || 0 }} Points
-                            </v-chip>
-                            <v-chip 
-                                small 
-                                color="success" 
-                                outlined
-                            >
-                                <v-icon small left>mdi-calendar-range</v-icon>
-                                Live Data
-                            </v-chip>
+                          <v-chip 
+                            small 
+                            color="primary" 
+                            outlined
+                            class="mr-2"
+                          >
+                            <v-icon small left>mdi-chart-bell-curve</v-icon>
+                            {{ chartData.datasets?.[0]?.data?.length || 0 }} Points
+                          </v-chip>
+                          <v-chip 
+                            small 
+                            color="success" 
+                            outlined
+                          >
+                            <v-icon small left>mdi-calendar-range</v-icon>
+                            Live Data
+                          </v-chip>
                         </div>
                     </v-card-title>
                     
-                    <!-- Custom Chart Legend -->
-                    <v-card-subtitle class="chart-legend-section">
-                        <div class="legend-container">
-                            <div v-if="showTargetLine" class="legend-item">
-                                <div class="legend-color-bar" style="background-color: #1976d2;"></div>
-                                <span class="legend-label">Target Releases (Blue)</span>
-                                <v-btn 
-                                    icon 
-                                    x-small 
-                                    class="ml-2"
-                                    @click="toggleTargetLine"
-                                >
-                                    <v-icon small color="primary">mdi-eye</v-icon>
-                                </v-btn>
-                            </div>
-                            <div v-if="showActualLine" class="legend-item">
-                                <div class="legend-color-bar" style="background-color: #4caf50;"></div>
-                                <span class="legend-label">Actual Releases (Green)</span>
-                                <v-btn 
-                                    icon 
-                                    x-small 
-                                    class="ml-2"
-                                    @click="toggleActualLine"
-                                >
-                                    <v-icon small color="success">mdi-eye</v-icon>
-                                </v-btn>
-                            </div>
-                        </div>
-                    </v-card-subtitle>
-                    
                     <v-card-text class="chart-content-wrapper">
+                        <div class="legend-container legend-row" style="margin-bottom: 0.5rem;">
+                          <div class="legend-item clickable-legend" :class="{ 'legend-disabled': !showTargetLine }">
+                            <div class="legend-color-bar" style="background-color: #1976d2;" :style="{ opacity: showTargetLine ? 1 : 0.3 }"></div>
+                            <span class="legend-label" :style="{ opacity: showTargetLine ? 1 : 0.5 }" @click="toggleTargetLine">
+                              Target Releases
+                              <v-btn
+                                icon
+                                x-small
+                                class="legend-eye-btn"
+                                tabindex="-1"
+                                :color="showTargetLine ? 'primary' : 'grey'"
+                                @click.stop="toggleTargetLine"
+                              >
+                                <v-icon small>{{ showTargetLine ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
+                              </v-btn>
+                            </span>
+                          </div>
+                          <div class="legend-item clickable-legend" :class="{ 'legend-disabled': !showActualLine }">
+                            <div class="legend-color-bar" style="background-color: #4caf50;" :style="{ opacity: showActualLine ? 1 : 0.3 }"></div>
+                            <span class="legend-label" :style="{ opacity: showActualLine ? 1 : 0.5 }" @click="toggleActualLine">
+                              Actual Releases
+                              <v-btn
+                                icon
+                                x-small
+                                class="legend-eye-btn"
+                                tabindex="-1"
+                                :color="showActualLine ? 'success' : 'grey'"
+                                @click.stop="toggleActualLine"
+                              >
+                                <v-icon small>{{ showActualLine ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
+                              </v-btn>
+                            </span>
+                          </div>
+                        </div>
                         <div class="chart-container">
                             <UniversalChart
                                 v-if="chartData.labels && chartData.labels.length > 0"

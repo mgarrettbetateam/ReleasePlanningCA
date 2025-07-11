@@ -444,7 +444,7 @@ export default {
                     { text: "CA Number", value: "caNumber", sortable: true, required: true, icon: "mdi-file-document" },
                     // { text: "Rev", value: "revision", sortable: true, icon: "mdi-source-branch" },
                     { text: "Description", value: "changeSummary", sortable: true, icon: "mdi-text" },
-                    { text: "Resp Engr", value: "name", sortable: true, icon: "mdi-account" },
+                    { text: "Resp Engr", value: "resEngr", sortable: true, icon: "mdi-account" },
                    // { text: "Organization", value: "organization", sortable: true, icon: "mdi-domain" },
                     { text: "Status", value: "currentState", sortable: true, icon: "mdi-flag" },
                     { text: "Target Complete Date", value: "targetReleaseDate", sortable: true, icon: "mdi-calendar-clock" },
@@ -453,8 +453,8 @@ export default {
                 ],
                 crs: [
                     { text: "CR Number", value: "crNumber", sortable: true, required: true, icon: "mdi-file-document-outline" },
-                    { text: "Name", value: "name", sortable: true, icon: "mdi-format-title" },
-                    { text: "Resp Engr", value: "respEngr", sortable: true, icon: "mdi-account" },
+                    { text: "Description", value: "reasonforChange", sortable: true, icon: "mdi-format-title" },
+                    { text: "Resp Engr", value: "owner", sortable: true, icon: "mdi-account" },
                     { text: "Status", value: "currentState", sortable: true, icon: "mdi-flag" },
                     { text: "Target Complete Date", value: "targetReleaseDate", sortable: true, icon: "mdi-calendar-plus" },
                     { text: "Actual Approve Date", value: "actualApproveDate", sortable: true, icon: "mdi-calendar-clock" },
@@ -1665,7 +1665,7 @@ export default {
                     return {
                         caNumber: item.caNumber || item.changeActionNumber,
                         changeSummary: item.changeSummary || item.description,
-                        name: item.name || item.responsibleEngineer,
+                        resEngr: item.respEngr || item.responsibleEngineer, // Fixed: match header 'resEngr'
                         currentState: item.currentState || item.status,
                         targetReleaseDate: item.targetReleaseDate || item.targetCompleteDate,
                         approvedDate: item.approvedDate,
@@ -1676,8 +1676,8 @@ export default {
                 case "crs":
                     return {
                         crNumber: item.crNumber || item.changeRequestNumber,
-                        name: item.name || item.summary,
-                        respEngr: item.respEngr || item.responsibleEngineer,
+                        reasonforChange: item.reasonforChange || item.name || item.summary || item.description, // Fixed: match header 'reasonforChange'
+                        owner: item.owner || item.respEngr || item.responsibleEngineer, // Fixed: match header 'owner'
                         currentState: item.currentState || item.status,
                         targetReleaseDate: item.targetReleaseDate || item.dueDate,
                         actualApproveDate: item.actualApproveDate || item.approvedDate,

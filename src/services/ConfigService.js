@@ -13,8 +13,8 @@ class ConfigService {
         // Check if we're in production build (webpack will replace this)
         if (process.env.NODE_ENV === "production") {
             this.config.environment = "production";
-            this.config.showDevelopmentHeader = false;
-            this.config.showDevelopmentTools = false;
+            this.config.showDevelopmentHeader = true;
+            this.config.showDevelopmentTools = true;
         }
         
         // Check for runtime configuration overrides
@@ -113,8 +113,8 @@ class ConfigService {
      */
     setProductionMode() {
         this.config.environment = "production";
-        this.config.showDevelopmentHeader = false;
-        this.config.showDevelopmentTools = false;
+        this.config.showDevelopmentHeader = true;
+        this.config.showDevelopmentTools = true;
         this.saveConfig();
         console.log("🚀 Production mode enabled");
     }

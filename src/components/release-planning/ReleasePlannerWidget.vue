@@ -25,7 +25,7 @@
             :filter-values="filterValues"
             @filter-change="handleFilterChange"
         >
-            <!-- Debug: Data Type Switcher (move here for dev/testing) -->
+            <!-- Data Type Switcher (move here for dev/testing) -->
             <template #after-filters>
                 <div class="data-type-switcher">
                     <v-chip-group v-model="currentDataType" mandatory column>
@@ -41,9 +41,7 @@
                     </v-chip-group>
                 </div>
             </template>
-        </UniversalFilterControls>
-
-        <!-- Charts and Tables Section -->
+        </UniversalFilterControls>        <!-- Charts and Tables Section -->
         <v-row class="content-section">
             <!-- Line Chart Widget - Full Width -->
             <v-col cols="12">
@@ -108,11 +106,13 @@
                             </span>
                         </div>
                     </div>
-                    
+
                     <v-card-text class="chart-content-wrapper">
                         <div class="chart-container">
                             <UniversalChart
                                 v-if="chartData.labels && chartData.labels.length > 0"
+                                ref="lineChart"
+                                :key="`chart-${chartKey}-${filteredTableData.length}`"
                                 :data="chartData"
                                 :options="dynamicChartOptions"
                                 type="line"
@@ -471,10 +471,12 @@ export default {
             showActualLine: true,
             
             // Release headliner filter
-            selectedStatFilter: "all"
+            selectedStatFilter: "all",
+            
+            // Chart refresh key to force chart updates
+            chartKey: 0
         };
     },
-    
     computed: {
         // Dynamic widget title based on current data type
         widgetTitle() {
@@ -525,28 +527,31 @@ export default {
         filterConfig() {
             return [
                 {
+                    type: "select",
                     key: "program",
                     label: "Program",
-                    icon: "mdi-briefcase",
-                    placeholder: "Select Program",
+                    value: this.filterValues.program,
                     options: this.programs,
-                    color: "primary"
+                    clearable: true,
+                    placeholder: "Select Program"
                 },
                 {
+                    type: "select", 
                     key: "phase",
-                    label: "Phase", 
-                    icon: "mdi-timeline",
-                    placeholder: "Select Phase",
+                    label: "Phase",
+                    value: this.filterValues.phase,
                     options: this.phases,
-                    color: "secondary"
+                    clearable: true,
+                    placeholder: "Select Phase"
                 },
                 {
-                    key: "organization",
+                    type: "select",
+                    key: "organization", 
                     label: "Organization",
-                    icon: "mdi-domain", 
-                    placeholder: "Select Organization",
+                    value: this.filterValues.organization,
                     options: this.organizations,
-                    color: "accent"
+                    clearable: false,
+                    placeholder: "Select Organization"
                 }
             ];
         },
@@ -703,7 +708,7 @@ export default {
             };
         },
 
-        // Filter table data based on current filters and selected stat filter
+        // Filter table data based on current filters and selected stat filter  
         filteredTableData() {
             console.log("🔍 FILTEREDTABLEDATA DEBUG START");
             console.log("tableData length:", this.tableData?.length || 0);
@@ -800,7 +805,54 @@ export default {
         }
     },
     
+    // Watch for changes that should trigger chart updates
+    watch: {
+        // Watch filtered data changes to automatically update chart
+        filteredTableData: {
+            handler(newData, oldData) {
+                console.log("👀 WATCH: filteredTableData changed");
+                console.log("  - Old data length:", oldData?.length || 0);
+                console.log("  - New data length:", newData?.length || 0);
+                console.log("  - selectedStatFilter:", this.selectedStatFilter);
+                
+                // Use nextTick to ensure DOM updates are complete
+                this.$nextTick(() => {
+                    this.updateChartFromFiltered();
+                });
+            },
+            deep: true
+        },
+        
+        // Watch selectedStatFilter changes
+        selectedStatFilter: {
+            handler(newFilter, oldFilter) {
+                console.log("👀 WATCH: selectedStatFilter changed from", oldFilter, "to", newFilter);
+                
+                // Force chart update when stat filter changes
+                this.$nextTick(() => {
+                    this.updateChartFromFiltered();
+                });
+            }
+        },
+        
+        // Watch currentDataType changes
+        currentDataType: {
+            handler(newType, oldType) {
+                console.log(`👀 WATCH: Data type changed from ${oldType} to ${newType}`);
+                this.$nextTick(() => {
+                    this.updateChartFromFiltered();
+                });
+            }
+        }
+    },
+    
     async mounted() {
+        console.log("🚀 ReleasePlannerWidget mounted - initializing...");
+        console.log("📊 Current data type:", this.currentDataType);
+        console.log("🏷️  Widget title:", this.widgetTitle);
+        console.log("📋 Available headers:", this.tableHeaders.map(h => h.text));
+        console.log("🔧 USE_MOCK_DATA:", USE_MOCK_DATA);
+        
         // Initialize by fetching programs first
         await this.fetchPrograms();
     },
@@ -809,26 +861,35 @@ export default {
         // Chart legend toggle methods
         toggleTargetLine() {
             this.showTargetLine = !this.showTargetLine;
-            console.log("Target line visibility toggled:", this.showTargetLine);
-            this.updateChartFromFiltered(); // Regenerate chart with new visibility
+            this.chartKey += 1;
         },
-
+        
         toggleActualLine() {
             this.showActualLine = !this.showActualLine;
-            console.log("Actual line visibility toggled:", this.showActualLine);
-            this.updateChartFromFiltered(); // Regenerate chart with new visibility
+            this.chartKey += 1;
         },
-
+        
         // Handle filter changes from UniversalFilterControls
         handleFilterChange(filterEvent) {
+            console.log("🔄 HANDLE FILTER CHANGE:");
+            console.log("  - Filter key:", filterEvent.key);
+            console.log("  - Filter value:", filterEvent.value);
+            console.log("  - All filters:", filterEvent.allFilters);
+            console.log("  - Previous filterValues:", JSON.stringify(this.filterValues));
+            
             this.filterValues = { ...filterEvent.allFilters };
+            
+            console.log("  - New filterValues:", JSON.stringify(this.filterValues));
             
             // Handle specific filter logic
             if (filterEvent.key === "program") {
+                console.log("🔄 Program changed, fetching phases...");
                 this.onProgramChange();
             } else if (filterEvent.key === "phase") {
+                console.log("🔄 Phase changed, fetching data...");
                 this.handlePhaseChange();
             } else if (filterEvent.key === "organization") {
+                console.log("🔄 Organization changed, updating chart...");
                 this.updateChartFromFiltered();
                 this.lastUpdated = new Date().toLocaleTimeString();
             }
@@ -1245,89 +1306,6 @@ export default {
                     fullError: error
                 });
                 
-                // Check if this is the specific "Array index out of range" error
-                if (error.message && error.message.includes("Array index out of range")) {
-                    console.warn("API backend error - likely issue with phase name format:", phase);
-                    console.warn("This might be caused by special characters in the phase name");
-                    
-                    // Try with a simplified phase name if the original contains special characters
-                    if (phase && (phase.includes("(") || phase.includes(".") || phase.includes(" "))) {
-                        console.log("Attempting to fetch data with simplified phase name...");
-                        try {
-                            // Create a simplified version of the phase name
-                            const simplifiedPhase = phase
-                                .replace(/\([^)]*\)/g, "") // Remove parentheses and their contents
-                                .replace(/\./g, "") // Remove periods
-                                .replace(/\s+/g, " ") // Normalize spaces
-                                .trim();
-                            
-                            console.log("Trying simplified phase name:", simplifiedPhase);
-                            
-                            if (simplifiedPhase && simplifiedPhase !== phase) {
-                                const items = await dataService.fetchItems(simplifiedPhase, this.currentDataType);
-                                
-                                // Process the response same as before
-                                let finalParts = items;
-                                
-                                if (!Array.isArray(items) && typeof items === "object" && items !== null) {
-                                    console.log("🔄 Converting non-array response to array using enhanced logic (retry)");
-                                    
-                                    // Try different common property names based on data type
-                                    const dataTypeKeys = {
-                                        parts: ["parts", "data", "items", "results"],
-                                        cas: ["CAs", "cas", "parts", "data", "items", "results"], // API returns "CAs" (capital)
-                                        crs: ["CRs", "crs", "parts", "data", "items", "results"] // API likely returns "CRs" (capital)
-                                    };
-                                    
-                                    const keysToTry = dataTypeKeys[this.currentDataType] || dataTypeKeys.parts;
-                                    console.log("🔍 Retry: Trying keys for", this.currentDataType, ":", keysToTry);
-                                    console.log("🔍 Retry: Available keys in response:", Object.keys(items));
-                                    
-                                    for (const key of keysToTry) {
-                                        if (items[key] && Array.isArray(items[key])) {
-                                            finalParts = items[key];
-                                            console.log(`✅ Retry: Using items.${key} (${finalParts.length} items)`);
-                                            break;
-                                        }
-                                    }
-                                    
-                                    if (!Array.isArray(finalParts)) {
-                                        console.log("❌ Retry: Could not find array in response, using empty array");
-                                        finalParts = [];
-                                    }
-                                }
-                                
-                                this.tableData = Array.isArray(finalParts)
-                                    ? finalParts.map(item => this.mapItemToTableData(item))
-                                    : [];
-                                
-                                console.log("✅ Successfully fetched data with simplified phase name");
-                                
-                                // Update organizations and chart
-                                const orgSet = new Set(this.tableData.map(r => r.organization).filter(org => org));
-                                this.organizations = ["All", ...orgSet];
-                                this.updateChartFromFiltered();
-                                
-                                return; // Exit the function successfully
-                            }
-                        } catch (retryError) {
-                            console.error("Retry with simplified phase name also failed:", retryError);
-                        }
-                    }
-                }
-                
-                // Check if this is an API error with null response
-                if (error.message && error.message.includes("API Error") && error.message.includes("null")) {
-                    console.warn("🚨 API returned null error - this usually indicates backend API issues");
-                    console.warn("Phase name:", phase);
-                    console.warn("Data type:", this.currentDataType);
-                    console.warn("This might be due to:");
-                    console.warn("  1. Invalid phase name format");
-                    console.warn("  2. Missing data for the requested phase");
-                    console.warn("  3. Backend API database connectivity issues");
-                    console.warn("  4. Backend API application errors");
-                }
-                
                 // Leave table empty when API fails - no mock data unless enabled
                 console.log("Setting empty data due to API failure");
                 this.tableData = [];
@@ -1394,10 +1372,19 @@ export default {
          */
         filterByReleaseStatus(statusFilter) {
             console.log("🔍 Filtering by release status:", statusFilter);
+            console.log("🔍 Previous selectedStatFilter:", this.selectedStatFilter);
+            console.log("🔍 Previous filteredTableData length:", this.filteredTableData.length);
+            
             this.selectedStatFilter = statusFilter;
             
             // The filteredTableData computed property will automatically update
             // based on the selectedStatFilter value
+            
+            // Force immediate chart update after filter change
+            this.$nextTick(() => {
+                console.log("🔍 After filter change - new filteredTableData length:", this.filteredTableData.length);
+                this.updateChartFromFiltered();
+            });
         },
 
         /**
@@ -1429,9 +1416,17 @@ export default {
          */
         updateChartFromFiltered() {
             console.log("🔄 Updating chart from filtered data...");
+            console.log("🔍 CHART UPDATE DEBUG:");
+            console.log("  - filteredTableData length:", this.filteredTableData?.length || 0);
+            console.log("  - selectedStatFilter:", this.selectedStatFilter);
+            console.log("  - filterValues:", JSON.stringify(this.filterValues));
+            console.log("  - currentDataType:", this.currentDataType);
             
             if (!this.filteredTableData || this.filteredTableData.length === 0) {
+                console.log("❌ No filtered data available, setting empty chart");
                 this.chartData = { labels: [], datasets: [] };
+                // Force chart key update to trigger re-render
+                this.chartKey += 1;
                 return;
             }
 
@@ -1439,7 +1434,16 @@ export default {
             const targetDates = [];
             const actualDates = [];
             
-            this.filteredTableData.forEach(item => {
+            console.log("📊 Processing", this.filteredTableData.length, "filtered items for chart data");
+            
+            this.filteredTableData.forEach((item, index) => {
+                console.log(`  Item ${index + 1}:`, {
+                    partNo: item.partNo || item.caNumber || item.crNumber,
+                    tgtRelease: item.tgtRelease,
+                    actualRelease: item.actualRelease,
+                    currentState: item.currentState
+                });
+                
                 // Target release dates
                 let targetDate = null;
                 switch (this.currentDataType) {
@@ -1465,6 +1469,7 @@ export default {
                                 dateString: dateObj.toLocaleDateString(),
                                 item
                             });
+                            console.log(`    ✅ Added target date: ${dateObj.toLocaleDateString()}`);
                         }
                     } catch (error) {
                         console.warn("Invalid target date format:", targetDate);
@@ -1497,6 +1502,7 @@ export default {
                                 dateString: dateObj.toLocaleDateString(),
                                 item
                             });
+                            console.log(`    ✅ Added actual date: ${dateObj.toLocaleDateString()}`);
                         }
                     } catch (error) {
                         console.warn("Invalid actual date format:", actualDate);
@@ -1504,9 +1510,15 @@ export default {
                 }
             });
 
+            console.log("📊 Chart Data Collection Summary:");
+            console.log("  - Target dates found:", targetDates.length);
+            console.log("  - Actual dates found:", actualDates.length);
+
             if (targetDates.length === 0 && actualDates.length === 0) {
-                console.log("No valid release dates found");
+                console.log("❌ No valid release dates found in filtered data");
                 this.chartData = { labels: [], datasets: [] };
+                // Force chart key update to trigger re-render
+                this.chartKey += 1;
                 return;
             }
 
@@ -1606,11 +1618,14 @@ export default {
                 datasets.push(actualDataset);
             }
 
-            // Force reactivity by deep cloning chartData
+            // Force reactivity by deep cloning chartData and incrementing chart key
             this.chartData = JSON.parse(JSON.stringify({
                 labels: sortedDates,
                 datasets
             }));
+
+            // Force chart key update to trigger re-render
+            this.chartKey += 1;
 
             console.log("✅ Chart data updated (unified timeline):", {
                 targetDataPoints: targetDates.length,
@@ -1619,7 +1634,8 @@ export default {
                 datasets: datasets.length,
                 datasetLabels: datasets.map(d => d.label),
                 firstDate: sortedDates[0],
-                lastDate: sortedDates[sortedDates.length - 1]
+                lastDate: sortedDates[sortedDates.length - 1],
+                chartKey: this.chartKey
             });
         },
 

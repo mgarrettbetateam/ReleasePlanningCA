@@ -209,7 +209,7 @@
                 
                 <!-- Standard Dashboard Orchestrator -->
                 <DashboardOrchestrator
-                    v-else-if="ui.content.showDashboard && isDashboardMode && dashboardConfig"
+                    v-if="ui.content.showDashboard && isDashboardMode && dashboardConfig"
                     ref="orchestrator"
                     :widget-config="dashboardConfig"
                     :hide-widget-headers="ui.content.hideWidgetHeaders"
@@ -290,21 +290,21 @@ export default {
             ui: {
                 // Header configuration
                 header: {
-                    visible: false,             // Changed back to false to hide the header
+                    visible: true,              // Turn on header
                     showTitle: true,
                     showViewModeToggle: true,
                     showWidgetToggleButton: true,
                     showIcons: true,
-                    showCloseButton: false,     // Set to false to hide X button
-                    showAppIcon: false,         // Set to false to hide icon
+                    showCloseButton: true,      // Turn on close button
+                    showAppIcon: true,          // Turn on app icon
                     customTitle: "Release Planning",  // Custom title text
-                    useCustomTitle: true       // Set to false to use default title
+                    useCustomTitle: true       // Use custom title
                 },
                 
                 // Widget panel configuration
                 widgetPanel: {
                     enabled: true,
-                    visible: false,
+                    visible: true,              // Turn on widget panel
                     showHeader: true,
                     showControls: true,
                     showStatusChips: true
@@ -315,12 +315,12 @@ export default {
                     showDashboard: true,
                     showDevelopmentArea: true,
                     showReleasePlanning: true,
-                    hideWidgetHeaders: true     // New control to hide widget internal headers
+                    hideWidgetHeaders: false    // Show widget internal headers
                 },
                 
                 // Status bar
                 statusBar: {
-                    visible: false,             // Changed to false to hide status bar
+                    visible: true,              // Turn on status bar
                     showWidgetCount: true,
                     showFilters: true
                 },
@@ -350,38 +350,38 @@ export default {
             widgetVisibility: {
                 // Core widgets that are actually used
                 enhancedPartsPlanner: true,
-                releasePlanner: false,
-                bomViewer: false,
-                lineChart: false,
-                partsTable: false,
+                releasePlanner: true,           // Turn on
+                bomViewer: true,                // Turn on
+                lineChart: true,                // Turn on
+                partsTable: true,               // Turn on
                 
                 // Chart widgets
-                pieChart: false,
-                scatterChart: false,
-                barChart: false,
-                areaChart: false,
-                doughnutChart: false,  // Fixed spelling to match registry
-                bubbleChart: false,
-                heatMap: false,
-                treeMap: false,
-                radarChart: false,
-                gaugeChart: false,
+                pieChart: true,                 // Turn on
+                scatterChart: true,             // Turn on
+                barChart: true,                 // Turn on
+                areaChart: true,                // Turn on
+                doughnutChart: true,            // Turn on
+                bubbleChart: true,              // Turn on
+                heatMap: true,                  // Turn on
+                treeMap: true,                  // Turn on
+                radarChart: true,               // Turn on
+                gaugeChart: true,               // Turn on
                 
                 // Additional dashboard widgets
-                kpiCard: false,
-                progressCard: false,
-                timelineWidget: false,
-                calendarWidget: false,
-                mapWidget: false,
-                dataGrid: false,
-                kanbanBoard: false,
-                notification: false,
-                weatherWidget: false,
-                clockWidget: false,
+                kpiCard: true,                  // Turn on
+                progressCard: true,             // Turn on
+                timelineWidget: true,           // Turn on
+                calendarWidget: true,           // Turn on
+                mapWidget: true,                // Turn on
+                dataGrid: true,                 // Turn on
+                kanbanBoard: true,              // Turn on
+                notification: true,             // Turn on
+                weatherWidget: true,            // Turn on
+                clockWidget: true,              // Turn on
                 
                 // Forms and specialized widgets
-                partPlanningForm: false,
-                contactForm: false
+                partPlanningForm: true,         // Turn on
+                contactForm: true               // Turn on
             },
             
             // =================================================================

@@ -198,6 +198,8 @@ export default {
     watch: {
         data: {
             handler(newData) {
+                // eslint-disable-next-line no-console
+                console.log("[UniversalChart] Data watcher triggered with:", newData);
                 this.updateChart(newData);
             },
             deep: true
@@ -252,16 +254,47 @@ export default {
         
         updateChart(newData) {
             if (this.chart && newData) {
+                // eslint-disable-next-line no-console
+                console.log("[UniversalChart] updateChart called with new data:", newData);
+                
                 this.chart.data = newData;
                 this.chart.update("none"); // No animation for better performance
+                
+                // eslint-disable-next-line no-console
+                console.log("[UniversalChart] Chart updated successfully");
+            } else {
+                // eslint-disable-next-line no-console
+                console.warn("[UniversalChart] updateChart called but chart or data is missing", {
+                    hasChart: !!this.chart,
+                    hasData: !!newData
+                });
             }
         },
         
         recreateChart() {
+            // eslint-disable-next-line no-console
+            console.log("[UniversalChart] recreateChart called");
             this.destroyChart();
             this.$nextTick(() => {
                 this.initChart();
+                // eslint-disable-next-line no-console
+                console.log("[UniversalChart] Chart recreated successfully");
             });
+        },
+        
+        forceUpdate() {
+            // eslint-disable-next-line no-console
+            console.log("[UniversalChart] forceUpdate called");
+            if (this.chart) {
+                this.chart.data = this.data;
+                this.chart.update("active"); // Use active animation to ensure visible update
+                // eslint-disable-next-line no-console
+                console.log("[UniversalChart] Forced update with active animation");
+            } else {
+                // eslint-disable-next-line no-console
+                console.log("[UniversalChart] No chart to update, recreating");
+                this.recreateChart();
+            }
         },
         
         destroyChart() {
@@ -312,7 +345,7 @@ export default {
                 minimal: {
                     plugins: {
                         legend: {
-                            display: false
+                            display: true
                         }
                     },
                     elements: {

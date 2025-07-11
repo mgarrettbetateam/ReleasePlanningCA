@@ -530,28 +530,34 @@ export default {
                     type: "select",
                     key: "program",
                     label: "Program",
+                    icon: "mdi-application",
                     value: this.filterValues.program,
                     options: this.programs,
                     clearable: true,
-                    placeholder: "Select Program"
+                    placeholder: "Select Program",
+                    color: "primary"
                 },
                 {
                     type: "select", 
                     key: "phase",
                     label: "Phase",
+                    icon: "mdi-timeline",
                     value: this.filterValues.phase,
                     options: this.phases,
                     clearable: true,
-                    placeholder: "Select Phase"
+                    placeholder: "Select Phase",
+                    color: "secondary"
                 },
                 {
                     type: "select",
                     key: "organization", 
                     label: "Organization",
+                    icon: "mdi-domain",
                     value: this.filterValues.organization,
                     options: this.organizations,
                     clearable: false,
-                    placeholder: "Select Organization"
+                    placeholder: "Select Organization",
+                    color: "info"
                 }
             ];
         },

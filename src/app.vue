@@ -290,7 +290,7 @@ export default {
             ui: {
                 // Header configuration
                 header: {
-                    visible: true,              // Turn on header
+                    visible: false,              // Turn on header
                     showTitle: true,
                     showViewModeToggle: true,
                     showWidgetToggleButton: true,
@@ -304,7 +304,7 @@ export default {
                 // Widget panel configuration
                 widgetPanel: {
                     enabled: true,
-                    visible: true,              // Turn on widget panel
+                    visible: false,              // Turn on widget panel
                     showHeader: true,
                     showControls: true,
                     showStatusChips: true
@@ -350,38 +350,38 @@ export default {
             widgetVisibility: {
                 // Core widgets that are actually used
                 enhancedPartsPlanner: true,
-                releasePlanner: true,           // Turn on
-                bomViewer: true,                // Turn on
-                lineChart: true,                // Turn on
-                partsTable: true,               // Turn on
+                releasePlanner: false,           // Turn on
+                bomViewer: false,                // Turn on
+                lineChart: false,                // Turn on
+                partsTable: false,               // Turn on
                 
                 // Chart widgets
-                pieChart: true,                 // Turn on
-                scatterChart: true,             // Turn on
-                barChart: true,                 // Turn on
-                areaChart: true,                // Turn on
-                doughnutChart: true,            // Turn on
-                bubbleChart: true,              // Turn on
-                heatMap: true,                  // Turn on
-                treeMap: true,                  // Turn on
-                radarChart: true,               // Turn on
-                gaugeChart: true,               // Turn on
+                pieChart: false,                 // Turn on
+                scatterChart: false,             // Turn on
+                barChart: false,                 // Turn on
+                areaChart: false,                // Turn on
+                doughnutChart: false,            // Turn on
+                bubbleChart: false,              // Turn on
+                heatMap: false,                  // Turn on
+                treeMap: false,                  // Turn on
+                radarChart: false,               // Turn on
+                gaugeChart: false,               // Turn on
                 
                 // Additional dashboard widgets
-                kpiCard: true,                  // Turn on
-                progressCard: true,             // Turn on
-                timelineWidget: true,           // Turn on
-                calendarWidget: true,           // Turn on
-                mapWidget: true,                // Turn on
-                dataGrid: true,                 // Turn on
-                kanbanBoard: true,              // Turn on
-                notification: true,             // Turn on
-                weatherWidget: true,            // Turn on
-                clockWidget: true,              // Turn on
+                kpiCard: false,                  // Turn on
+                progressCard: false,             // Turn on
+                timelineWidget: false,           // Turn on
+                calendarWidget: false,           // Turn on
+                mapWidget: false,                // Turn on
+                dataGrid: false,                 // Turn on
+                kanbanBoard: false,              // Turn on
+                notification: false,             // Turn on
+                weatherWidget: false,            // Turn on
+                clockWidget: false,              // Turn on
                 
                 // Forms and specialized widgets
-                partPlanningForm: true,         // Turn on
-                contactForm: true               // Turn on
+                partPlanningForm: false,         // Turn on
+                contactForm: false               // Turn on
             },
             
             // =================================================================

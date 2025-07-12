@@ -346,42 +346,71 @@ export default {
                 available: ["dashboard", "development"]
             },
             
+            // =================================================================
+            // MASTER WIDGET CONTROL SYSTEM
+            // =================================================================
+            // 
+            // 🎛️ QUICK START: Set enableAllDisabledWidgets to true to enable everything at once
+            // 
+            // USAGE EXAMPLES:
+            // 1. Enable everything:           masterControls.enableAllDisabledWidgets = true
+            // 2. Enable just charts:          masterControls.enableAllChartWidgets = true  
+            // 3. Enable just dashboard items: masterControls.enableAllDashboardWidgets = true
+            // 4. Enable just forms:           masterControls.enableAllFormWidgets = true
+            //
+            // You can also call helper methods:
+            // - this.enableAllWidgets()      - Enables all disabled widgets
+            // - this.enableAllCharts()       - Enables all chart widgets only
+            // - this.disableAllWidgets()     - Disables all master controls
+            // - this.getMasterControlStatus() - Shows current status for debugging
+            
+            // Master controls for bulk widget management
+            masterControls: {
+                enableAllDisabledWidgets: false,    // 🎛️ MASTER SWITCH: Set to true to enable all widgets marked as false below
+                enableAllChartWidgets: false,       // 🎛️ CHART MASTER: Set to true to enable all chart-specific widgets
+                enableAllFormWidgets: false,        // 🎛️ FORM MASTER: Set to true to enable all form-specific widgets
+                enableAllDashboardWidgets: false    // 🎛️ DASHBOARD MASTER: Set to true to enable all additional dashboard widgets
+            },
+            
             // Widget visibility - simplified structure
+            // Note: These individual settings are overridden by masterControls above
             widgetVisibility: {
                 // Core widgets that are actually used
-                enhancedPartsPlanner: true,
-                releasePlanner: false,           // Turn on
-                bomViewer: false,                // Turn on
-                lineChart: false,                // Turn on
-                partsTable: false,               // Turn on
+                enhancedPartsPlanner: true,      // Always enabled (core functionality)
                 
-                // Chart widgets
-                pieChart: false,                 // Turn on
-                scatterChart: false,             // Turn on
-                barChart: false,                 // Turn on
-                areaChart: false,                // Turn on
-                doughnutChart: false,            // Turn on
-                bubbleChart: false,              // Turn on
-                heatMap: false,                  // Turn on
-                treeMap: false,                  // Turn on
-                radarChart: false,               // Turn on
-                gaugeChart: false,               // Turn on
+                // Core Release Planning widgets (controlled by enableAllDisabledWidgets or individual master controls)
+                releasePlanner: false,           // 📊 Release planning component
+                bomViewer: false,                // 🔧 Bill of Materials viewer
+                lineChart: false,                // 📈 Line chart widget
+                partsTable: false,               // 📋 Parts data table
                 
-                // Additional dashboard widgets
-                kpiCard: false,                  // Turn on
-                progressCard: false,             // Turn on
-                timelineWidget: false,           // Turn on
-                calendarWidget: false,           // Turn on
-                mapWidget: false,                // Turn on
-                dataGrid: false,                 // Turn on
-                kanbanBoard: false,              // Turn on
-                notification: false,             // Turn on
-                weatherWidget: false,            // Turn on
-                clockWidget: false,              // Turn on
+                // Chart widgets (controlled by enableAllChartWidgets or enableAllDisabledWidgets)
+                pieChart: false,                 // 🥧 Pie chart
+                scatterChart: false,             // 📊 Scatter plot
+                barChart: false,                 // 📊 Bar chart
+                areaChart: false,                // 📊 Area chart
+                doughnutChart: false,            // 🍩 Doughnut chart
+                bubbleChart: false,              // 💭 Bubble chart
+                heatMap: false,                  // 🌡️ Heat map
+                treeMap: false,                  // 🌳 Tree map
+                radarChart: false,               // 📡 Radar chart
+                gaugeChart: false,               // ⏲️ Gauge chart
                 
-                // Forms and specialized widgets
-                partPlanningForm: false,         // Turn on
-                contactForm: false               // Turn on
+                // Additional dashboard widgets (controlled by enableAllDashboardWidgets or enableAllDisabledWidgets)
+                kpiCard: false,                  // 📊 KPI display card
+                progressCard: false,             // 📈 Progress tracking card
+                timelineWidget: false,           // ⏰ Timeline component
+                calendarWidget: false,           // 📅 Calendar widget
+                mapWidget: false,                // 🗺️ Map visualization
+                dataGrid: false,                 // 📊 Advanced data grid
+                kanbanBoard: false,              // 📋 Kanban board
+                notification: false,             // 🔔 Notification widget
+                weatherWidget: false,            // 🌤️ Weather display
+                clockWidget: false,              // 🕐 Clock widget
+                
+                // Forms and specialized widgets (controlled by enableAllFormWidgets or enableAllDisabledWidgets)
+                partPlanningForm: false,         // 📝 Part planning form
+                contactForm: false               // 📞 Contact form
             },
             
             // =================================================================
@@ -530,9 +559,63 @@ export default {
             this.viewMode = this.viewMode === "planning" ? "dashboard" : "planning";
         },
 
-        // Check if a widget should be visible based on boolean controls
+        // Check if a widget should be visible based on boolean controls and master switches
         isWidgetAllowed(widgetId) {
-            // Return the visibility setting for this widget, default to true if not specified
+            // Always allow core widgets that are explicitly enabled
+            if (this.widgetVisibility[widgetId] === true) {
+                return true;
+            }
+            
+            // If widget is not defined, default to false
+            if (this.widgetVisibility[widgetId] === undefined) {
+                return false;
+            }
+            
+            // Check master controls for bulk enabling
+            if (this.masterControls.enableAllDisabledWidgets) {
+                return true;
+            }
+            
+            // Define widget categories for targeted master controls
+            const chartWidgets = [
+                "pieChart", "scatterChart", "barChart", "areaChart", "doughnutChart", 
+                "bubbleChart", "heatMap", "treeMap", "radarChart", "gaugeChart", "lineChart"
+            ];
+            
+            const dashboardWidgets = [
+                "kpiCard", "progressCard", "timelineWidget", "calendarWidget", 
+                "mapWidget", "dataGrid", "kanbanBoard", "notification", "weatherWidget", "clockWidget"
+            ];
+            
+            const formWidgets = [
+                "partPlanningForm", "contactForm"
+            ];
+            
+            const coreReleaseWidgets = [
+                "releasePlanner", "bomViewer", "partsTable"
+            ];
+            
+            // Check specific master controls
+            if (this.masterControls.enableAllChartWidgets && chartWidgets.includes(widgetId)) {
+                return true;
+            }
+            
+            if (this.masterControls.enableAllDashboardWidgets && dashboardWidgets.includes(widgetId)) {
+                return true;
+            }
+            
+            if (this.masterControls.enableAllFormWidgets && formWidgets.includes(widgetId)) {
+                return true;
+            }
+            
+            // For core release widgets, they can be enabled by either the main master switch or the chart/dashboard switches
+            if (coreReleaseWidgets.includes(widgetId)) {
+                if (this.masterControls.enableAllChartWidgets || this.masterControls.enableAllDashboardWidgets) {
+                    return true;
+                }
+            }
+            
+            // Return the individual widget setting (will be false for disabled widgets)
             return this.widgetVisibility[widgetId] !== false;
         },
 
@@ -607,6 +690,42 @@ export default {
             this.errorSnackbar = true;
             console.error("Dashboard error:", error);
         },
+        
+        // Master control helper methods
+        enableAllWidgets() {
+            this.masterControls.enableAllDisabledWidgets = true;
+        },
+        
+        disableAllWidgets() {
+            this.masterControls.enableAllDisabledWidgets = false;
+            this.masterControls.enableAllChartWidgets = false;
+            this.masterControls.enableAllDashboardWidgets = false;
+            this.masterControls.enableAllFormWidgets = false;
+        },
+        
+        enableAllCharts() {
+            this.masterControls.enableAllChartWidgets = true;
+        },
+        
+        enableAllDashboardWidgets() {
+            this.masterControls.enableAllDashboardWidgets = true;
+        },
+        
+        enableAllForms() {
+            this.masterControls.enableAllFormWidgets = true;
+        },
+        
+        // Get current master control status for debugging
+        getMasterControlStatus() {
+            return {
+                allWidgets: this.masterControls.enableAllDisabledWidgets,
+                charts: this.masterControls.enableAllChartWidgets,
+                dashboard: this.masterControls.enableAllDashboardWidgets,
+                forms: this.masterControls.enableAllFormWidgets,
+                visibleCount: this.visibleWidgetCount
+            };
+        },
+        
         handleHeaderClose() {
             // Handle header close button click
             // You can customize this behavior as needed

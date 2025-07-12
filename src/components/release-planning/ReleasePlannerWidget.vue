@@ -428,6 +428,9 @@ export default {
             currentDataType: "parts", // "parts", "cas", "crs", etc.
             
             // Configuration for different data types - easily extensible
+            // ⚠️  IMPORTANT: When adding new data types here, you MUST also update 
+            // the mapItemToTableData() method in the methods section below (around line 890)
+            // to handle the new data type. Field names must match exactly!
             headerConfigurations: {
                 parts: [
                     { text: "Part Number", value: "partNo", sortable: true, required: true, icon: "mdi-barcode" },
@@ -442,10 +445,8 @@ export default {
                 ],
                 cas: [
                     { text: "CA Number", value: "caNumber", sortable: true, required: true, icon: "mdi-file-document" },
-                    // { text: "Rev", value: "revision", sortable: true, icon: "mdi-source-branch" },
                     { text: "Description", value: "changeSummary", sortable: true, icon: "mdi-text" },
                     { text: "Resp Engr", value: "resEngr", sortable: true, icon: "mdi-account" },
-                   // { text: "Organization", value: "organization", sortable: true, icon: "mdi-domain" },
                     { text: "Status", value: "currentState", sortable: true, icon: "mdi-flag" },
                     { text: "Target Complete Date", value: "targetReleaseDate", sortable: true, icon: "mdi-calendar-clock" },
                     { text: "Actual Approved Date", value: "approvedDate", sortable: true, icon: "mdi-calendar-check" },
@@ -462,6 +463,13 @@ export default {
                 ]
             },
             
+            /**
+             * ⚠️  IMPORTANT: When adding new data types to headerConfigurations above,
+             * you MUST also update the mapItemToTableData() method below to handle the new type.
+             * The field names returned by mapItemToTableData MUST match the "value" properties 
+             * in the corresponding headerConfigurations entry.
+             */
+            
             // UI state
             loading: false,
             lastUpdated: new Date().toLocaleTimeString(),
@@ -477,6 +485,7 @@ export default {
             chartKey: 0
         };
     },
+    
     computed: {
         // Dynamic widget title based on current data type
         widgetTitle() {
@@ -864,6 +873,75 @@ export default {
     },
     
     methods: {
+        /**
+         * ⚠️  CRITICAL: DATA TYPE MAPPING FUNCTION
+         * 
+         * This function transforms raw API response items into the format expected by the table.
+         * When you add a new data type to headerConfigurations above (in data section), you MUST 
+         * add a corresponding case to this function.
+         * 
+         * RULES FOR MAINTAINING CONSISTENCY:
+         * 1. The returned object keys MUST exactly match the "value" properties in headerConfigurations
+         * 2. If headerConfigurations.newType has { value: "fieldName" }, then this function must return { fieldName: someValue }
+         * 3. Test thoroughly after adding new data types to ensure table displays correctly
+         * 
+         * EXAMPLE: If you add a new "issues" data type with header { value: "issueTitle" },
+         * then add a case that returns { issueTitle: item.title || item.summary }
+         * 
+         * 📍 See headerConfigurations in data() section (around line 431) for reference
+         */
+        mapItemToTableData(item) {
+            console.log("🔄 Mapping item for data type:", this.currentDataType, "Item:", item);
+            
+            switch (this.currentDataType) {
+                case "parts":
+                    // Maps to headerConfigurations.parts - ensure field names match exactly
+                    return {
+                        partNo: item.partNumber || item.partNo,                    // matches "partNo" in headerConfigurations.parts
+                        rev: item.revision || item.rev,                           // matches "rev" in headerConfigurations.parts  
+                        description: item.description,                            // matches "description" in headerConfigurations.parts
+                        organization: item.organization || "Unknown",             // matches "organization" in headerConfigurations.parts
+                        tgtRelease: item.targetReleaseDate || item.tgtRelease,   // matches "tgtRelease" in headerConfigurations.parts
+                        actualRelease: item.actualReleaseDate || item.actualRelease || "N/A", // matches "actualRelease" in headerConfigurations.parts
+                        currentState: item.currentState || item.state,           // matches "currentState" in headerConfigurations.parts
+                        physId: item.physId || item.id,                          // internal ID for CA lookups
+                        // CA fields will be populated by ChangeActionCell component
+                        caNumber: "",                                             // matches "caNumber" in headerConfigurations.parts
+                        caState: ""                                               // matches "caState" in headerConfigurations.parts
+                    };
+                    
+                case "cas":
+                    // Maps to headerConfigurations.cas - ensure field names match exactly
+                    return {
+                        caNumber: item.caNumber || item.changeActionNumber,      // matches "caNumber" in headerConfigurations.cas
+                        changeSummary: item.changeSummary || item.description,   // matches "changeSummary" in headerConfigurations.cas
+                        resEngr: item.respEngr || item.responsibleEngineer,      // matches "resEngr" in headerConfigurations.cas
+                        currentState: item.currentState || item.status,          // matches "currentState" in headerConfigurations.cas
+                        targetReleaseDate: item.targetReleaseDate || item.targetCompleteDate, // matches "targetReleaseDate" in headerConfigurations.cas
+                        approvedDate: item.approvedDate,                         // matches "approvedDate" in headerConfigurations.cas
+                        actualReleaseDate: item.actualReleaseDate || item.actualCompleteDate, // matches "actualReleaseDate" in headerConfigurations.cas
+                        organization: item.organization || "Unknown"             // for filtering purposes
+                    };
+                    
+                case "crs":
+                    // Maps to headerConfigurations.crs - ensure field names match exactly
+                    return {
+                        crNumber: item.crNumber || item.changeRequestNumber,     // matches "crNumber" in headerConfigurations.crs
+                        reasonforChange: item.reasonforChange || item.name || item.summary || item.description, // matches "reasonforChange" in headerConfigurations.crs
+                        owner: item.owner || item.respEngr || item.responsibleEngineer, // matches "owner" in headerConfigurations.crs
+                        currentState: item.currentState || item.status,          // matches "currentState" in headerConfigurations.crs
+                        targetReleaseDate: item.targetReleaseDate || item.dueDate, // matches "targetReleaseDate" in headerConfigurations.crs
+                        actualApproveDate: item.actualApproveDate || item.approvedDate, // matches "actualApproveDate" in headerConfigurations.crs
+                        actualReleaseDate: item.actualReleaseDate || item.completedDate // matches "actualReleaseDate" in headerConfigurations.crs
+                    };
+                    
+                default:
+                    console.warn("⚠️  Unknown data type for mapping:", this.currentDataType, "Available types:", Object.keys(this.headerConfigurations));
+                    console.warn("⚠️  Add a new case to mapItemToTableData() for this data type!");
+                    return item; // Return raw item as fallback
+            }
+        },
+
         // Chart legend toggle methods
         toggleTargetLine() {
             this.showTargetLine = !this.showTargetLine;
@@ -1643,57 +1721,6 @@ export default {
                 lastDate: sortedDates[sortedDates.length - 1],
                 chartKey: this.chartKey
             });
-        },
-
-        /**
-         * Map API response item to table data format based on current data type
-         */
-        mapItemToTableData(item) {
-            console.log("🔄 Mapping item for data type:", this.currentDataType, "Item:", item);
-            
-            switch (this.currentDataType) {
-                case "parts":
-                    return {
-                        partNo: item.partNumber || item.partNo,
-                        rev: item.revision || item.rev,
-                        description: item.description,
-                        organization: item.organization || "Unknown",
-                        tgtRelease: item.targetReleaseDate || item.tgtRelease,
-                        actualRelease: item.actualReleaseDate || item.actualRelease || "N/A",
-                        currentState: item.currentState || item.state,
-                        physId: item.physId || item.id,
-                        // CA fields will be populated by ChangeActionCell component
-                        caNumber: "",
-                        caState: ""
-                    };
-                    
-                case "cas":
-                    return {
-                        caNumber: item.caNumber || item.changeActionNumber,
-                        changeSummary: item.changeSummary || item.description,
-                        resEngr: item.respEngr || item.responsibleEngineer, // Fixed: match header 'resEngr'
-                        currentState: item.currentState || item.status,
-                        targetReleaseDate: item.targetReleaseDate || item.targetCompleteDate,
-                        approvedDate: item.approvedDate,
-                        actualReleaseDate: item.actualReleaseDate || item.actualCompleteDate,
-                        organization: item.organization || "Unknown"
-                    };
-                    
-                case "crs":
-                    return {
-                        crNumber: item.crNumber || item.changeRequestNumber,
-                        reasonforChange: item.reasonforChange || item.name || item.summary || item.description, // Fixed: match header 'reasonforChange'
-                        owner: item.owner || item.respEngr || item.responsibleEngineer, // Fixed: match header 'owner'
-                        currentState: item.currentState || item.status,
-                        targetReleaseDate: item.targetReleaseDate || item.dueDate,
-                        actualApproveDate: item.actualApproveDate || item.approvedDate,
-                        actualReleaseDate: item.actualReleaseDate || item.completedDate
-                    };
-                    
-                default:
-                    console.warn("⚠️  Unknown data type for mapping:", this.currentDataType);
-                    return item;
-            }
         },
 
         /**

@@ -110,9 +110,9 @@
                     <v-card-text class="chart-content-wrapper">
                         <div class="chart-container" style="position: relative; height: 360px; width: 100%;">
                             <!-- Debug info -->
-                            <div v-if="chartData" style="font-size: 12px; color: #666; margin-bottom: 10px;">
+                            <!-- <div v-if="chartData" style="font-size: 12px; color: #666; margin-bottom: 10px;">
                                 🐛 Debug: Labels: {{ chartData.labels?.length || 0 }}, Datasets: {{ chartData.datasets?.length || 0 }}
-                            </div>
+                            </div> -->
                             <ReleaseChart
                                 v-if="chartData.labels && chartData.labels.length > 0"
                                 ref="lineChart"
@@ -664,12 +664,14 @@ export default {
         // Chart legend toggle methods
         toggleTargetLine() {
             this.showTargetLine = !this.showTargetLine;
-            this.chartKey += 1;
+            console.log("👁️ Target line toggled:", this.showTargetLine);
+            this.updateChartFromFiltered();
         },
         
         toggleActualLine() {
             this.showActualLine = !this.showActualLine;
-            this.chartKey += 1;
+            console.log("👁️ Actual line toggled:", this.showActualLine);
+            this.updateChartFromFiltered();
         },
         
         // Handle filter changes from UniversalFilterControls

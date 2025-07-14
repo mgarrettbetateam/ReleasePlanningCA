@@ -393,6 +393,7 @@ import ChangeActionCell from "@/components/release-planning/ChangeActionCell.vue
 import dataService from "@/data/DataServiceBase.js";
 import { USE_MOCK_DATA } from "@/config/ApiConfig.js";
 import filterService from "@/services/FilterService.js";
+import chartDataService from "@/services/ChartDataService.js";
 
 export default {
     name: "EnhancedPartsPlannerWidget",
@@ -560,118 +561,9 @@ export default {
             return count;
         },
 
-        // Dynamic chart options based on current data type
+        // Dynamic chart options using ChartDataService
         dynamicChartOptions() {
-            const dataTypeConfig = {
-                parts: {
-                    yAxisTitle: "Cumulative Parts Count",
-                    tooltipLabel: "total parts"
-                },
-                cas: {
-                    yAxisTitle: "Cumulative CAs Count", 
-                    tooltipLabel: "total CAs"
-                },
-                crs: {
-                    yAxisTitle: "Cumulative CRs Count",
-                    tooltipLabel: "total CRs" 
-                }
-            };
-
-            const config = dataTypeConfig[this.currentDataType] || dataTypeConfig.parts;
-
-            return {
-                responsive: true,
-                maintainAspectRatio: false,
-                layout: {
-                    padding: {
-                        top: 20,
-                        bottom: 20,
-                        left: 10,
-                        right: 10
-                    }
-                },
-                scales: {
-                    xAxes: [{ 
-                        display: true,
-                        scaleLabel: { 
-                            display: true, 
-                            labelString: "Release Timeline",
-                            fontSize: 14,
-                            fontStyle: "bold",
-                            fontColor: "#1976d2"
-                        },
-                        ticks: {
-                            maxRotation: 45,
-                            minRotation: 0,
-                            autoSkip: true,
-                            maxTicksLimit: 8,
-                            fontSize: 11,
-                            fontColor: "#666",
-                            padding: 5
-                        },
-                        gridLines: {
-                            color: "rgba(0,0,0,0.1)",
-                            lineWidth: 1
-                        }
-                    }],
-                    yAxes: [{ 
-                        display: true,
-                        scaleLabel: { 
-                            display: true, 
-                            labelString: config.yAxisTitle,
-                            fontSize: 14,
-                            fontStyle: "bold",
-                            fontColor: "#1976d2"
-                        },
-                        ticks: {
-                            fontSize: 11,
-                            fontColor: "#666",
-                            padding: 5,
-                            beginAtZero: true,
-                            callback(value) {
-                                return Math.floor(value);
-                            }
-                        },
-                        gridLines: {
-                            color: "rgba(0,0,0,0.1)",
-                            lineWidth: 1
-                        }
-                    }]
-                },
-                legend: { 
-                    display: false
-                },
-                tooltips: { 
-                    mode: "index", 
-                    intersect: false,
-                    backgroundColor: "rgba(0,0,0,0.8)",
-                    titleFontSize: 14,
-                    titleFontStyle: "bold",
-                    bodyFontSize: 12,
-                    cornerRadius: 8,
-                    displayColors: true,
-                    callbacks: {
-                        title(tooltipItem) {
-                            return "Release Date: " + tooltipItem[0].xLabel;
-                        },
-                        label(tooltipItem) {
-                            return `Total Released: ${tooltipItem.yLabel} ${config.tooltipLabel}`;
-                        }
-                    }
-                },
-                elements: {
-                    line: {
-                        tension: 0.2,
-                        borderWidth: 3
-                    },
-                    point: {
-                        radius: 4,
-                        hoverRadius: 8,
-                        borderWidth: 2,
-                        hoverBorderWidth: 3
-                    }
-                }
-            };
+            return chartDataService.createChartOptions(this.currentDataType);
         },
 
         // Filter table data using FilterService
@@ -688,15 +580,9 @@ export default {
             return filterService.computeStatistics(this.filteredTableData);
         },
 
-        // Dynamic chart legend label based on data type  
+        // Dynamic chart legend label using ChartDataService
         chartLegendLabel() {
-            const labels = {
-                parts: "Actual Parts Released",
-                cas: "Actual CAs Released", 
-                crs: "Actual CRs Released"
-            };
-            
-            return labels[this.currentDataType] || "Actual Items Released";
+            return chartDataService.getChartLegendLabel(this.currentDataType);
         }
     },
     
@@ -1255,205 +1141,73 @@ export default {
         },
 
         /**
-         * Extract and validate date from item based on data type
+         * Extract and validate date from item using ChartDataService
          */
         extractTargetDate(item) {
-            let targetDate = null;
-            switch (this.currentDataType) {
-                case "parts":
-                    targetDate = item.tgtRelease || item.targetReleaseDate;
-                    break;
-                case "cas":
-                    targetDate = item.targetReleaseDate;
-                    break;
-                case "crs":
-                    targetDate = item.dueDate;
-                    break;
-                default:
-                    targetDate = item.tgtRelease || item.targetReleaseDate || item.dueDate;
-            }
-            return this.validateDate(targetDate);
+            return chartDataService.extractTargetDate(item, this.currentDataType);
         },
 
         /**
-         * Extract and validate actual date from item based on data type
+         * Extract and validate actual date from item using ChartDataService
          */
         extractActualDate(item) {
-            let actualDate = null;
-            switch (this.currentDataType) {
-                case "parts":
-                    actualDate = item.actualRelease || item.actualReleaseDate;
-                    break;
-                case "cas":
-                    actualDate = item.actualReleaseDate;
-                    break;
-                case "crs":
-                    actualDate = item.completedDate;
-                    break;
-                default:
-                    actualDate = item.actualRelease || item.actualReleaseDate || item.completedDate;
-            }
-            return this.validateDate(actualDate);
+            return chartDataService.extractActualDate(item, this.currentDataType);
         },
 
         /**
-         * Validate and parse date string
+         * Validate and parse date string using ChartDataService
          */
         validateDate(dateStr) {
-            if (!dateStr || dateStr === "N/A" || dateStr === null || dateStr === "") {
-                return null;
-            }
-            try {
-                const dateObj = new Date(dateStr);
-                return !isNaN(dateObj.getTime()) ? dateObj : null;
-            } catch (error) {
-                console.warn("Invalid date format:", dateStr);
-                return null;
-            }
+            return chartDataService.validateDate(dateStr);
         },
 
         /**
-         * Simplified chart data building
+         * Build chart data using ChartDataService
          */
         buildChartData() {
-            const targetDates = [];
-            const actualDates = [];
-            
-            // Process each item to extract dates
-            this.filteredTableData.forEach(item => {
-                const targetDate = this.extractTargetDate(item);
-                const actualDate = this.extractActualDate(item);
-                
-                if (targetDate) {
-                    targetDates.push({
-                        date: targetDate,
-                        dateString: targetDate.toLocaleDateString(),
-                        item
-                    });
-                }
-                
-                if (actualDate) {
-                    actualDates.push({
-                        date: actualDate,
-                        dateString: actualDate.toLocaleDateString(),
-                        item
-                    });
-                }
-            });
-
-            return { targetDates, actualDates };
+            return chartDataService.buildChartData(this.filteredTableData, this.currentDataType);
         },
 
         /**
-         * Create dataset for chart using unified timeline
+         * Create dataset for chart using ChartDataService
          */
-        createDataset(dates, label, color, backgroundColor, unifiedTimeline) {
-            // Group releases by date
-            const dateGroups = new Map();
-            dates.forEach(release => {
-                const dateStr = release.dateString;
-                dateGroups.set(dateStr, (dateGroups.get(dateStr) || 0) + 1);
-            });
-
-            // Create cumulative data using the unified timeline
-            const cumulativeData = [];
-            let runningTotal = 0;
-            unifiedTimeline.forEach(dateStr => {
-                if (dateGroups.has(dateStr)) {
-                    runningTotal += dateGroups.get(dateStr);
-                }
-                cumulativeData.push(runningTotal);
-            });
-
-            return {
-                label,
-                data: cumulativeData,
-                borderColor: color,
-                backgroundColor,
-                tension: 0.2,
-                fill: false,
-                pointRadius: 4,
-                pointHoverRadius: 6,
-                borderWidth: 3
-            };
+        createDataset(dates, label, colorType, unifiedTimeline) {
+            return chartDataService.createDataset(dates, label, colorType, unifiedTimeline);
         },
         /**
-         * Update chart data from filtered table data - SIMPLIFIED VERSION
+         * Update chart data from filtered table data using ChartDataService
          */
         updateChartFromFiltered() {
-            console.log("🔄 Updating chart from filtered data...");
-            console.log("🔍 CHART UPDATE DEBUG:");
-            console.log("  - filteredTableData length:", this.filteredTableData?.length || 0);
-            console.log("  - selectedStatFilter:", this.selectedStatFilter);
-            console.log("  - currentDataType:", this.currentDataType);
+            console.log("🔄 Updating chart from filtered data using ChartDataService...");
             
-            if (!this.filteredTableData || this.filteredTableData.length === 0) {
-                console.log("❌ No filtered data available, setting empty chart");
-                this.chartData = { labels: [], datasets: [] };
-                this.chartKey += 1;
-                return;
-            }
+            // Use ChartDataService to create complete chart data
+            this.chartData = chartDataService.createChartData(
+                this.filteredTableData,
+                this.currentDataType,
+                {
+                    showTargetLine: this.showTargetLine,
+                    showActualLine: this.showActualLine
+                }
+            );
 
-            // Use simplified helper methods
-            const { targetDates, actualDates } = this.buildChartData();
-            
-            console.log("📊 Chart Data Collection Summary:");
-            console.log("  - Target dates found:", targetDates.length);
-            console.log("  - Actual dates found:", actualDates.length);
-            
-            const SAMPLE_SIZE = 3;
-            console.log("  - Sample target dates:", targetDates.slice(0, SAMPLE_SIZE).map(d => ({ date: d.dateString, item: d.item.partNo || d.item.caNumber || d.item.crNumber })));
-            console.log("  - Sample actual dates:", actualDates.slice(0, SAMPLE_SIZE).map(d => ({ date: d.dateString, item: d.item.partNo || d.item.caNumber || d.item.crNumber })));
-
-            if (targetDates.length === 0 && actualDates.length === 0) {
-                console.log("❌ No valid release dates found in filtered data");
-                this.chartData = { labels: [], datasets: [] };
-                this.chartKey += 1;
-                return;
-            }
-
-            // Create combined timeline and datasets
-            const allDates = new Set();
-            targetDates.forEach(item => allDates.add(item.dateString));
-            actualDates.forEach(item => allDates.add(item.dateString));
-            const sortedDates = Array.from(allDates).sort((a, b) => new Date(a) - new Date(b));
-            
-            console.log("📅 Unified timeline:", sortedDates);
-
-            // Get dynamic labels
-            const dataTypeLabels = {
-                parts: { target: "Target Parts Release", actual: "Actual Parts Released" },
-                cas: { target: "Target CAs Release", actual: "Actual CAs Released" },
-                crs: { target: "Target CRs Release", actual: "Actual CRs Released" }
-            };
-            const labels = dataTypeLabels[this.currentDataType] || { target: "Target Items", actual: "Actual Items" };
-
-            // Build datasets using the unified timeline
-            const datasets = [];
-            
-            if (targetDates.length > 0 && this.showTargetLine) {
-                const targetDataset = this.createDataset(targetDates, labels.target, "#1976d2", "rgba(25, 118, 210, 0.1)", sortedDates);
-                datasets.push(targetDataset);
-            }
-            
-            if (actualDates.length > 0 && this.showActualLine) {
-                const actualDataset = this.createDataset(actualDates, labels.actual, "#4caf50", "rgba(76, 175, 80, 0.1)", sortedDates);
-                datasets.push(actualDataset);
-            }
-
-            // Update chart
-            this.chartData = { labels: sortedDates, datasets };
+            // Force chart update
             this.chartKey += 1;
 
-            console.log("✅ Chart data updated:", {
-                totalLabels: sortedDates.length,
-                datasets: datasets.length,
-                chartKey: this.chartKey,
-                actualChartData: this.chartData,
-                firstDatasetSample: datasets[0]
+            console.log("✅ Chart updated with ChartDataService:", {
+                totalLabels: this.chartData.labels?.length || 0,
+                datasets: this.chartData.datasets?.length || 0,
+                chartKey: this.chartKey
             });
-            console.log("✅ Full chartData object:", JSON.stringify(this.chartData, null, 2));
         },
+
+        // ===== CHART PROCESSING LOGIC MOVED TO ChartDataService =====
+        // The following chart processing logic has been moved to ChartDataService:
+        // - Date extraction and validation (extractTargetDate, extractActualDate, validateDate)
+        // - Chart data building (buildChartData)
+        // - Dataset creation (createDataset) 
+        // - Chart options configuration (dynamicChartOptions)
+        // - Chart legend labels (chartLegendLabel)
+        // - Unified timeline creation and chart data processing
 
         /**
          * Handle CA number loaded event from ChangeActionCell component

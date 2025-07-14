@@ -7,7 +7,7 @@
 /**
  * Set this to true for production, false for development
  */
-export const USE_PRODUCTION = true; // Change this to toggle environments
+export const USE_PRODUCTION = false; // Change this to toggle environments
 
 /**
  * Set this to true to use mock data instead of real API calls

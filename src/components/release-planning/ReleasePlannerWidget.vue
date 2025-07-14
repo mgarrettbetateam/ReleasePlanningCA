@@ -392,6 +392,7 @@ import UniversalFilterControls from "@/components/universal/UniversalFilterContr
 import ChangeActionCell from "@/components/release-planning/ChangeActionCell.vue";
 import dataService from "@/data/DataServiceBase.js";
 import { USE_MOCK_DATA } from "@/config/ApiConfig.js";
+import filterService from "@/services/FilterService.js";
 
 export default {
     name: "EnhancedPartsPlannerWidget",
@@ -535,42 +536,14 @@ export default {
             return filteredHeaders;
         },
 
+        // Filter configuration using FilterService
         filterConfig() {
-            return [
-                {
-                    type: "select",
-                    key: "program",
-                    label: "Program",
-                    icon: "mdi-application",
-                    value: this.filterValues.program,
-                    options: this.programs,
-                    clearable: true,
-                    placeholder: "Select Program",
-                    color: "primary"
-                },
-                {
-                    type: "select", 
-                    key: "phase",
-                    label: "Phase",
-                    icon: "mdi-timeline",
-                    value: this.filterValues.phase,
-                    options: this.phases,
-                    clearable: true,
-                    placeholder: "Select Phase",
-                    color: "secondary"
-                },
-                {
-                    type: "select",
-                    key: "organization", 
-                    label: "Organization",
-                    icon: "mdi-domain",
-                    value: this.filterValues.organization,
-                    options: this.organizations,
-                    clearable: false,
-                    placeholder: "Select Organization",
-                    color: "info"
-                }
-            ];
+            return filterService.createFilterConfig({
+                programs: this.programs,
+                phases: this.phases,
+                organizations: this.organizations,
+                filterValues: this.filterValues
+            });
         },
         
         hasActiveFilters() {
@@ -701,89 +674,18 @@ export default {
             };
         },
 
-        // Filter table data based on current filters and selected stat filter  
+        // Filter table data using FilterService
         filteredTableData() {
-            console.log("🔍 FILTEREDTABLEDATA DEBUG START");
-            console.log("tableData length:", this.tableData?.length || 0);
-            console.log("filterValues:", this.filterValues);
-            console.log("selectedStatFilter:", this.selectedStatFilter);
-            
-            if (!this.tableData || this.tableData.length === 0) {
-                console.log("❌ No tableData available");
-                return [];
-            }
-
-            let filtered = [...this.tableData];
-            console.log("Starting with", filtered.length, "items");
-
-            // Apply filter values (program, phase, organization) - only if they would not eliminate all data
-            if (this.filterValues.program && this.filterValues.program !== "") {
-                const beforeCount = filtered.length;
-                // Check if any items would match this filter before applying it
-                const wouldMatch = filtered.some(item => 
-                    item.program === this.filterValues.program ||
-                    item.organization === this.filterValues.program
-                );
-                
-                if (wouldMatch) {
-                    filtered = filtered.filter(item => 
-                        item.program === this.filterValues.program ||
-                        item.organization === this.filterValues.program
-                    );
-                    console.log(`Program filter (${this.filterValues.program}): ${beforeCount} -> ${filtered.length}`);
-                } else {
-                    console.log(`⚠️ Skipping program filter - no items would match: ${this.filterValues.program}`);
-                }
-            }
-
-            if (this.filterValues.phase && this.filterValues.phase !== "") {
-                const beforeCount = filtered.length;
-                // Check if any items would match this filter before applying it
-                const wouldMatch = filtered.some(item => 
-                    item.phase === this.filterValues.phase ||
-                    item.currentState === this.filterValues.phase
-                );
-                
-                if (wouldMatch) {
-                    filtered = filtered.filter(item => 
-                        item.phase === this.filterValues.phase ||
-                        item.currentState === this.filterValues.phase
-                    );
-                    console.log(`Phase filter (${this.filterValues.phase}): ${beforeCount} -> ${filtered.length}`);
-                } else {
-                    console.log(`⚠️ Skipping phase filter - no items would match: ${this.filterValues.phase}`);
-                }
-            }
-
-            if (this.filterValues.organization && this.filterValues.organization !== "All") {
-                const beforeCount = filtered.length;
-                filtered = filtered.filter(item => 
-                    item.organization === this.filterValues.organization
-                );
-                console.log(`Organization filter (${this.filterValues.organization}): ${beforeCount} -> ${filtered.length}`);
-            }
-
-            // Apply statistical filter (released, thisWeek, nextWeek, etc.)
-            if (this.selectedStatFilter && this.selectedStatFilter !== "all") {
-                const beforeCount = filtered.length;
-                filtered = this.applyStatFilter(filtered, this.selectedStatFilter);
-                console.log(`Stat filter (${this.selectedStatFilter}): ${beforeCount} -> ${filtered.length}`);
-            }
-
-            console.log("🔍 FILTEREDTABLEDATA FINAL:", filtered.length, "items");
-            if (filtered.length > 0) {
-                console.log("Sample filtered item:", filtered[0]);
-            }
-            console.log("🔍 FILTEREDTABLEDATA DEBUG END");
-
-            return filtered;
+            return filterService.applyAllFilters(
+                this.tableData,
+                this.filterValues,
+                this.selectedStatFilter
+            );
         },
 
+        // Release statistics using FilterService
         releaseStats() {
-            if (!this.filteredTableData || this.filteredTableData.length === 0) {
-                return null;
-            }
-            return this.computeStatsForArray(this.filteredTableData);
+            return filterService.computeStatistics(this.filteredTableData);
         },
 
         // Dynamic chart legend label based on data type  
@@ -1105,109 +1007,12 @@ export default {
             }
         },
 
-        /**
-         * Compute statistics for an array of parts.
-         */
-        computeStatsForArray(partsArray) {
-            const currentDate = new Date();
-            currentDate.setHours(0, 0, 0, 0);
-            const stats = {
-                totalCount: partsArray.length,
-                releasedCount: 0,
-                thisWeekCount: 0,
-                nextWeekCount: 0,
-                next30DaysCount: 0,
-                overdueCount: 0,
-                thisWeekPlanned: 0,
-                thisWeekReleased: 0,
-                nextWeekPlanned: 0,
-                nextWeekReleased: 0,
-                next30DaysPlanned: 0,
-                next30DaysReleased: 0,
-                toDatePlanned: 0,
-                toDateReleased: 0
-            };
-
-            stats.releasedCount = partsArray.filter(p => p.currentState === "RELEASED").length;
-
-            const toDateParts = partsArray.filter(part => {
-                const tgt = new Date(part.tgtRelease);
-                tgt.setHours(0, 0, 0, 0);
-                return tgt.getTime() <= currentDate.getTime();
-            });
-            stats.toDatePlanned = toDateParts.length;
-            stats.toDateReleased = toDateParts.filter(p => p.currentState === "RELEASED").length;
-
-            const [startOfWeek, endOfWeek] = this.getCurrentWeekRange(currentDate);
-            const [startNextWeek, endNextWeek] = this.getNextWeekRange(currentDate);
-
-            // This Week
-            const thisWeekParts = partsArray.filter(part => {
-                const tgt = new Date(part.tgtRelease);
-                tgt.setHours(0, 0, 0, 0);
-                return tgt.getTime() >= startOfWeek && tgt.getTime() <= endOfWeek;
-            });
-            stats.thisWeekPlanned = thisWeekParts.length;
-            stats.thisWeekReleased = thisWeekParts.filter(p => p.currentState === "RELEASED").length;
-            stats.thisWeekCount = thisWeekParts.length;
-
-            // Next Week
-            const nextWeekParts = partsArray.filter(part => {
-                const tgt = new Date(part.tgtRelease);
-                tgt.setHours(0, 0, 0, 0);
-                return tgt.getTime() >= startNextWeek && tgt.getTime() <= endNextWeek;
-            });
-            stats.nextWeekPlanned = nextWeekParts.length;
-            stats.nextWeekReleased = nextWeekParts.filter(p => p.currentState === "RELEASED").length;
-            stats.nextWeekCount = nextWeekParts.length;
-
-            // Next 30 Days
-            const DAYS_IN_30 = 30;
-            const nowMs = currentDate.getTime();
-            const next30 = new Date(currentDate);
-            next30.setDate(next30.getDate() + DAYS_IN_30);
-            const next30Ms = next30.getTime();
-
-            const next30Parts = partsArray.filter(part => {
-                const tgt = new Date(part.tgtRelease);
-                tgt.setHours(0, 0, 0, 0);
-                return tgt.getTime() >= nowMs && tgt.getTime() <= next30Ms;
-            });
-            stats.next30DaysPlanned = next30Parts.length;
-            stats.next30DaysReleased = next30Parts.filter(p => p.currentState === "RELEASED").length;
-            stats.next30DaysCount = next30Parts.length;
-
-            // Overdue
-            stats.overdueCount = partsArray.filter(part => {
-                const tgt = new Date(part.tgtRelease);
-                tgt.setHours(0, 0, 0, 0);
-                return tgt.getTime() < currentDate.getTime() && part.currentState !== "RELEASED";
-            }).length;
-
-            return stats;
-        },
-
-        getCurrentWeekRange(date) {
-            const DAYS_IN_WEEK = 7;
-            const now = new Date(date);
-            now.setHours(0, 0, 0, 0);
-            const dayOfWeek = now.getDay();
-            const start = new Date(now);
-            start.setDate(now.getDate() - dayOfWeek);
-            const end = new Date(start);
-            end.setDate(start.getDate() + (DAYS_IN_WEEK - 1));
-            return [start.getTime(), end.getTime()];
-        },
-
-        getNextWeekRange(date) {
-            const DAYS_IN_WEEK = 7;
-            const [startOfThisWeek] = this.getCurrentWeekRange(date);
-            const startNextWeek = new Date(startOfThisWeek);
-            startNextWeek.setDate(startNextWeek.getDate() + DAYS_IN_WEEK);
-            const endNextWeek = new Date(startNextWeek);
-            endNextWeek.setDate(endNextWeek.getDate() + (DAYS_IN_WEEK - 1));
-            return [startNextWeek.getTime(), endNextWeek.getTime()];
-        },
+        // ===== FILTERING LOGIC MOVED TO FilterService =====
+        // The following methods have been moved to FilterService:
+        // - computeStatsForArray() -> filterService.computeStatistics()
+        // - getCurrentWeekRange() -> filterService.getCurrentWeekRange()
+        // - getNextWeekRange() -> filterService.getNextWeekRange()
+        // - applyStatFilter() -> filterService.applyStatisticalFilter()
 
         // Fetch programs from API
         async fetchPrograms() {
@@ -1443,18 +1248,10 @@ export default {
         },
 
         /**
-         * Get display name for filter type
+         * Get display name for filter type using FilterService
          */
         getFilterDisplayName(filterType) {
-            const displayNames = {
-                all: "Items",
-                released: "Released",
-                thisWeek: "This Week",
-                nextWeek: "Next Week",
-                overdue: "Overdue",
-                next30Days: "Next 30 Days"
-            };
-            return displayNames[filterType] || "Items";
+            return filterService.getFilterDisplayName(filterType);
         },
 
         /**
@@ -1656,65 +1453,6 @@ export default {
                 firstDatasetSample: datasets[0]
             });
             console.log("✅ Full chartData object:", JSON.stringify(this.chartData, null, 2));
-        },
-
-        /**
-         * Apply statistical filter to data array
-         */
-        applyStatFilter(dataArray, filterType) {
-            const currentDate = new Date();
-            currentDate.setHours(0, 0, 0, 0);
-            const currentMs = currentDate.getTime();
-            
-            switch (filterType) {
-                case "released":
-                    return dataArray.filter(item => item.currentState === "RELEASED");
-                    
-                case "thisWeek": {
-                    const [startOfWeek, endOfWeek] = this.getCurrentWeekRange(currentDate);
-                    return dataArray.filter(item => {
-                        const tgt = new Date(item.tgtRelease || item.targetReleaseDate);
-                        tgt.setHours(0, 0, 0, 0);
-                        const tgtMs = tgt.getTime();
-                        return tgtMs >= startOfWeek && tgtMs <= endOfWeek;
-                    });
-                }
-                    
-                case "nextWeek": {
-                    const [startNextWeek, endNextWeek] = this.getNextWeekRange(currentDate);
-                    return dataArray.filter(item => {
-                        const tgt = new Date(item.tgtRelease || item.targetReleaseDate);
-                        tgt.setHours(0, 0, 0, 0);
-                        const tgtMs = tgt.getTime();
-                        return tgtMs >= startNextWeek && tgtMs <= endNextWeek;
-                    });
-                }
-                    
-                case "overdue":
-                    return dataArray.filter(item => {
-                        const tgt = new Date(item.tgtRelease || item.targetReleaseDate);
-                        tgt.setHours(0, 0, 0, 0);
-                        return tgt.getTime() < currentMs && item.currentState !== "RELEASED";
-                    });
-                    
-                case "next30Days": {
-                    const DAYS_IN_30 = 30;
-                    const next30 = new Date(currentDate);
-                    next30.setDate(next30.getDate() + DAYS_IN_30);
-                    const next30Ms = next30.getTime();
-                    
-                    return dataArray.filter(item => {
-                        const tgt = new Date(item.tgtRelease || item.targetReleaseDate);
-                        tgt.setHours(0, 0, 0, 0);
-                        const tgtMs = tgt.getTime();
-                        return tgtMs >= currentMs && tgtMs <= next30Ms;
-                    });
-                }
-                    
-                case "all":
-                default:
-                    return dataArray;
-            }
         },
 
         /**

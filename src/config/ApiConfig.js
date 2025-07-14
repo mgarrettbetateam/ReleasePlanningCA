@@ -7,7 +7,7 @@
 /**
  * Set this to true for production, false for development
  */
-export const USE_PRODUCTION = true; // Change this to toggle environments
+export const USE_PRODUCTION = false; // Change this to toggle environments
 
 /**
  * Set this to true to use mock data instead of real API calls
@@ -37,3 +37,4 @@ export const API_BASE_URL = getApiBaseUrl();
 /* eslint-disable no-console */
 console.log("[ApiConfig] Using API Base URL:", API_BASE_URL, USE_PRODUCTION ? "(PRODUCTION)" : "(DEVELOPMENT)");
 console.log("[ApiConfig] Mock Data Mode:", USE_MOCK_DATA ? "ENABLED" : "DISABLED");
+

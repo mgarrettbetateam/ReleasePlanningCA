@@ -59,8 +59,7 @@ class DataTransformationService {
                     owner: ["owner", "respEngr", "responsibleEngineer"],
                     currentState: ["currentState", "status"],
                     targetReleaseDate: ["targetReleaseDate", "dueDate"],
-                    actualApproveDate: ["actualApproveDate", "approvedDate"],
-                    actualReleaseDate: ["actualReleaseDate", "completedDate"]
+                    actualCompleteDate: ["actualCompleteDate", "actualReleaseDate", "completedDate"]
                 }
             }
         };

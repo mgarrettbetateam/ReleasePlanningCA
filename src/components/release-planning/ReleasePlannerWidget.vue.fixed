@@ -24,24 +24,33 @@
             :filters="filterConfig"
             :filter-values="filterValues"
             @filter-change="handleFilterChange"
-        >
-            <!-- Data Type Switcher (move here for dev/testing) -->
-            <template #after-filters>
-                <div class="data-type-switcher">
-                    <v-chip-group v-model="currentDataType" mandatory column>
-                        <v-chip
-                            v-for="dataType in getAvailableDataTypes()"
-                            :key="dataType"
-                            :value="dataType"
-                            small
-                            @click="switchDataType(dataType)"
-                        >
-                            {{ dataType.toUpperCase() }}
-                        </v-chip>
-                    </v-chip-group>
-                </div>
-            </template>
-        </UniversalFilterControls>        <!-- Charts and Tables Section -->
+        />
+
+        <!-- Dedicated Data Type Switcher - separate from filter controls -->
+        <div class="data-type-switcher-container">
+            <div class="data-type-label">Data Type:</div>
+            <div class="data-type-switcher">
+                <v-btn-toggle
+                    v-model="currentDataTypeIndex"
+                    mandatory
+                    dense
+                    color="primary"
+                    @change="onDataTypeToggleChange"
+                >
+                    <v-btn
+                        v-for="(dataType, index) in getAvailableDataTypes()"
+                        :key="dataType"
+                        :value="index"
+                        small
+                        class="data-type-btn"
+                    >
+                        {{ dataType.toUpperCase() }}
+                    </v-btn>
+                </v-btn-toggle>
+            </div>
+        </div>
+
+        <!-- Charts and Tables Section -->
         <v-row class="content-section">
             <!-- Line Chart Widget - Full Width -->
             <v-col cols="12">
@@ -72,7 +81,7 @@
                     </v-card-title>
                     
                     <!-- Move legend here, inside the chart card but below the header -->
-                    <div class="legend-container legend-row chart-legend-inside">
+                    <div class="legend-container legend-row chart-legend-inside" style="margin-bottom:0;">
                         <div class="legend-item clickable-legend" :class="{ 'legend-disabled': !showTargetLine }">
                             <div class="legend-color-bar" style="background-color: #1976d2;" :style="{ opacity: showTargetLine ? 1 : 0.3 }"></div>
                             <span class="legend-label" :style="{ opacity: showTargetLine ? 1 : 0.5 }" @click="toggleTargetLine">
@@ -106,21 +115,18 @@
                             </span>
                         </div>
                     </div>
-
+                    
                     <v-card-text class="chart-content-wrapper">
-                        <div class="chart-container" style="position: relative; height: 360px; width: 100%;">
-                            <!-- Debug info -->
-                            <!-- <div v-if="chartData" style="font-size: 12px; color: #666; margin-bottom: 10px;">
-                                🐛 Debug: Labels: {{ chartData.labels?.length || 0 }}, Datasets: {{ chartData.datasets?.length || 0 }}
-                            </div> -->
-                            <ReleaseChart
-                                v-if="chartData.labels && chartData.labels.length > 0"
-                                ref="lineChart"
-                                :chart-data="chartData"
-                                :chart-options="dynamicChartOptions"
-                                style="height: 360px; width: 100%;"
+                        <div class="chart-container">
+                            <UniversalChart
+                                v-if="chartDataFromFiltered.labels && chartDataFromFiltered.labels.length > 0"
+                                :key="chartKey"
+                                :data="chartDataFromFiltered"
+                                :options="dynamicChartOptions"
+                                type="line"
+                                :height="420"
                             />
-                            <div v-if="!chartData.labels || chartData.labels.length === 0" class="no-chart-data">
+                            <div v-else class="no-chart-data">
                                 <div class="no-data-icon">
                                     <v-icon size="64" color="grey lighten-2">mdi-chart-line-variant</v-icon>
                                 </div>
@@ -344,6 +350,28 @@
   flex-direction: column;
 }
 
+.chart-card {
+  min-height: 480px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-content-wrapper {
+  flex: 1;
+  padding: 0 24px 24px 24px;
+  display: flex;
+  align-items: stretch;
+}
+
+.chart-container {
+  flex: 1;
+  min-height: 400px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 /* Ensure all filter dropdowns (program, phase, organization) are visually consistent in size */
 .universal-filter-controls .v-select,
 .universal-filter-controls .v-input,
@@ -370,37 +398,300 @@
 /* Optional: Adjust the label and icon for vertical alignment */
 .universal-filter-controls .v-label,
 .universal-filter-controls .v-icon {
-  line-height: 44px !important;
-  height: 44px !important;
+  margin-top: 0 !important;
   display: flex;
   align-items: center;
 }
 
-/* Optional: ensure the filter controls are aligned horizontally and spaced evenly */
-.universal-filter-controls {
+/* Make sure the filter content stays on one line and is centered vertically */
+.universal-filter-controls .v-select__slot {
   display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
+  flex-wrap: nowrap;
   align-items: center;
+}
+
+/* Ensure labels aren't wrapping */
+.universal-filter-controls .v-select__selection {
+  white-space: nowrap !important;
+  max-width: 180px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Headliner Stats Styling */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 8px;
+  border-radius: 4px;
+  background-color: #f5f5f5;
+  transition: all 0.2s ease;
+}
+
+.clickable-stat {
+  cursor: pointer;
+}
+
+.clickable-stat:hover {
+  background-color: #e0e0e0;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stat-active {
+  background-color: #e3f2fd;
+  border: 1px solid #2196f3;
+}
+
+.stat-disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.stat-disabled:hover {
+  background-color: #f5f5f5;
+  transform: none;
+  box-shadow: none;
+}
+
+.stat-number {
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #666;
+  text-align: center;
+}
+
+/* Compact version for smaller spaces */
+.compact-stat {
+  padding: 8px 4px;
+}
+
+.compact-number {
+  font-size: 20px;
+}
+
+.compact-label {
+  font-size: 12px;
+}
+
+.no-stats-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  color: #9e9e9e;
+  text-align: center;
+}
+
+/* No chart data styling */
+.no-chart-data {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 200px;
+  color: #9e9e9e;
+  text-align: center;
+}
+
+.no-data-icon {
+  margin-bottom: 16px;
+}
+
+.no-data-title {
+  font-size: 18px;
+  margin-bottom: 8px;
+  color: #666;
+}
+
+.no-data-description {
+  margin-bottom: 16px;
+  max-width: 300px;
+}
+
+/* Legend styling */
+.legend-container {
+  display: flex;
+  align-items: center;
+  margin: 0 24px 16px;
+}
+
+.legend-row {
+  flex-direction: row;
+  gap: 24px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  cursor: default;
+}
+
+.clickable-legend {
+  cursor: pointer;
+}
+
+.legend-disabled {
+  opacity: 0.7;
+}
+
+.legend-color-bar {
+  width: 24px;
+  height: 3px;
+  margin-right: 8px;
+  border-radius: 1px;
+}
+
+.legend-label {
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+}
+
+.legend-eye-btn {
+  margin-left: 4px;
+  opacity: 0.7;
+}
+
+.legend-eye-btn:hover {
+  opacity: 1;
+}
+
+/* Move legend inside chart card */
+.chart-legend-inside {
+  padding: 0px 24px;
+  margin-bottom: 8px !important;
+}
+
+/* Improve spacing around filter controls */
+.universal-filter-controls {
+  margin-bottom: 12px;
+}
+
+/* Data type switcher for better visual separation */
+.data-type-switcher-container {
+  margin-bottom: 20px;
+}
+
+/* Slight adjustments for headers */
+.planner-header, .chart-header, .table-header {
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+/* Compact headliners header */
+.compact-header {
+  padding: 12px 16px !important;
+  min-height: auto !important;
+}
+
+.compact-title {
+  font-size: 16px !important;
+}
+
+.headliner-chips {
+  display: flex;
+  align-items: center;
+}
+
+/* Set minimum content height */
+.content-section {
+  min-height: 400px;
+}
+
+/* Ensure all cards have consistent elevation */
+.chart-card, .table-card, .headliners-card {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+  border-radius: 4px;
+  overflow: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Make sure chart title is properly sized */
+.chart-title {
+  font-size: 18px;
+  font-weight: 500;
+}
+
+/* Chart meta info (points count, etc) */
+.chart-meta {
+  display: flex;
+  align-items: center;
+}
+
+/* Export button styling */
+.export-btn {
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.export-btn:hover {
+  opacity: 1;
+}
+
+/* Ensure the enhanced-parts-planner container has proper spacing */
+.enhanced-parts-planner {
+  padding: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Make sure headliners card content has proper spacing */
+.headliners-content {
+  padding: 8px !important;
+}
+
+/* No data message for tables */
+.no-data-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+  text-align: center;
+  color: #9e9e9e;
+}
+
+/* Ensure v-data-table has full height */
+.v-data-table {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 </style>
 
 <script>
 /* eslint-disable no-console */
-import ReleaseChart from "@/components/charts/ReleaseChart.vue";
+import UniversalChart from "@/components/universal/UniversalChart.vue";
 import UniversalFilterControls from "@/components/universal/UniversalFilterControls.vue";
 import ChangeActionCell from "@/components/release-planning/ChangeActionCell.vue";
 import dataService from "@/data/DataServiceBase.js";
-import filterService from "@/services/FilterService.js";
-import chartDataService from "@/services/ChartDataService.js";
-import dataTransformationService from "@/services/DataTransformationService.js";
-import exportService from "@/services/ExportService.js";
-import { USE_MOCK_DATA } from "@/assets/config/app-data.json";
+import { USE_MOCK_DATA } from "@/config/ApiConfig.js";
 
 export default {
     name: "EnhancedPartsPlannerWidget",
     components: {
-        ReleaseChart,
+        UniversalChart,
         UniversalFilterControls,
         ChangeActionCell
     },
@@ -422,21 +713,20 @@ export default {
             // Filter options - will be loaded dynamically
             programs: [],
             phases: [],
-            organizations: ["All"], // Initialize with default
+            organizations: [],
             
             // Raw data
             tableData: [],
             
             // Data for chart and filtered display
             chartData: { labels: [], datasets: [] },
+            chartKey: 0, // Add for forcing chart re-renders
             
             // Current data type being displayed - determines which header configuration to use
             currentDataType: "parts", // "parts", "cas", "crs", etc.
+            currentDataTypeIndex: 0, // Index for v-btn-toggle
             
             // Configuration for different data types - easily extensible
-            // ⚠️  IMPORTANT: When adding new data types here, you MUST also update 
-            // the mapItemToTableData() method in the methods section below (around line 890)
-            // to handle the new data type. Field names must match exactly!
             headerConfigurations: {
                 parts: [
                     { text: "Part Number", value: "partNo", sortable: true, required: true, icon: "mdi-barcode" },
@@ -451,8 +741,10 @@ export default {
                 ],
                 cas: [
                     { text: "CA Number", value: "caNumber", sortable: true, required: true, icon: "mdi-file-document" },
+                    // { text: "Rev", value: "revision", sortable: true, icon: "mdi-source-branch" },
                     { text: "Description", value: "changeSummary", sortable: true, icon: "mdi-text" },
-                    { text: "Resp Engr", value: "resEngr", sortable: true, icon: "mdi-account" },
+                    { text: "Resp Engr", value: "name", sortable: true, icon: "mdi-account" },
+                   // { text: "Organization", value: "organization", sortable: true, icon: "mdi-domain" },
                     { text: "Status", value: "currentState", sortable: true, icon: "mdi-flag" },
                     { text: "Target Complete Date", value: "targetReleaseDate", sortable: true, icon: "mdi-calendar-clock" },
                     { text: "Actual Approved Date", value: "approvedDate", sortable: true, icon: "mdi-calendar-check" },
@@ -460,20 +752,14 @@ export default {
                 ],
                 crs: [
                     { text: "CR Number", value: "crNumber", sortable: true, required: true, icon: "mdi-file-document-outline" },
-                    { text: "Description", value: "reasonforChange", sortable: true, icon: "mdi-format-title" },
-                    { text: "Resp Engr", value: "owner", sortable: true, icon: "mdi-account" },
+                    { text: "Name", value: "name", sortable: true, icon: "mdi-format-title" },
+                    { text: "Resp Engr", value: "respEngr", sortable: true, icon: "mdi-account" },
                     { text: "Status", value: "currentState", sortable: true, icon: "mdi-flag" },
                     { text: "Target Complete Date", value: "targetReleaseDate", sortable: true, icon: "mdi-calendar-plus" },
-                    { text: "Actual Complete Date", value: "actualCompleteDate", sortable: true, icon: "mdi-calendar-check" }
+                    { text: "Actual Approve Date", value: "actualApproveDate", sortable: true, icon: "mdi-calendar-clock" },
+                    { text: "Actual Complete Date", value: "actualReleaseDate", sortable: true, icon: "mdi-calendar-check" }
                 ]
             },
-            
-            /**
-             * ⚠️  IMPORTANT: When adding new data types to headerConfigurations above,
-             * you MUST also update the mapItemToTableData() method below to handle the new type.
-             * The field names returned by mapItemToTableData MUST match the "value" properties 
-             * in the corresponding headerConfigurations entry.
-             */
             
             // UI state
             loading: false,
@@ -484,17 +770,20 @@ export default {
             showActualLine: true,
             
             // Release headliner filter
-            selectedStatFilter: "all",
-            
-            // Chart refresh key to force chart updates
-            chartKey: 0
+            selectedStatFilter: "all"
         };
     },
     
     computed: {
-        // Dynamic widget title based on current data type using DataTransformationService
+        // Dynamic widget title based on current data type
         widgetTitle() {
-            return dataTransformationService.getDataTypeTitle(this.currentDataType);
+            const titles = {
+                parts: "Release Planning Parts Dashboard",
+                cas: "Release Planning CA Dashboard", 
+                crs: "Release Planning CR Dashboard"
+            };
+            
+            return titles[this.currentDataType] || "Release Planning Dashboard";
         },
 
         // Dynamic table headers based on current data type and available data
@@ -532,521 +821,336 @@ export default {
             return filteredHeaders;
         },
 
-        // Filter configuration using FilterService
         filterConfig() {
-            return filterService.createFilterConfig({
-                programs: this.programs,
-                phases: this.phases,
-                organizations: this.organizations,
-                filterValues: this.filterValues
-            });
-        },
-        
-        hasActiveFilters() {
-            return (this.filterValues.program && this.filterValues.program !== "") ||
-                   (this.filterValues.phase && this.filterValues.phase !== "") ||
-                   (this.filterValues.organization && this.filterValues.organization !== "All");
-        },
-        
-        activeFilterCount() {
-            let count = 0;
-            if (this.filterValues.program && this.filterValues.program !== "") count++;
-            if (this.filterValues.phase && this.filterValues.phase !== "") count++;
-            if (this.filterValues.organization && this.filterValues.organization !== "All") count++;
-            return count;
-        },
-
-        // Dynamic chart options using ChartDataService
-        dynamicChartOptions() {
-            return chartDataService.createChartOptions(this.currentDataType);
-        },
-
-        // Filter table data using FilterService
-        filteredTableData() {
-            return filterService.applyAllFilters(
-                this.tableData,
-                this.filterValues,
-                this.selectedStatFilter
-            );
-        },
-
-        // Release statistics using FilterService
-        releaseStats() {
-            return filterService.computeStatistics(this.filteredTableData);
-        },
-
-        // Dynamic chart legend label using ChartDataService
-        chartLegendLabel() {
-            return chartDataService.getChartLegendLabel(this.currentDataType);
-        }
-    },
-    
-    // Watch for changes that should trigger chart updates
-    watch: {
-        // Smart watcher: Only update chart if data count changes, not content edits
-        "filteredTableData": {
-            handler(newData, oldData) {
-                // Only update chart if the data count changed or it's the initial load
-                const newLength = newData?.length || 0;
-                const oldLength = oldData?.length || 0;
-                
-                if (newLength !== oldLength || oldLength === 0) {
-                    console.log("👀 CHART WATCH: Data count changed", oldLength, "→", newLength);
-                    this.$nextTick(() => {
-                        this.updateChartFromFiltered();
-                    });
-                } else {
-                    console.log("👀 CHART WATCH: Ignoring content-only changes (same count)");
+            return [
+                {
+                    key: "program",
+                    label: "Program",
+                    icon: "mdi-briefcase",
+                    placeholder: "Select Program",
+                    options: this.programs,
+                    color: "primary"
+                },
+                {
+                    key: "phase",
+                    label: "Phase", 
+                    icon: "mdi-timeline",
+                    placeholder: "Select Phase",
+                    options: this.phases,
+                    color: "secondary"
+                },
+                {
+                    key: "organization",
+                    label: "Organization",
+                    icon: "mdi-domain", 
+                    placeholder: "Select Organization",
+                    options: this.organizations,
+                    color: "accent"
                 }
-            },
-            deep: false // Don't deep watch - we only care about array length changes
+            ]
         },
         
-        // Watch for filter changes that should trigger chart updates
-        "filterValues.program": {
-            handler() {
-                console.log("👀 CHART WATCH: Program filter changed");
-                this.$nextTick(() => {
-                    this.updateChartFromFiltered();
-                });
+        // Directly computes chart data from filtered table data for reactivity
+        chartDataFromFiltered() {
+            console.log("🔄 [COMPUTED] Computing chart data directly from filteredTableData");
+            console.log(`📊 Using ${this.filteredTableData.length} filtered items for chart`);
+            
+            // Clear chart data if no filtered data is available
+            if (!this.filteredTableData || this.filteredTableData.length === 0) {
+                console.log("❌ [CHART] No filteredTableData, returning empty chart data");
+                return { labels: [], datasets: [] };
             }
-        },
-        
-        "filterValues.phase": {
-            handler() {
-                console.log("👀 CHART WATCH: Phase filter changed");
-                this.$nextTick(() => {
-                    this.updateChartFromFiltered();
-                });
+
+            // Work with a copy of the filtered data to avoid mutations
+            const currentFilteredData = [...this.filteredTableData];
+            
+            // Count items with target and actual dates
+            let targetDateCount = 0;
+            let actualDateCount = 0;
+            
+            // Collect release dates for both target and actual
+            const targetDates = [];
+            const actualDates = [];
+            
+            currentFilteredData.forEach((item) => {
+                // Target release dates
+                let targetDate = null;
+                switch (this.currentDataType) {
+                    case "parts":
+                        targetDate = item.tgtRelease || item.targetReleaseDate;
+                        break;
+                    case "cas":
+                        targetDate = item.targetReleaseDate;
+                        break;
+                    case "crs":
+                        targetDate = item.dueDate;
+                        break;
+                    default:
+                        targetDate = item.tgtRelease || item.targetReleaseDate || item.dueDate;
+                }
+                
+                if (targetDate && targetDate !== "N/A" && targetDate !== null && targetDate !== "") {
+                    try {
+                        const dateObj = new Date(targetDate);
+                        if (!isNaN(dateObj.getTime())) {
+                            targetDates.push({
+                                date: dateObj,
+                                dateString: dateObj.toLocaleDateString(),
+                                item
+                            });
+                            targetDateCount++;
+                        }
+                    } catch (error) {
+                        console.warn("[DEBUG] Exception parsing targetDate:", targetDate, error);
+                    }
+                }
+                
+                // Actual release dates
+                let actualDate = null;
+                switch (this.currentDataType) {
+                    case "parts":
+                        actualDate = item.actualRelease || item.actualReleaseDate;
+                        break;
+                    case "cas":
+                        actualDate = item.actualReleaseDate;
+                        break;
+                    case "crs":
+                        actualDate = item.completedDate;
+                        break;
+                    default:
+                        actualDate = item.actualRelease || item.actualReleaseDate || item.completedDate;
+                }
+                
+                if (actualDate && actualDate !== "N/A" && actualDate !== null && actualDate !== "") {
+                    try {
+                        const dateObj = new Date(actualDate);
+                        if (!isNaN(dateObj.getTime())) {
+                            actualDates.push({
+                                date: dateObj,
+                                dateString: dateObj.toLocaleDateString(),
+                                item
+                            });
+                            actualDateCount++;
+                        }
+                    } catch (error) {
+                        console.warn("[DEBUG] Exception parsing actualDate:", actualDate, error);
+                    }
+                }
+            });
+
+            console.log(`[CHART DATA] Found ${targetDateCount} valid target dates and ${actualDateCount} valid actual dates`);
+            
+            if (targetDates.length === 0 && actualDates.length === 0) {
+                console.log("[CHART DATA] No valid release dates found, returning empty chart");
+                return { labels: [], datasets: [] };
             }
-        },
-        
-        "filterValues.organization": {
-            handler() {
-                console.log("👀 CHART WATCH: Organization filter changed");
-                this.$nextTick(() => {
-                    this.updateChartFromFiltered();
+
+            // Create a unified timeline covering all dates from both target and actual
+            const allDates = new Set();
+            targetDates.forEach(item => allDates.add(item.dateString));
+            actualDates.forEach(item => allDates.add(item.dateString));
+            const sortedDates = Array.from(allDates).sort((a, b) => new Date(a) - new Date(b));
+            
+            // Create cumulative datasets using the unified timeline
+            const createUnifiedCumulativeDataset = (dates, label, color, backgroundColor) => {
+                const dateGroups = new Map();
+                dates.forEach(release => {
+                    const dateStr = release.dateString;
+                    if (!dateGroups.has(dateStr)) {
+                        dateGroups.set(dateStr, 0);
+                    }
+                    dateGroups.set(dateStr, dateGroups.get(dateStr) + 1);
                 });
-            }
-        },
-        
-        // Watch selectedStatFilter changes
-        "selectedStatFilter": {
-            handler(newFilter, oldFilter) {
-                console.log("👀 CHART WATCH: Stat filter changed from", oldFilter, "to", newFilter);
-                this.$nextTick(() => {
-                    this.updateChartFromFiltered();
+                
+                const cumulativeData = [];
+                let runningTotal = 0;
+                sortedDates.forEach(dateStr => {
+                    if (dateGroups.has(dateStr)) {
+                        runningTotal += dateGroups.get(dateStr);
+                    }
+                    cumulativeData.push(runningTotal);
                 });
+                
+                return {
+                    label,
+                    data: cumulativeData,
+                    borderColor: color,
+                    backgroundColor,
+                    tension: 0.2,
+                    fill: false,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    borderWidth: 3
+                };
+            };
+            
+            const dataTypeLabels = {
+                parts: { target: "Target Parts Release", actual: "Actual Parts Released" },
+                cas: { target: "Target CAs Release", actual: "Actual CAs Released" },
+                crs: { target: "Target CRs Release", actual: "Actual CRs Released" }
+            };
+            
+            const labels = dataTypeLabels[this.currentDataType] || { target: "Target Items", actual: "Actual Items" };
+            const datasets = [];
+            
+            if (targetDates.length > 0 && this.showTargetLine) {
+                const targetDataset = createUnifiedCumulativeDataset(
+                    targetDates,
+                    labels.target,
+                    "#1976d2",
+                    "rgba(25, 118, 210, 0.1)"
+                );
+                datasets.push(targetDataset);
             }
-        },
-        
-        // Watch currentDataType changes
-        "currentDataType": {
-            handler(newType, oldType) {
-                console.log("👀 CHART WATCH: Data type changed from", oldType, "to", newType);
-                this.$nextTick(() => {
-                    this.updateChartFromFiltered();
-                });
+            
+            if (actualDates.length > 0 && this.showActualLine) {
+                const actualDataset = createUnifiedCumulativeDataset(
+                    actualDates,
+                    labels.actual,
+                    "#4caf50",
+                    "rgba(76, 175, 80, 0.1)"
+                );
+                datasets.push(actualDataset);
             }
+            
+            const result = {
+                labels: sortedDates,
+                datasets
+            };
+            
+            console.log(`[CHART GENERATION COMPLETE] Chart created with ${sortedDates.length} date labels and ${datasets.length} datasets`);
+            
+            return result;
         }
-    },
-    
-    async mounted() {
-        console.log("🚀 ReleasePlannerWidget mounted - initializing...");
-        console.log("📊 Current data type:", this.currentDataType);
-        console.log("🏷️  Widget title:", this.widgetTitle);
-        console.log(" USE_MOCK_DATA:", USE_MOCK_DATA);
-        
-        // Initialize by fetching programs first
-        await this.fetchPrograms();
     },
     
     methods: {
-        /**
-         * ⚠️  CRITICAL: DATA TYPE MAPPING FUNCTION
-         * 
-         * This function transforms raw API response items into the format expected by the table.
-         * When you add a new data type to headerConfigurations above (in data section), you MUST 
-         * add a corresponding case to this function.
-         * 
-         * RULES FOR MAINTAINING CONSISTENCY:
-         * 1. The returned object keys MUST exactly match the "value" properties in headerConfigurations
-         * 2. If headerConfigurations.newType has { value: "fieldName" }, then this function must return { fieldName: someValue }
-         * 3. Test thoroughly after adding new data types to ensure table displays correctly
-         * 
-         * EXAMPLE: If you add a new "issues" data type with header { value: "issueTitle" },
-         * then add a case that returns { issueTitle: item.title || item.summary }
-         * 
-         * 📍 See headerConfigurations in data() section (around line 431) for reference
-         */
-        /**
-         * Map raw API item to standardized table data format using DataTransformationService
-         * 
-         * This method delegates to DataTransformationService for consistent data transformation
-         * across different data types (parts, cas, crs).
-         */
-        mapItemToTableData(item) {
-            return dataTransformationService.mapItemToTableData(item, this.currentDataType);
-        },
-
         // Chart legend toggle methods
         toggleTargetLine() {
             this.showTargetLine = !this.showTargetLine;
-            console.log("👁️ Target line toggled:", this.showTargetLine);
-            this.updateChartFromFiltered();
+            console.log("Target line visibility toggled:", this.showTargetLine);
+            this.$nextTick(() => {
+                this.chartKey += 1;
+                console.log("Chart key updated after target line toggle:", this.chartKey);
+            });
         },
         
         toggleActualLine() {
             this.showActualLine = !this.showActualLine;
-            console.log("👁️ Actual line toggled:", this.showActualLine);
-            this.updateChartFromFiltered();
+            console.log("Actual line visibility toggled:", this.showActualLine);
+            this.$nextTick(() => {
+                this.chartKey += 1;
+                console.log("Chart key updated after actual line toggle:", this.chartKey);
+            });
         },
         
         // Handle filter changes from UniversalFilterControls
         handleFilterChange(filterEvent) {
-            console.log("🔄 HANDLE FILTER CHANGE:");
-            console.log("  - Filter key:", filterEvent.key);
-            console.log("  - Filter value:", filterEvent.value);
-            console.log("  - All filters:", filterEvent.allFilters);
-            console.log("  - Previous filterValues:", JSON.stringify(this.filterValues));
-            
+            console.log("🔍 Filter changed:", filterEvent.key, "New value:", filterEvent.value);
             this.filterValues = { ...filterEvent.allFilters };
             
-            console.log("  - New filterValues:", JSON.stringify(this.filterValues));
+            // Force chart re-render after the filter is applied
+            this.$nextTick(() => {
+                this.chartKey += 1;
+                console.log(`Chart key incremented to ${this.chartKey} after filter change`);
+            });
+        },
+        
+        // Filter table data by release status
+        filterByReleaseStatus(statusFilter) {
+            console.log("====== HEADLINER FILTER CHANGE ======");
+            console.log(`Filtering by release status: ${statusFilter}`);
             
-            // Handle specific filter logic
-            if (filterEvent.key === "program") {
-                console.log("🔄 Program changed, fetching phases...");
-                this.onProgramChange();
-            } else if (filterEvent.key === "phase") {
-                console.log("🔄 Phase changed, fetching data...");
-                this.handlePhaseChange();
-            } else if (filterEvent.key === "organization") {
-                console.log("🔄 Organization changed, updating chart...");
-                this.updateChartFromFiltered();
-                this.lastUpdated = new Date().toLocaleTimeString();
+            // Update the filter and let Vue's reactivity handle the rest
+            this.selectedStatFilter = statusFilter;
+            
+            // Force chart re-render after the filter is applied
+            this.$nextTick(() => {
+                this.chartKey += 1;
+                console.log(`Chart key incremented to ${this.chartKey} after filter change`);
+            });
+        },
+        
+        // Get available data types based on configuration
+        getAvailableDataTypes() {
+            return Object.keys(this.headerConfigurations);
+        },
+        
+        // Handle data type toggle change
+        onDataTypeToggleChange(index) {
+            const availableTypes = this.getAvailableDataTypes();
+            if (index >= 0 && index < availableTypes.length) {
+                this.currentDataType = availableTypes[index];
+                console.log(`Data type changed to ${this.currentDataType}`);
+                
+                // Force chart re-render on data type change
+                this.$nextTick(() => {
+                    this.chartKey += 1;
+                    console.log(`Chart key incremented to ${this.chartKey} after data type change`);
+                });
             }
         },
         
-        /**
-         * Export table data in the specified format using ExportService
-         */
-        exportTableData(format) {
-            const options = {
-                fileName: `${this.currentDataType}-table`,
-                documentTitle: `${this.widgetTitle} Export`
+        // Apply statistical filter (released, thisWeek, nextWeek, etc.)
+        applyStatFilter(data, filterType) {
+            if (filterType === 'all') return data;
+            
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const nextWeekStart = new Date(today);
+            nextWeekStart.setDate(today.getDate() + 7);
+            const nextWeekEnd = new Date(nextWeekStart);
+            nextWeekEnd.setDate(nextWeekStart.getDate() + 7);
+            const next30Days = new Date(today);
+            next30Days.setDate(today.getDate() + 30);
+            
+            return data.filter(item => {
+                const targetDate = new Date(item.tgtRelease || item.targetReleaseDate || item.dueDate);
+                const actualDate = new Date(item.actualRelease || item.actualReleaseDate || item.completedDate);
+                
+                switch (filterType) {
+                    case 'released':
+                        return !isNaN(actualDate.getTime());
+                    case 'thisWeek':
+                        return !isNaN(targetDate.getTime()) && 
+                               targetDate >= today && 
+                               targetDate < nextWeekStart;
+                    case 'nextWeek':
+                        return !isNaN(targetDate.getTime()) && 
+                               targetDate >= nextWeekStart && 
+                               targetDate < nextWeekEnd;
+                    case 'overdue':
+                        return !isNaN(targetDate.getTime()) && 
+                               targetDate < today && 
+                               isNaN(actualDate.getTime());
+                    case 'next30Days':
+                        return !isNaN(targetDate.getTime()) && 
+                               targetDate >= today && 
+                               targetDate <= next30Days;
+                    default:
+                        return true;
+                }
+            });
+        },
+        
+        // Helper method to get display name for filter
+        getFilterDisplayName(filter) {
+            const names = {
+                'released': 'Released',
+                'thisWeek': 'This Week',
+                'nextWeek': 'Next Week',
+                'overdue': 'Overdue',
+                'next30Days': 'Next 30 Days',
+                'all': 'All'
             };
-            
-            exportService.exportTableData(
-                format, 
-                this.filteredTableData, 
-                this.tableHeaders, 
-                options
-            );
+            return names[filter] || filter;
         },
-
-        // ===== EXPORT LOGIC MOVED TO ExportService =====
-        // The following export methods have been moved to ExportService:
-        // - downloadAsCSV() -> exportService.downloadAsCSV()
-        // - convertTableToCSV() -> exportService.convertTableToCSV()
-        // - exportAsPDF() -> exportService.exportAsPDF()
-        // - createTablePDFHTML() -> exportService.createTablePDFHTML()
-        // - downloadPDFContent() -> exportService.downloadPDFContent()
-
-        // ===== FILTERING LOGIC MOVED TO FilterService =====
-        // The following methods have been moved to FilterService:
-        // - computeStatsForArray() -> filterService.computeStatistics()
-        // - getCurrentWeekRange() -> filterService.getCurrentWeekRange()
-        // - getNextWeekRange() -> filterService.getNextWeekRange()
-        // - applyStatFilter() -> filterService.applyStatisticalFilter()
-
-        // Fetch programs from API
-        async fetchPrograms() {
-            try {
-                const programs = await dataService.fetchPrograms();
-                this.programs = programs || [];
-                console.log("✅ Programs loaded:", this.programs.length);
-
-                if (this.programs.includes("CX300 Pre-Production Builds")) {
-                    this.filterValues.program = "CX300 Pre-Production Builds";
-                } else if (this.programs.length > 0) {
-                    this.filterValues.program = this.programs[0];
-                }
-
-                if (this.filterValues.program) {
-                    await this.fetchPhases();
-                }
-            } catch (err) {
-                console.error("Failed to fetch programs:", err.message);
-                this.programs = [];
-                this.filterValues.program = "";
-            }
-        },
-
-        onProgramChange() {
-            if (this.filterValues.program) {
-                this.fetchPhases();
-            }
-        },
-
-        async fetchPhases() {
-            this.loading = true;
-            try {
-                const phases = await dataService.fetchPhases(this.filterValues.program);
-                this.phases = phases || [];
-                console.log("✅ Phases loaded:", this.phases.length);
-
-                if (this.phases.length > 0) {
-                    this.filterValues.phase = this.phases[0];
-                    await this.fetchData(this.filterValues.phase);
-                } else {
-                    console.warn("No phases returned from API");
-                    this.phases = [];
-                    this.filterValues.phase = "";
-                    this.updateChartFromFiltered();
-                }
-            } catch (error) {
-                console.error("Failed to fetch phases:", error.message);
-                this.phases = [];
-                this.filterValues.phase = "";
-                this.updateChartFromFiltered();
-            } finally {
-                this.loading = false;
-            }
-        },
-
-        async handlePhaseChange() {
-            if (!this.filterValues.phase) return;
-            this.loading = true;
-            await this.fetchData(this.filterValues.phase);
-            this.loading = false;
-        },
-
-        async fetchData(phase) {
-            this.loading = true;
-            try {
-                console.log("=== FETCHDATA START ===");
-                console.log("Phase parameter:", phase);
-                console.log("Current data type:", this.currentDataType);
-                console.log("🔥 CRITICAL: About to call fetchItems with itemType:", this.currentDataType);
-                console.log("USE_MOCK_DATA flag:", USE_MOCK_DATA);
-                
-                // Use the generic fetchItems method with the current data type
-                const items = await dataService.fetchItems(phase, this.currentDataType);
-                
-                console.log("=== RAW API RESPONSE ===");
-                console.log("Type of items:", typeof items);
-                console.log("Is Array:", Array.isArray(items));
-                console.log("Items length:", items?.length);
-                console.log("Raw items data:", items);
-                
-                // Use DataTransformationService to process API response and transform data
-                this.tableData = dataTransformationService.transformApiResponseToTableData(items, this.currentDataType);
-                
-                console.log("=== FINAL TABLE DATA ===");
-                console.log("Final tableData array length:", this.tableData.length);
-                if (this.tableData.length > 0) {
-                    console.log("Sample mapped item:", this.tableData[0]);
-                    console.log("Sample mapped item keys:", Object.keys(this.tableData[0]));
-                } else {
-                    console.log("❌ No items in tableData after mapping");
-                }
-                console.log("=== FETCHDATA END ===");
-
-                // Update organizations from the actual parts data using DataTransformationService
-                this.organizations = dataTransformationService.extractOrganizations(this.tableData);
-                console.log("✅ Organizations updated from data:", this.organizations);
-
-                // Update chart data from the filtered table data
-                this.updateChartFromFiltered();
-
-            } catch (error) {
-                console.error("Error fetching data:", {
-                    message: error.message,
-                    phase,
-                    currentDataType: this.currentDataType,
-                    fullError: error
-                });
-                
-                // Clear data when API fails - no fallback data
-                console.log("Clearing data due to API failure");
-                this.tableData = [];
-                this.organizations = ["All"];
-                this.updateChartFromFiltered();
-            } finally {
-                this.loading = false;
-                this.lastUpdated = new Date().toLocaleTimeString();
-            }
-        },
-
-        // Dynamically set the data type using DataTransformationService validation
-        setDataType(dataType) {
-            const validation = dataTransformationService.validateDataType(dataType);
-            if (validation.isValid) {
-                this.currentDataType = dataType;
-                console.log(`✅ Data type set to: ${dataType}`);
-                console.log(`✅ Widget title will automatically update to: ${this.widgetTitle}`);
-            } else {
-                console.warn(validation.message);
-            }
-        },
-
-        // Method to manually switch data types for testing using DataTransformationService
-        switchDataType(newDataType) {
-            console.log("🔄 DEBUG: Switching data type from", this.currentDataType, "to", newDataType);
-            
-            const validation = dataTransformationService.validateDataType(newDataType);
-            if (validation.isValid) {
-                this.setDataType(newDataType);
-                
-                // Clear existing data to show the change
-                this.tableData = [];
-                
-                // Re-fetch data with the new type
-                if (this.filterValues.phase) {
-                    console.log("🔄 DEBUG: Re-fetching data for phase:", this.filterValues.phase, "with type:", newDataType);
-                    this.fetchData(this.filterValues.phase);
-                } else {
-                    console.warn("⚠️  DEBUG: No phase selected, cannot fetch data");
-                }
-            } else {
-                console.error("❌ DEBUG:", validation.message);
-            }
-        },
-
-        // Get available data types using DataTransformationService
-        getAvailableDataTypes() {
-            return dataTransformationService.getAvailableDataTypes();
-        },
-
-        /**
-         * Refresh data - re-fetch current data with current filters
-         */
+        
+        // Refresh data
         refreshData() {
-            console.log("🔄 Refreshing data...");
-            if (this.filterValues.phase) {
-                this.fetchData(this.filterValues.phase);
-            } else {
-                console.warn("⚠️  No phase selected for refresh");
-            }
-        },
-
-        /**
-         * Filter table data by release status
-         */
-        filterByReleaseStatus(statusFilter) {
-            console.log("🔍 Filtering by release status:", statusFilter);
-            console.log("🔍 Previous selectedStatFilter:", this.selectedStatFilter);
-            console.log("🔍 Previous filteredTableData length:", this.filteredTableData.length);
-            
-            this.selectedStatFilter = statusFilter;
-            
-            // The filteredTableData computed property will automatically update
-            // based on the selectedStatFilter value
-            
-            // Force immediate chart update after filter change
-            this.$nextTick(() => {
-                console.log("🔍 After filter change - new filteredTableData length:", this.filteredTableData.length);
-                this.updateChartFromFiltered();
-            });
-        },
-
-        /**
-         * Handle table row click events
-         */
-        handleRowClick(item) {
-            console.log("🖱️  Row clicked:", item);
-            // You can add custom logic here for row selection, detail views, etc.
-            // For now, just log the clicked item
-        },
-
-        /**
-         * Get display name for filter type using FilterService
-         */
-        getFilterDisplayName(filterType) {
-            return filterService.getFilterDisplayName(filterType);
-        },
-
-        /**
-         * Extract and validate date from item using ChartDataService
-         */
-        extractTargetDate(item) {
-            return chartDataService.extractTargetDate(item, this.currentDataType);
-        },
-
-        /**
-         * Extract and validate actual date from item using ChartDataService
-         */
-        extractActualDate(item) {
-            return chartDataService.extractActualDate(item, this.currentDataType);
-        },
-
-        /**
-         * Validate and parse date string using ChartDataService
-         */
-        validateDate(dateStr) {
-            return chartDataService.validateDate(dateStr);
-        },
-
-        /**
-         * Build chart data using ChartDataService
-         */
-        buildChartData() {
-            return chartDataService.buildChartData(this.filteredTableData, this.currentDataType);
-        },
-
-        /**
-         * Create dataset for chart using ChartDataService
-         */
-        createDataset(dates, label, colorType, unifiedTimeline) {
-            return chartDataService.createDataset(dates, label, colorType, unifiedTimeline);
-        },
-        /**
-         * Update chart data from filtered table data using ChartDataService
-         */
-        updateChartFromFiltered() {
-            console.log("🔄 Updating chart from filtered data using ChartDataService...");
-            
-            // Use ChartDataService to create complete chart data
-            this.chartData = chartDataService.createChartData(
-                this.filteredTableData,
-                this.currentDataType,
-                {
-                    showTargetLine: this.showTargetLine,
-                    showActualLine: this.showActualLine
-                }
-            );
-
-            // Force chart update
+            console.log("Refreshing data...");
+            // Implement data refresh logic here
             this.chartKey += 1;
-
-            console.log("✅ Chart updated with ChartDataService:", {
-                totalLabels: this.chartData.labels?.length || 0,
-                datasets: this.chartData.datasets?.length || 0,
-                chartKey: this.chartKey
-            });
-        },
-
-        // ===== CHART PROCESSING LOGIC MOVED TO ChartDataService =====
-        // The following chart processing logic has been moved to ChartDataService:
-        // - Date extraction and validation (extractTargetDate, extractActualDate, validateDate)
-        // - Chart data building (buildChartData)
-        // - Dataset creation (createDataset) 
-        // - Chart options configuration (dynamicChartOptions)
-        // - Chart legend labels (chartLegendLabel)
-        // - Unified timeline creation and chart data processing
-
-        /**
-         * Handle CA number loaded event from ChangeActionCell component using DataTransformationService
-         */
-        onCaNumberLoaded(caData) {
-            console.log("📝 CA data loaded:", caData);
-            // Find the corresponding row and update the CA data using DataTransformationService
-            const rowIndex = this.tableData.findIndex(row => row.physId === caData.objectId);
-            if (rowIndex !== -1) {
-                const updatedItem = dataTransformationService.updateCaData(this.tableData[rowIndex], caData);
-                this.$set(this.tableData, rowIndex, updatedItem);
-            }
         }
     }
 };

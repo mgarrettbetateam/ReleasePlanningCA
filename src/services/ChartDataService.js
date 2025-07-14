@@ -51,7 +51,7 @@ export class ChartDataService {
                 targetDate = item.targetReleaseDate;
                 break;
             case "crs":
-                targetDate = item.dueDate;
+                targetDate = item.targetReleaseDate || item.dueDate;
                 break;
             default:
                 targetDate = item.tgtRelease || item.targetReleaseDate || item.dueDate;
@@ -77,7 +77,7 @@ export class ChartDataService {
                 actualDate = item.actualReleaseDate;
                 break;
             case "crs":
-                actualDate = item.completedDate;
+                actualDate = item.actualReleaseDate || item.completedDate;
                 break;
             default:
                 actualDate = item.actualRelease || item.actualReleaseDate || item.completedDate;

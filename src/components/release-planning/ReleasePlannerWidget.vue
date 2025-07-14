@@ -108,17 +108,19 @@
                     </div>
 
                     <v-card-text class="chart-content-wrapper">
-                        <div class="chart-container">
-                            <UniversalChart
+                        <div class="chart-container" style="position: relative; height: 360px; width: 100%;">
+                            <!-- Debug info -->
+                            <div v-if="chartData" style="font-size: 12px; color: #666; margin-bottom: 10px;">
+                                🐛 Debug: Labels: {{ chartData.labels?.length || 0 }}, Datasets: {{ chartData.datasets?.length || 0 }}
+                            </div>
+                            <ReleaseChart
                                 v-if="chartData.labels && chartData.labels.length > 0"
                                 ref="lineChart"
-                                :key="`chart-${chartKey}-${filteredTableData.length}`"
-                                :data="chartData"
-                                :options="dynamicChartOptions"
-                                type="line"
-                                :height="360"
+                                :chart-data="chartData"
+                                :chart-options="dynamicChartOptions"
+                                style="height: 360px; width: 100%;"
                             />
-                            <div v-else class="no-chart-data">
+                            <div v-if="!chartData.labels || chartData.labels.length === 0" class="no-chart-data">
                                 <div class="no-data-icon">
                                     <v-icon size="64" color="grey lighten-2">mdi-chart-line-variant</v-icon>
                                 </div>
@@ -385,7 +387,7 @@
 
 <script>
 /* eslint-disable no-console */
-import UniversalChart from "@/components/universal/UniversalChart.vue";
+import ReleaseChart from "@/components/charts/ReleaseChart.vue";
 import UniversalFilterControls from "@/components/universal/UniversalFilterControls.vue";
 import ChangeActionCell from "@/components/release-planning/ChangeActionCell.vue";
 import dataService from "@/data/DataServiceBase.js";
@@ -394,7 +396,7 @@ import { USE_MOCK_DATA } from "@/config/ApiConfig.js";
 export default {
     name: "EnhancedPartsPlannerWidget",
     components: {
-        UniversalChart,
+        ReleaseChart,
         UniversalFilterControls,
         ChangeActionCell
     },
@@ -607,104 +609,80 @@ export default {
             return {
                 responsive: true,
                 maintainAspectRatio: false,
-                interaction: {
-                    intersect: false,
-                    mode: "index"
-                },
                 layout: {
                     padding: {
-                        top: 50,
-                        bottom: 40,
-                        left: 20,
-                        right: 20
+                        top: 20,
+                        bottom: 20,
+                        left: 10,
+                        right: 10
                     }
                 },
                 scales: {
-                    x: { 
-                        title: { 
+                    xAxes: [{ 
+                        display: true,
+                        scaleLabel: { 
                             display: true, 
-                            text: "Release Timeline",
-                            font: {
-                                size: 14,
-                                weight: "bold"
-                            },
-                            color: "#1976d2"
+                            labelString: "Release Timeline",
+                            fontSize: 14,
+                            fontStyle: "bold",
+                            fontColor: "#1976d2"
                         },
                         ticks: {
                             maxRotation: 45,
                             minRotation: 0,
                             autoSkip: true,
                             maxTicksLimit: 8,
-                            font: {
-                                size: 11
-                            },
-                            color: "#666",
+                            fontSize: 11,
+                            fontColor: "#666",
                             padding: 5
                         },
-                        grid: {
+                        gridLines: {
                             color: "rgba(0,0,0,0.1)",
                             lineWidth: 1
-                        },
-                        border: {
-                            color: "#ddd",
-                            width: 2
                         }
-                    },
-                    y: { 
-                        title: { 
+                    }],
+                    yAxes: [{ 
+                        display: true,
+                        scaleLabel: { 
                             display: true, 
-                            text: config.yAxisTitle,
-                            font: {
-                                size: 14,
-                                weight: "bold"
-                            },
-                            color: "#1976d2"
+                            labelString: config.yAxisTitle,
+                            fontSize: 14,
+                            fontStyle: "bold",
+                            fontColor: "#1976d2"
                         },
                         ticks: {
-                            font: {
-                                size: 11
-                            },
-                            color: "#666",
+                            fontSize: 11,
+                            fontColor: "#666",
                             padding: 5,
+                            beginAtZero: true,
                             callback(value) {
                                 return Math.floor(value);
                             }
                         },
-                        grid: {
+                        gridLines: {
                             color: "rgba(0,0,0,0.1)",
                             lineWidth: 1
-                        },
-                        border: {
-                            color: "#ddd",
-                            width: 2
-                        },
-                        beginAtZero: true
-                    }
+                        }
+                    }]
                 },
-                plugins: {
-                    legend: { 
-                        display: false
-                    },
-                    tooltip: { 
-                        mode: "index", 
-                        intersect: false,
-                        backgroundColor: "rgba(0,0,0,0.8)",
-                        titleFont: {
-                            size: 14,
-                            weight: "bold"
+                legend: { 
+                    display: false
+                },
+                tooltips: { 
+                    mode: "index", 
+                    intersect: false,
+                    backgroundColor: "rgba(0,0,0,0.8)",
+                    titleFontSize: 14,
+                    titleFontStyle: "bold",
+                    bodyFontSize: 12,
+                    cornerRadius: 8,
+                    displayColors: true,
+                    callbacks: {
+                        title(tooltipItem) {
+                            return "Release Date: " + tooltipItem[0].xLabel;
                         },
-                        bodyFont: {
-                            size: 12
-                        },
-                        cornerRadius: 8,
-                        displayColors: true,
-                        callbacks: {
-                            title(context) {
-                                return "Release Date: " + context[0].label;
-                            },
-                            label(context) {
-                                return `Total Released: ${context.parsed.y} ${config.tooltipLabel}`;
-                            }
+                        label(tooltipItem) {
+                            return `Total Released: ${tooltipItem.yLabel} ${config.tooltipLabel}`;
                         }
                     }
                 },
@@ -1673,8 +1651,11 @@ export default {
             console.log("✅ Chart data updated:", {
                 totalLabels: sortedDates.length,
                 datasets: datasets.length,
-                chartKey: this.chartKey
+                chartKey: this.chartKey,
+                actualChartData: this.chartData,
+                firstDatasetSample: datasets[0]
             });
+            console.log("✅ Full chartData object:", JSON.stringify(this.chartData, null, 2));
         },
 
         /**

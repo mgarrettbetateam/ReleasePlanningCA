@@ -65,7 +65,7 @@
 </style>
 
 <script>
-import Chart from "chart.js/auto";
+import Chart from "chart.js";
 
 export default {
     name: "UniversalChart",

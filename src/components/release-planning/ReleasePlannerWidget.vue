@@ -416,7 +416,7 @@ export default {
             // Filter options - will be loaded dynamically
             programs: [],
             phases: [],
-            organizations: [],
+            organizations: ["All"], // Initialize with default
             
             // Raw data
             tableData: [],
@@ -865,8 +865,7 @@ export default {
         console.log("🚀 ReleasePlannerWidget mounted - initializing...");
         console.log("📊 Current data type:", this.currentDataType);
         console.log("🏷️  Widget title:", this.widgetTitle);
-        console.log("📋 Available headers:", this.tableHeaders.map(h => h.text));
-        console.log("🔧 USE_MOCK_DATA:", USE_MOCK_DATA);
+        console.log(" USE_MOCK_DATA:", USE_MOCK_DATA);
         
         // Initialize by fetching programs first
         await this.fetchPrograms();
@@ -1232,11 +1231,12 @@ export default {
             return [startNextWeek.getTime(), endNextWeek.getTime()];
         },
 
-        // Exactly match the pattern from DataMethodsReleasePlanner.js
+        // Fetch programs from API
         async fetchPrograms() {
             try {
                 const programs = await dataService.fetchPrograms();
                 this.programs = programs || [];
+                console.log("✅ Programs loaded:", this.programs.length);
 
                 if (this.programs.includes("CX300 Pre-Production Builds")) {
                     this.filterValues.program = "CX300 Pre-Production Builds";
@@ -1248,18 +1248,9 @@ export default {
                     await this.fetchPhases();
                 }
             } catch (err) {
-                if (USE_MOCK_DATA) {
-                    console.warn("API not available, using mock data for programs. Error:", err.message);
-                    // Fallback to mock data for template demo
-                    this.programs = ["CX300 Pre-Production Builds", "Demo Program 1", "Demo Program 2"];
-                    this.filterValues.program = "CX300 Pre-Production Builds";
-                    await this.fetchPhases();
-                } else {
-                    console.error("Failed to fetch programs:", err.message);
-                    // Leave empty when API fails and mock data is disabled
-                    this.programs = [];
-                    this.filterValues.program = "";
-                }
+                console.error("Failed to fetch programs:", err.message);
+                this.programs = [];
+                this.filterValues.program = "";
             }
         },
 
@@ -1274,29 +1265,22 @@ export default {
             try {
                 const phases = await dataService.fetchPhases(this.filterValues.program);
                 this.phases = phases || [];
+                console.log("✅ Phases loaded:", this.phases.length);
 
                 if (this.phases.length > 0) {
                     this.filterValues.phase = this.phases[0];
                     await this.fetchData(this.filterValues.phase);
-                } else if (USE_MOCK_DATA) {
-                    console.warn("No phases retrieved");
+                } else {
+                    console.warn("No phases returned from API");
+                    this.phases = [];
+                    this.filterValues.phase = "";
+                    this.updateChartFromFiltered();
                 }
             } catch (error) {
                 console.error("Failed to fetch phases:", error.message);
-                if (USE_MOCK_DATA) {
-                    console.warn("API not available, using mock data for phases. Error:", error.message);
-                    // Fallback to mock data
-                    this.phases = ["Phase 1", "Phase 2", "Phase 3"];
-                    this.filterValues.phase = "Phase 1";
-                    await this.fetchData(this.filterValues.phase);
-                } else {
-                    console.error("Failed to fetch phases:", error.message);
-                    // Leave empty when API fails and mock data is disabled
-                    this.phases = [];
-                    this.filterValues.phase = "";
-                    // Initialize empty chart data
-                    this.updateChartFromFiltered();
-                }
+                this.phases = [];
+                this.filterValues.phase = "";
+                this.updateChartFromFiltered();
             } finally {
                 this.loading = false;
             }
@@ -1374,9 +1358,10 @@ export default {
                 }
                 console.log("=== FETCHDATA END ===");
 
-                // Update organizations from the parts data
-                const orgSet = new Set(this.tableData.map(r => r.organization).filter(org => org));
-                this.organizations = ["All", ...orgSet];
+                // Update organizations from the actual parts data
+                const orgSet = new Set(this.tableData.map(r => r.organization).filter(org => org && org !== "Unknown"));
+                this.organizations = ["All", ...Array.from(orgSet).sort()];
+                console.log("✅ Organizations updated from data:", this.organizations);
 
                 // Update chart data from the filtered table data
                 this.updateChartFromFiltered();
@@ -1386,12 +1371,11 @@ export default {
                     message: error.message,
                     phase,
                     currentDataType: this.currentDataType,
-                    USE_MOCK_DATA,
                     fullError: error
                 });
                 
-                // Leave table empty when API fails - no mock data unless enabled
-                console.log("Setting empty data due to API failure");
+                // Clear data when API fails - no fallback data
+                console.log("Clearing data due to API failure");
                 this.tableData = [];
                 this.organizations = ["All"];
                 this.updateChartFromFiltered();
@@ -1496,229 +1480,199 @@ export default {
         },
 
         /**
-         * Update chart data from filtered table data
+         * Extract and validate date from item based on data type
+         */
+        extractTargetDate(item) {
+            let targetDate = null;
+            switch (this.currentDataType) {
+                case "parts":
+                    targetDate = item.tgtRelease || item.targetReleaseDate;
+                    break;
+                case "cas":
+                    targetDate = item.targetReleaseDate;
+                    break;
+                case "crs":
+                    targetDate = item.dueDate;
+                    break;
+                default:
+                    targetDate = item.tgtRelease || item.targetReleaseDate || item.dueDate;
+            }
+            return this.validateDate(targetDate);
+        },
+
+        /**
+         * Extract and validate actual date from item based on data type
+         */
+        extractActualDate(item) {
+            let actualDate = null;
+            switch (this.currentDataType) {
+                case "parts":
+                    actualDate = item.actualRelease || item.actualReleaseDate;
+                    break;
+                case "cas":
+                    actualDate = item.actualReleaseDate;
+                    break;
+                case "crs":
+                    actualDate = item.completedDate;
+                    break;
+                default:
+                    actualDate = item.actualRelease || item.actualReleaseDate || item.completedDate;
+            }
+            return this.validateDate(actualDate);
+        },
+
+        /**
+         * Validate and parse date string
+         */
+        validateDate(dateStr) {
+            if (!dateStr || dateStr === "N/A" || dateStr === null || dateStr === "") {
+                return null;
+            }
+            try {
+                const dateObj = new Date(dateStr);
+                return !isNaN(dateObj.getTime()) ? dateObj : null;
+            } catch (error) {
+                console.warn("Invalid date format:", dateStr);
+                return null;
+            }
+        },
+
+        /**
+         * Simplified chart data building
+         */
+        buildChartData() {
+            const targetDates = [];
+            const actualDates = [];
+            
+            // Process each item to extract dates
+            this.filteredTableData.forEach(item => {
+                const targetDate = this.extractTargetDate(item);
+                const actualDate = this.extractActualDate(item);
+                
+                if (targetDate) {
+                    targetDates.push({
+                        date: targetDate,
+                        dateString: targetDate.toLocaleDateString(),
+                        item
+                    });
+                }
+                
+                if (actualDate) {
+                    actualDates.push({
+                        date: actualDate,
+                        dateString: actualDate.toLocaleDateString(),
+                        item
+                    });
+                }
+            });
+
+            return { targetDates, actualDates };
+        },
+
+        /**
+         * Create dataset for chart using unified timeline
+         */
+        createDataset(dates, label, color, backgroundColor, unifiedTimeline) {
+            // Group releases by date
+            const dateGroups = new Map();
+            dates.forEach(release => {
+                const dateStr = release.dateString;
+                dateGroups.set(dateStr, (dateGroups.get(dateStr) || 0) + 1);
+            });
+
+            // Create cumulative data using the unified timeline
+            const cumulativeData = [];
+            let runningTotal = 0;
+            unifiedTimeline.forEach(dateStr => {
+                if (dateGroups.has(dateStr)) {
+                    runningTotal += dateGroups.get(dateStr);
+                }
+                cumulativeData.push(runningTotal);
+            });
+
+            return {
+                label,
+                data: cumulativeData,
+                borderColor: color,
+                backgroundColor,
+                tension: 0.2,
+                fill: false,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                borderWidth: 3
+            };
+        },
+        /**
+         * Update chart data from filtered table data - SIMPLIFIED VERSION
          */
         updateChartFromFiltered() {
             console.log("🔄 Updating chart from filtered data...");
             console.log("🔍 CHART UPDATE DEBUG:");
             console.log("  - filteredTableData length:", this.filteredTableData?.length || 0);
             console.log("  - selectedStatFilter:", this.selectedStatFilter);
-            console.log("  - filterValues:", JSON.stringify(this.filterValues));
             console.log("  - currentDataType:", this.currentDataType);
             
             if (!this.filteredTableData || this.filteredTableData.length === 0) {
                 console.log("❌ No filtered data available, setting empty chart");
                 this.chartData = { labels: [], datasets: [] };
-                // Force chart key update to trigger re-render
                 this.chartKey += 1;
                 return;
             }
 
-            // Collect release dates for both target and actual
-            const targetDates = [];
-            const actualDates = [];
+            // Use simplified helper methods
+            const { targetDates, actualDates } = this.buildChartData();
             
-            console.log("📊 Processing", this.filteredTableData.length, "filtered items for chart data");
-            
-            this.filteredTableData.forEach((item, index) => {
-                console.log(`  Item ${index + 1}:`, {
-                    partNo: item.partNo || item.caNumber || item.crNumber,
-                    tgtRelease: item.tgtRelease,
-                    actualRelease: item.actualRelease,
-                    currentState: item.currentState
-                });
-                
-                // Target release dates
-                let targetDate = null;
-                switch (this.currentDataType) {
-                    case "parts":
-                        targetDate = item.tgtRelease || item.targetReleaseDate;
-                        break;
-                    case "cas":
-                        targetDate = item.targetReleaseDate;
-                        break;
-                    case "crs":
-                        targetDate = item.dueDate;
-                        break;
-                    default:
-                        targetDate = item.tgtRelease || item.targetReleaseDate || item.dueDate;
-                }
-                
-                if (targetDate && targetDate !== "N/A" && targetDate !== null && targetDate !== "") {
-                    try {
-                        const dateObj = new Date(targetDate);
-                        if (!isNaN(dateObj.getTime())) {
-                            targetDates.push({
-                                date: dateObj,
-                                dateString: dateObj.toLocaleDateString(),
-                                item
-                            });
-                            console.log(`    ✅ Added target date: ${dateObj.toLocaleDateString()}`);
-                        }
-                    } catch (error) {
-                        console.warn("Invalid target date format:", targetDate);
-                    }
-                }
-
-                // Actual release dates
-                let actualDate = null;
-                switch (this.currentDataType) {
-                    case "parts":
-                        actualDate = item.actualRelease || item.actualReleaseDate;
-                        break;
-                    case "cas":
-                        actualDate = item.actualReleaseDate;
-                        break;
-                    case "crs":
-                        actualDate = item.completedDate;
-                        break;
-                    default:
-                        actualDate = item.actualRelease || item.actualReleaseDate || item.completedDate;
-                }
-                
-                // Only count items that are actually released/completed
-                if (actualDate && actualDate !== "N/A" && actualDate !== null && actualDate !== "") {
-                    try {
-                        const dateObj = new Date(actualDate);
-                        if (!isNaN(dateObj.getTime())) {
-                            actualDates.push({
-                                date: dateObj,
-                                dateString: dateObj.toLocaleDateString(),
-                                item
-                            });
-                            console.log(`    ✅ Added actual date: ${dateObj.toLocaleDateString()}`);
-                        }
-                    } catch (error) {
-                        console.warn("Invalid actual date format:", actualDate);
-                    }
-                }
-            });
-
             console.log("📊 Chart Data Collection Summary:");
             console.log("  - Target dates found:", targetDates.length);
             console.log("  - Actual dates found:", actualDates.length);
+            
+            const SAMPLE_SIZE = 3;
+            console.log("  - Sample target dates:", targetDates.slice(0, SAMPLE_SIZE).map(d => ({ date: d.dateString, item: d.item.partNo || d.item.caNumber || d.item.crNumber })));
+            console.log("  - Sample actual dates:", actualDates.slice(0, SAMPLE_SIZE).map(d => ({ date: d.dateString, item: d.item.partNo || d.item.caNumber || d.item.crNumber })));
 
             if (targetDates.length === 0 && actualDates.length === 0) {
                 console.log("❌ No valid release dates found in filtered data");
                 this.chartData = { labels: [], datasets: [] };
-                // Force chart key update to trigger re-render
                 this.chartKey += 1;
                 return;
             }
 
-            // Create a unified timeline covering all dates from both target and actual
+            // Create combined timeline and datasets
             const allDates = new Set();
-            
-            // Add all target dates
             targetDates.forEach(item => allDates.add(item.dateString));
-            // Add all actual dates  
             actualDates.forEach(item => allDates.add(item.dateString));
-            
-            // Sort all dates chronologically
             const sortedDates = Array.from(allDates).sort((a, b) => new Date(a) - new Date(b));
             
             console.log("📅 Unified timeline:", sortedDates);
 
-            // Create cumulative datasets using the unified timeline
-            const createUnifiedCumulativeDataset = (dates, label, color, backgroundColor) => {
-                // Group releases by date
-                const dateGroups = new Map();
-                dates.forEach(release => {
-                    const dateStr = release.dateString;
-                    if (!dateGroups.has(dateStr)) {
-                        dateGroups.set(dateStr, 0);
-                    }
-                    dateGroups.set(dateStr, dateGroups.get(dateStr) + 1);
-                });
-
-                // Create cumulative data for the unified timeline
-                const cumulativeData = [];
-                let runningTotal = 0;
-
-                sortedDates.forEach(dateStr => {
-                    // Add any releases that occurred on this date
-                    if (dateGroups.has(dateStr)) {
-                        runningTotal += dateGroups.get(dateStr);
-                    }
-                    cumulativeData.push(runningTotal);
-                });
-
-                console.log(`📊 ${label} cumulative data:`, cumulativeData);
-
-                return {
-                    label,
-                    data: cumulativeData,
-                    borderColor: color,
-                    backgroundColor,
-                    tension: 0.2,
-                    fill: false,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    borderWidth: 3
-                };
-            };
-
-            // Determine the appropriate labels based on data type
+            // Get dynamic labels
             const dataTypeLabels = {
-                parts: {
-                    target: "Target Parts Release",
-                    actual: "Actual Parts Released"
-                },
-                cas: {
-                    target: "Target CAs Release", 
-                    actual: "Actual CAs Released"
-                },
-                crs: {
-                    target: "Target CRs Release",
-                    actual: "Actual CRs Released"
-                }
+                parts: { target: "Target Parts Release", actual: "Actual Parts Released" },
+                cas: { target: "Target CAs Release", actual: "Actual CAs Released" },
+                crs: { target: "Target CRs Release", actual: "Actual CRs Released" }
             };
-            
-            const labels = dataTypeLabels[this.currentDataType] || {
-                target: "Target Items",
-                actual: "Actual Items"
-            };
+            const labels = dataTypeLabels[this.currentDataType] || { target: "Target Items", actual: "Actual Items" };
 
-            // Create datasets using the unified timeline
+            // Build datasets using the unified timeline
             const datasets = [];
             
             if (targetDates.length > 0 && this.showTargetLine) {
-                const targetDataset = createUnifiedCumulativeDataset(
-                    targetDates, 
-                    labels.target, 
-                    "#1976d2", // Blue for target
-                    "rgba(25, 118, 210, 0.1)"
-                );
+                const targetDataset = this.createDataset(targetDates, labels.target, "#1976d2", "rgba(25, 118, 210, 0.1)", sortedDates);
                 datasets.push(targetDataset);
             }
             
             if (actualDates.length > 0 && this.showActualLine) {
-                const actualDataset = createUnifiedCumulativeDataset(
-                    actualDates, 
-                    labels.actual, 
-                    "#4caf50", // Green for actual
-                    "rgba(76, 175, 80, 0.1)"
-                );
+                const actualDataset = this.createDataset(actualDates, labels.actual, "#4caf50", "rgba(76, 175, 80, 0.1)", sortedDates);
                 datasets.push(actualDataset);
             }
 
-            // Force reactivity by deep cloning chartData and incrementing chart key
-            this.chartData = JSON.parse(JSON.stringify({
-                labels: sortedDates,
-                datasets
-            }));
-
-            // Force chart key update to trigger re-render
+            // Update chart
+            this.chartData = { labels: sortedDates, datasets };
             this.chartKey += 1;
 
-            console.log("✅ Chart data updated (unified timeline):", {
-                targetDataPoints: targetDates.length,
-                actualDataPoints: actualDates.length,
+            console.log("✅ Chart data updated:", {
                 totalLabels: sortedDates.length,
                 datasets: datasets.length,
-                datasetLabels: datasets.map(d => d.label),
-                firstDate: sortedDates[0],
-                lastDate: sortedDates[sortedDates.length - 1],
                 chartKey: this.chartKey
             });
         },

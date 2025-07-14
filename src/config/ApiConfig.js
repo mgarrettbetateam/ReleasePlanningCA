@@ -7,13 +7,13 @@
 /**
  * Set this to true for production, false for development
  */
-export const USE_PRODUCTION = true; // Change this to toggle environments
+export const USE_PRODUCTION = false; // Change this to toggle environments
 
 /**
  * Set this to true to use mock data instead of real API calls
  * Useful for development, testing, or when APIs are not available
  */
-export const USE_MOCK_DATA = false; // Change this to toggle mock data usage
+export const USE_MOCK_DATA = false; // Back to real API for debugging
 
 /**
  * Environment configuration for API endpoints

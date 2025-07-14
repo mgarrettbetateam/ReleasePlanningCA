@@ -1,5 +1,6 @@
 /* eslint-disable no-console */
 
+import axios from "axios";
 import ApiService from "../services/ApiService.js";
 import { API_BASE_URL } from "../config/ApiConfig.js";
 
@@ -65,7 +66,6 @@ class DataServiceBase {
       const url = `${this.baseURL}${endpoint}`;
       log("PUT Request:", url, data);
       // PUT operations typically don't use caching, so we use direct axios
-      const axios = (await import("axios")).default;
       const response = await axios.put(url, data, { timeout: 10000 });
       return response.data;
     } catch (error) {
@@ -84,7 +84,6 @@ class DataServiceBase {
       const url = `${this.baseURL}${endpoint}`;
       log("DELETE Request:", url);
       // DELETE operations typically don't use caching, so we use direct axios
-      const axios = (await import("axios")).default;
       const response = await axios.delete(url, { timeout: 10000 });
       return response.data;
     } catch (error) {
@@ -137,7 +136,6 @@ const dataService = {
       // Use ApiService with the environment-specific endpoint
       const cacheKey = "PROGRAMS";
       const apiCall = async () => {
-        const axios = (await import("axios")).default;
         const response = await axios.get(`${API_BASE_URL}/internal/resources/AttributeValQuery/retrievePrograms`);
         return response.data.programs;
       };
@@ -157,7 +155,6 @@ const dataService = {
       // Use ApiService with the environment-specific endpoint
       const cacheKey = `PHASES:${program}`;
       const apiCall = async () => {
-        const axios = (await import("axios")).default;
         const response = await axios.get(`${API_BASE_URL}/internal/resources/AttributeValQuery/retrievePhases`, {
           params: { program }
         });
@@ -203,7 +200,6 @@ const dataService = {
       log(`Using endpoint: ${endpoint}, cache key: ${cacheKey}`);
 
       const apiCall = async () => {
-        const axios = (await import("axios")).default;
         const url = `${API_BASE_URL}${endpoint}`;
         const params = { phase };
         

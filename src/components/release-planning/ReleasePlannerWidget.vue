@@ -391,9 +391,11 @@ import ReleaseChart from "@/components/charts/ReleaseChart.vue";
 import UniversalFilterControls from "@/components/universal/UniversalFilterControls.vue";
 import ChangeActionCell from "@/components/release-planning/ChangeActionCell.vue";
 import dataService from "@/data/DataServiceBase.js";
-import { USE_MOCK_DATA } from "@/config/ApiConfig.js";
 import filterService from "@/services/FilterService.js";
 import chartDataService from "@/services/ChartDataService.js";
+import dataTransformationService from "@/services/DataTransformationService.js";
+import exportService from "@/services/ExportService.js";
+import { USE_MOCK_DATA } from "@/assets/config/app-data.json";
 
 export default {
     name: "EnhancedPartsPlannerWidget",
@@ -491,15 +493,9 @@ export default {
     },
     
     computed: {
-        // Dynamic widget title based on current data type
+        // Dynamic widget title based on current data type using DataTransformationService
         widgetTitle() {
-            const titles = {
-                parts: "Release Planning Parts Dashboard",
-                cas: "Release Planning CA Dashboard", 
-                crs: "Release Planning CR Dashboard"
-            };
-            
-            return titles[this.currentDataType] || "Release Planning Dashboard";
+            return dataTransformationService.getDataTypeTitle(this.currentDataType);
         },
 
         // Dynamic table headers based on current data type and available data
@@ -655,56 +651,14 @@ export default {
          * 
          * 📍 See headerConfigurations in data() section (around line 431) for reference
          */
+        /**
+         * Map raw API item to standardized table data format using DataTransformationService
+         * 
+         * This method delegates to DataTransformationService for consistent data transformation
+         * across different data types (parts, cas, crs).
+         */
         mapItemToTableData(item) {
-            console.log("🔄 Mapping item for data type:", this.currentDataType, "Item:", item);
-            
-            switch (this.currentDataType) {
-                case "parts":
-                    // Maps to headerConfigurations.parts - ensure field names match exactly
-                    return {
-                        partNo: item.partNumber || item.partNo,                    // matches "partNo" in headerConfigurations.parts
-                        rev: item.revision || item.rev,                           // matches "rev" in headerConfigurations.parts  
-                        description: item.description,                            // matches "description" in headerConfigurations.parts
-                        organization: item.organization || "Unknown",             // matches "organization" in headerConfigurations.parts
-                        tgtRelease: item.targetReleaseDate || item.tgtRelease,   // matches "tgtRelease" in headerConfigurations.parts
-                        actualRelease: item.actualReleaseDate || item.actualRelease || "N/A", // matches "actualRelease" in headerConfigurations.parts
-                        currentState: item.currentState || item.state,           // matches "currentState" in headerConfigurations.parts
-                        physId: item.physId || item.id,                          // internal ID for CA lookups
-                        // CA fields will be populated by ChangeActionCell component
-                        caNumber: "",                                             // matches "caNumber" in headerConfigurations.parts
-                        caState: ""                                               // matches "caState" in headerConfigurations.parts
-                    };
-                    
-                case "cas":
-                    // Maps to headerConfigurations.cas - ensure field names match exactly
-                    return {
-                        caNumber: item.caNumber || item.changeActionNumber,      // matches "caNumber" in headerConfigurations.cas
-                        changeSummary: item.changeSummary || item.description,   // matches "changeSummary" in headerConfigurations.cas
-                        resEngr: item.respEngr || item.responsibleEngineer,      // matches "resEngr" in headerConfigurations.cas
-                        currentState: item.currentState || item.status,          // matches "currentState" in headerConfigurations.cas
-                        targetReleaseDate: item.targetReleaseDate || item.targetCompleteDate, // matches "targetReleaseDate" in headerConfigurations.cas
-                        approvedDate: item.approvedDate,                         // matches "approvedDate" in headerConfigurations.cas
-                        actualReleaseDate: item.actualReleaseDate || item.actualCompleteDate, // matches "actualReleaseDate" in headerConfigurations.cas
-                        organization: item.organization || "Unknown"             // for filtering purposes
-                    };
-                    
-                case "crs":
-                    // Maps to headerConfigurations.crs - ensure field names match exactly
-                    return {
-                        crNumber: item.crNumber || item.changeRequestNumber,     // matches "crNumber" in headerConfigurations.crs
-                        reasonforChange: item.reasonforChange || item.name || item.summary || item.description, // matches "reasonforChange" in headerConfigurations.crs
-                        owner: item.owner || item.respEngr || item.responsibleEngineer, // matches "owner" in headerConfigurations.crs
-                        currentState: item.currentState || item.status,          // matches "currentState" in headerConfigurations.crs
-                        targetReleaseDate: item.targetReleaseDate || item.dueDate, // matches "targetReleaseDate" in headerConfigurations.crs
-                        actualApproveDate: item.actualApproveDate || item.approvedDate, // matches "actualApproveDate" in headerConfigurations.crs
-                        actualReleaseDate: item.actualReleaseDate || item.completedDate // matches "actualReleaseDate" in headerConfigurations.crs
-                    };
-                    
-                default:
-                    console.warn("⚠️  Unknown data type for mapping:", this.currentDataType, "Available types:", Object.keys(this.headerConfigurations));
-                    console.warn("⚠️  Add a new case to mapItemToTableData() for this data type!");
-                    return item; // Return raw item as fallback
-            }
+            return dataTransformationService.mapItemToTableData(item, this.currentDataType);
         },
 
         // Chart legend toggle methods
@@ -745,153 +699,29 @@ export default {
         },
         
         /**
-         * Export table data in the specified format
+         * Export table data in the specified format using ExportService
          */
         exportTableData(format) {
-            const DATE_FORMAT_LENGTH = 10;
-            const fileName = `parts-table-${new Date().toISOString().slice(0, DATE_FORMAT_LENGTH)}`;
-
-            if (format === "csv") {
-                this.downloadAsCSV(fileName);
-            } else if (format === "pdf") {
-                this.exportAsPDF(fileName);
-            }
-        },
-
-        /**
-         * Download table data as CSV
-         */
-        downloadAsCSV(fileName) {
-            try {
-                const csvContent = this.convertTableToCSV();
-                const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href = url;
-                link.download = `${fileName}.csv`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-            } catch (error) {
-                // Silently handle error
-            }
-        },
-
-        /**
-         * Convert table data to CSV format
-         */
-        convertTableToCSV() {
-            const headers = this.tableHeaders.map(header => header.text);
-            const csvHeaders = headers.join(",");
+            const options = {
+                fileName: `${this.currentDataType}-table`,
+                documentTitle: `${this.widgetTitle} Export`
+            };
             
-            const csvRows = this.filteredTableData.map(item => {
-                return this.tableHeaders.map(header => {
-                    let value = item[header.value];
-                    
-                    // Handle special cases for CA columns
-                    if (header.value === "caNumber" || header.value === "caState") {
-                        value = value || ""; // Use empty string if no value
-                    }
-                    
-                    // Escape commas and quotes in CSV
-                    return `"${String(value || "").replace(/"/g, '""')}"`;
-                }).join(",");
-            });
-            
-            return [csvHeaders, ...csvRows].join("\n");
+            exportService.exportTableData(
+                format, 
+                this.filteredTableData, 
+                this.tableHeaders, 
+                options
+            );
         },
 
-        /**
-         * Export table as PDF
-         */
-        exportAsPDF(fileName) {
-            try {
-                const htmlContent = this.createTablePDFHTML(fileName);
-                this.downloadPDFContent(htmlContent, fileName);
-            } catch (error) {
-                window.print();
-            }
-        },
-
-        /**
-         * Create PDF HTML content for table
-         */
-        createTablePDFHTML(title) {
-            const headers = this.tableHeaders.map(header => `<th>${header.text}</th>`).join("");
-            const rows = this.filteredTableData.map(item => {
-                const cells = this.tableHeaders.map(header => {
-                    let value = item[header.value] || "";
-                    
-                    // Handle special cases for CA columns
-                    if (header.value === "caNumber" || header.value === "caState") {
-                        value = value || "";
-                    }
-                    
-                    return `<td>${value}</td>`;
-                }).join("");
-                return `<tr>${cells}</tr>`;
-            }).join("");
-
-            return `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>${title}</title>
-                    <style>
-                        @page { size: A4 landscape; margin: 15mm; }
-                        body { font-family: Arial, sans-serif; margin: 0; }
-                        .header { text-align: center; margin-bottom: 20px; }
-                        table { width: 100%; border-collapse: collapse; font-size: 10px; }
-                        th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
-                        th { background-color: #f2f2f2; font-weight: bold; }
-                        tr:nth-child(even) { background-color: #f9f9f9; }
-                    </style>
-                </head>
-                <body>
-                    <div class="header">
-                        <h2>Parts Data Table Export</h2>
-                        <p>Generated on ${new Date().toLocaleDateString()}</p>
-                        <p>Total Items: ${this.filteredTableData.length}</p>
-                    </div>
-                    <table>
-                        <thead>
-                            <tr>${headers}</tr>
-                        </thead>
-                        <tbody>
-                            ${rows}
-                        </tbody>
-                    </table>
-                </body>
-                </html>
-            `;
-        },
-
-        /**
-         * Download PDF content
-         */
-        downloadPDFContent(htmlContent, fileName) {
-            try {
-                const printWindow = window.open("", "_blank");
-                printWindow.document.write(htmlContent);
-                printWindow.document.close();
-                
-                const PRINT_DELAY = 500;
-                setTimeout(() => {
-                    printWindow.print();
-                }, PRINT_DELAY);
-            } catch (error) {
-                const blob = new Blob([htmlContent], { type: "text/html" });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href = url;
-                link.download = `${fileName}.html`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-            }
-        },
+        // ===== EXPORT LOGIC MOVED TO ExportService =====
+        // The following export methods have been moved to ExportService:
+        // - downloadAsCSV() -> exportService.downloadAsCSV()
+        // - convertTableToCSV() -> exportService.convertTableToCSV()
+        // - exportAsPDF() -> exportService.exportAsPDF()
+        // - createTablePDFHTML() -> exportService.createTablePDFHTML()
+        // - downloadPDFContent() -> exportService.downloadPDFContent()
 
         // ===== FILTERING LOGIC MOVED TO FilterService =====
         // The following methods have been moved to FilterService:
@@ -980,42 +810,8 @@ export default {
                 console.log("Items length:", items?.length);
                 console.log("Raw items data:", items);
                 
-                // Use the original simple processing logic that was working
-                let finalParts = items;
-                
-                // Convert to array if needed using the original logic
-                if (!Array.isArray(items) && typeof items === "object" && items !== null) {
-                    console.log("🔄 Converting non-array response to array using enhanced logic");
-                    
-                    // Try different common property names based on data type
-                    const dataTypeKeys = {
-                        parts: ["parts", "data", "items", "results"],
-                        cas: ["CAs", "cas", "parts", "data", "items", "results"], // API returns "CAs" (capital)
-                        crs: ["CRs", "crs", "parts", "data", "items", "results"] // API likely returns "CRs" (capital)
-                    };
-                    
-                    const keysToTry = dataTypeKeys[this.currentDataType] || dataTypeKeys.parts;
-                    console.log("🔍 Trying keys for", this.currentDataType, ":", keysToTry);
-                    console.log("🔍 Available keys in response:", Object.keys(items));
-                    
-                    for (const key of keysToTry) {
-                        if (items[key] && Array.isArray(items[key])) {
-                            finalParts = items[key];
-                            console.log(`✅ Using items.${key} (${finalParts.length} items)`);
-                            break;
-                        }
-                    }
-                    
-                    if (!Array.isArray(finalParts)) {
-                        console.log("❌ Could not find array in response, using empty array");
-                        finalParts = [];
-                    }
-                }
-                
-                // Use data mapping logic based on the current data type
-                this.tableData = Array.isArray(finalParts)
-                    ? finalParts.map(item => this.mapItemToTableData(item))
-                    : [];
+                // Use DataTransformationService to process API response and transform data
+                this.tableData = dataTransformationService.transformApiResponseToTableData(items, this.currentDataType);
                 
                 console.log("=== FINAL TABLE DATA ===");
                 console.log("Final tableData array length:", this.tableData.length);
@@ -1027,9 +823,8 @@ export default {
                 }
                 console.log("=== FETCHDATA END ===");
 
-                // Update organizations from the actual parts data
-                const orgSet = new Set(this.tableData.map(r => r.organization).filter(org => org && org !== "Unknown"));
-                this.organizations = ["All", ...Array.from(orgSet).sort()];
+                // Update organizations from the actual parts data using DataTransformationService
+                this.organizations = dataTransformationService.extractOrganizations(this.tableData);
                 console.log("✅ Organizations updated from data:", this.organizations);
 
                 // Update chart data from the filtered table data
@@ -1054,22 +849,24 @@ export default {
             }
         },
 
-        // Dynamically set the data type based on API response or user selection
+        // Dynamically set the data type using DataTransformationService validation
         setDataType(dataType) {
-            if (this.headerConfigurations[dataType]) {
+            const validation = dataTransformationService.validateDataType(dataType);
+            if (validation.isValid) {
                 this.currentDataType = dataType;
                 console.log(`✅ Data type set to: ${dataType}`);
                 console.log(`✅ Widget title will automatically update to: ${this.widgetTitle}`);
             } else {
-                console.warn(`⚠️  Unknown data type: ${dataType}. Available types:`, Object.keys(this.headerConfigurations));
+                console.warn(validation.message);
             }
         },
 
-        // Method to manually switch data types for testing
+        // Method to manually switch data types for testing using DataTransformationService
         switchDataType(newDataType) {
             console.log("🔄 DEBUG: Switching data type from", this.currentDataType, "to", newDataType);
             
-            if (this.headerConfigurations[newDataType]) {
+            const validation = dataTransformationService.validateDataType(newDataType);
+            if (validation.isValid) {
                 this.setDataType(newDataType);
                 
                 // Clear existing data to show the change
@@ -1083,13 +880,13 @@ export default {
                     console.warn("⚠️  DEBUG: No phase selected, cannot fetch data");
                 }
             } else {
-                console.error("❌ DEBUG: Invalid data type:", newDataType);
+                console.error("❌ DEBUG:", validation.message);
             }
         },
 
-        // Get available data types
+        // Get available data types using DataTransformationService
         getAvailableDataTypes() {
-            return Object.keys(this.headerConfigurations);
+            return dataTransformationService.getAvailableDataTypes();
         },
 
         /**
@@ -1210,15 +1007,15 @@ export default {
         // - Unified timeline creation and chart data processing
 
         /**
-         * Handle CA number loaded event from ChangeActionCell component
+         * Handle CA number loaded event from ChangeActionCell component using DataTransformationService
          */
         onCaNumberLoaded(caData) {
             console.log("📝 CA data loaded:", caData);
-            // Find the corresponding row and update the CA data
+            // Find the corresponding row and update the CA data using DataTransformationService
             const rowIndex = this.tableData.findIndex(row => row.physId === caData.objectId);
             if (rowIndex !== -1) {
-                this.$set(this.tableData[rowIndex], "caNumber", caData.caNumber);
-                this.$set(this.tableData[rowIndex], "caState", caData.caState);
+                const updatedItem = dataTransformationService.updateCaData(this.tableData[rowIndex], caData);
+                this.$set(this.tableData, rowIndex, updatedItem);
             }
         }
     }

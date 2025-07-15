@@ -166,12 +166,12 @@
             </v-btn>
             
             <v-chip 
-                color="success" 
+                :color="apiEnvironmentChip.color" 
                 small
                 outlined
             >
-                <v-icon small left>mdi-cloud</v-icon>
-                API Data
+                <v-icon small left>{{ apiEnvironmentChip.icon }}</v-icon>
+                {{ apiEnvironmentChip.text }}
             </v-chip>
         </v-card-title>
 
@@ -657,6 +657,7 @@ import chartDataService from "@/services/ChartDataService.js";
 import dataTransformationService from "@/services/DataTransformationService.js";
 import exportService from "@/services/ExportService.js";
 import { USE_MOCK_DATA } from "@/assets/config/app-data.json";
+import { getApiBaseUrl, API_CONFIG } from "@/config/ApiConfig.js";
 
 export default {
     name: "EnhancedPartsPlannerWidget",
@@ -856,6 +857,19 @@ export default {
         // Dynamic chart legend label using ChartDataService
         chartLegendLabel() {
             return chartDataService.getChartLegendLabel(this.currentDataType);
+        },
+
+        // API environment indicator for header chip
+        apiEnvironmentChip() {
+            const currentUrl = getApiBaseUrl();
+            const isProduction = currentUrl === API_CONFIG.production;
+            const isOverride = typeof window !== "undefined" && localStorage.getItem("env_override") !== null;
+            
+            return {
+                text: isProduction ? "Prod API" : "Dev API",
+                color: isProduction ? "success" : "error",
+                icon: isOverride ? "mdi-code-tags" : "mdi-cloud"
+            };
         }
     },
     

@@ -16,7 +16,7 @@
             </v-chip>
         </v-card-title>
         
-        <v-card-subtitle class="filter-subtitle">
+        <v-card-subtitle v-if="subtitle" class="filter-subtitle">
             {{ subtitle }}
         </v-card-subtitle>
         

@@ -11,9 +11,9 @@
             class="filter-flyout-panel"
             app
         >
-            <div class="flyout-header">
-                <v-icon left color="primary">mdi-filter-variant</v-icon>
-                <span class="flyout-title">Filters</span>
+            <div class="flyout-header d-flex align-center pa-4" style="background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);">
+                <v-icon left color="white">mdi-filter-variant</v-icon>
+                <span class="flyout-title white--text text-h6 font-weight-medium ml-2">Filters</span>
                 <v-spacer />
                 <v-chip 
                     color="primary" 
@@ -27,10 +27,10 @@
 
             <v-divider />
 
-            <div class="flyout-content-scrollable">
+            <div class="flyout-content-scrollable pa-5 overflow-y-auto" style="height: calc(100vh - 120px); scrollbar-width: thin; scrollbar-color: rgba(25, 118, 210, 0.3) transparent;">
                 <!-- Filter Controls Grid -->
-                <div class="filter-section">
-                    <div class="section-label">
+                <div class="mb-6">
+                    <div class="text-subtitle-2 font-weight-bold primary--text text-uppercase mb-3 d-flex align-center">
                         <v-icon small color="primary" class="mr-2">mdi-tune</v-icon>
                         Data Filters
                     </div>
@@ -38,9 +38,9 @@
                     <div 
                         v-for="filter in filterConfig"
                         :key="filter.key"
-                        class="filter-item-vertical"
+                        class="mb-4"
                     >
-                        <label class="filter-label-vertical">
+                        <label class="caption font-weight-bold grey--text text--darken-2 mb-2 d-flex align-center text-uppercase">
                             <v-icon small class="mr-1">{{ filter.icon }}</v-icon>
                             {{ filter.label }}
                         </label>
@@ -52,7 +52,7 @@
                             outlined
                             hide-details
                             clearable
-                            class="filter-select-vertical mb-3"
+                            class="mb-3"
                             @change="handleFilterChange({ key: filter.key, value: $event, allFilters: { ...filterValues, [filter.key]: $event } })"
                         />
                     </div>
@@ -61,8 +61,8 @@
                 <v-divider class="my-4" />
 
                 <!-- Data Type Switcher -->
-                <div class="filter-section">
-                    <div class="section-label">
+                <div class="mb-6">
+                    <div class="text-subtitle-2 font-weight-bold primary--text text-uppercase mb-3 d-flex align-center">
                         <v-icon small color="primary" class="mr-2">mdi-database</v-icon>
                         Data Type
                     </div>
@@ -71,7 +71,7 @@
                         v-model="currentDataType" 
                         mandatory 
                         column
-                        class="data-type-switcher-vertical"
+                        class="ma-0"
                     >
                         <v-chip
                             v-for="dataType in getAvailableDataTypes()"
@@ -91,37 +91,48 @@
                 <v-divider class="my-4" />
 
                 <!-- Release Stats -->
-                <div v-if="releaseStats" class="filter-section">
-                    <div class="section-label">
+                <div v-if="releaseStats" class="mb-6">
+                    <div class="text-subtitle-2 font-weight-bold primary--text text-uppercase mb-3 d-flex align-center">
                         <v-icon small color="primary" class="mr-2">mdi-chart-bar</v-icon>
                         Release Stats
                     </div>
                     
-                    <div class="stats-vertical-layout">
-                        <div 
+                    <div class="d-flex flex-column" style="gap: 8px;">
+                        <v-card
                             v-for="stat in releaseStatsArray"
                             :key="stat.key"
-                            class="stat-item-vertical"
+                            class="stat-item-vertical pa-3 d-flex align-center justify-space-between"
                             :class="{ 
-                                'stat-active': selectedStatFilter === stat.key,
-                                'stat-disabled': stat.count === 0,
-                                'stat-overdue': stat.key === 'overdue'
+                                'primary--border': selectedStatFilter === stat.key,
+                                'v-card--disabled': stat.count === 0,
+                                'error--border': stat.key === 'overdue'
                             }"
+                            :style="{ 
+                                borderColor: selectedStatFilter === stat.key ? '#1976d2' : stat.key === 'overdue' ? '#d32f2f' : '#e0e0e0',
+                                backgroundColor: selectedStatFilter === stat.key ? 'rgba(25, 118, 210, 0.1)' : stat.key === 'overdue' ? 'rgba(211, 47, 47, 0.05)' : '#fafafa'
+                            }"
+                            outlined
                             @click="stat.count > 0 ? filterByReleaseStatus(stat.key) : null"
                         >
-                            <div class="stat-content">
-                                <span class="stat-number-vertical">{{ stat.count }}</span>
-                                <span class="stat-label-vertical">{{ stat.label }}</span>
+                            <div class="d-flex align-center" style="gap: 12px;">
+                                <span 
+                                    class="text-h5 font-weight-bold primary--text"
+                                    :class="{ 'error--text': stat.key === 'overdue' }"
+                                    style="min-width: 40px;"
+                                >
+                                    {{ stat.count }}
+                                </span>
+                                <span class="text-body-2 font-weight-medium">{{ stat.label }}</span>
                             </div>
                             <v-icon 
                                 v-if="selectedStatFilter === stat.key"
                                 small 
                                 color="primary"
-                                class="stat-check"
+                                class="opacity-80"
                             >
                                 mdi-check
                             </v-icon>
-                        </div>
+                        </v-card>
                         
                         <!-- Clear filter -->
                         <v-btn
@@ -140,9 +151,9 @@
                 </div>
 
                 <!-- Scroll indicator at bottom -->
-                <div class="scroll-indicator">
+                <div class="d-flex align-center justify-center pt-4 pb-5 mt-5 opacity-60" style="border-top: 1px solid #e0e0e0;">
                     <v-icon small color="grey">mdi-chevron-down</v-icon>
-                    <span class="scroll-text">Scroll for more options</span>
+                    <span class="caption grey--text ml-1 font-italic">Scroll for more options</span>
                 </div>
             </div>
         </v-navigation-drawer>
@@ -176,7 +187,7 @@
         </v-card-title>
 
         <!-- Full Width Vertical Layout: Chart Above Table -->
-        <div class="content-section-vertical">
+        <div class="pa-4 d-flex flex-column" style="gap: 16px;">
             <!-- Chart - Full Width Above -->
             <v-card class="chart-card mb-4" elevation="4">
                 <v-card-title class="chart-header pa-3">
@@ -184,11 +195,11 @@
                     <span class="text-h6">Release Timeline</span>
                     <v-spacer />
                     <!-- Legend inline in header -->
-                    <div class="legend-inline">
+                    <div class="d-flex align-center legend-chip-container" style="gap: 8px;">
                         <v-chip 
                             small 
                             :color="showTargetLine ? 'primary' : 'grey'"
-                            class="mr-1"
+                            class="mr-1 legend-chip"
                             @click="toggleTargetLine"
                         >
                             <v-icon small left>{{ showTargetLine ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
@@ -197,6 +208,7 @@
                         <v-chip 
                             small 
                             :color="showActualLine ? 'success' : 'grey'"
+                            class="legend-chip"
                             @click="toggleActualLine"
                         >
                             <v-icon small left>{{ showActualLine ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
@@ -323,7 +335,7 @@
 </template>
 
 <style scoped>
-/* Filter Flyout Styles */
+/* Filter Flyout Styles - Keep custom glass effect */
 .filter-flyout-trigger-header {
   border-color: rgba(255, 255, 255, 0.5) !important;
   color: white !important;
@@ -338,42 +350,7 @@
   transform: translateY(-1px);
 }
 
-.filter-flyout-panel {
-  z-index: 1000 !important;
-}
-
-.flyout-header {
-  display: flex;
-  align-items: center;
-  padding: 16px 20px;
-  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
-  color: white;
-}
-
-.flyout-title {
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-}
-
-.flyout-content {
-  padding: 20px;
-  height: calc(100vh - 120px);
-  overflow-y: auto;
-}
-
-.flyout-content-scrollable {
-  padding: 20px;
-  height: calc(100vh - 120px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  scroll-behavior: smooth;
-  /* Custom scrollbar styling */
-  scrollbar-width: thin;
-  scrollbar-color: rgba(25, 118, 210, 0.3) transparent;
-}
-
-/* Webkit scrollbar styling */
+/* Custom scrollbar styling for flyout */
 .flyout-content-scrollable::-webkit-scrollbar {
   width: 6px;
 }
@@ -392,191 +369,36 @@
   background-color: rgba(25, 118, 210, 0.5);
 }
 
-.scroll-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px 0 20px 0;
-  margin-top: 20px;
-  opacity: 0.6;
-  border-top: 1px solid #e0e0e0;
-}
-
-.scroll-text {
-  font-size: 12px;
-  color: #666;
-  margin-left: 4px;
-  font-style: italic;
-}
-
-.filter-section {
-  margin-bottom: 24px;
-}
-
-.section-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1976d2;
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.filter-item-vertical {
-  margin-bottom: 16px;
-}
-
-.filter-label-vertical {
-  font-size: 12px;
-  font-weight: 600;
-  color: #666;
-  margin-bottom: 6px;
-  display: flex;
-  align-items: center;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.filter-select-vertical {
-  width: 100%;
-}
-
-.data-type-switcher-vertical {
-  margin: 0 !important;
-}
-
-.stats-vertical-layout {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
+/* Custom stat item interactions that can't be replicated with Vuetify */
 .stat-item-vertical {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  border-radius: 8px;
-  cursor: pointer;
   transition: all 0.2s ease;
-  border: 1px solid #e0e0e0;
-  background-color: #fafafa;
+  cursor: pointer;
 }
 
 .stat-item-vertical:hover {
-  background-color: rgba(25, 118, 210, 0.05);
-  border-color: #1976d2;
   transform: translateX(4px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.stat-item-vertical.stat-active {
-  background-color: rgba(25, 118, 210, 0.1);
-  border-color: #1976d2;
-  box-shadow: 0 2px 12px rgba(25, 118, 210, 0.2);
 }
 
 .stat-item-vertical.stat-disabled {
-  opacity: 0.5;
   cursor: not-allowed;
 }
 
 .stat-item-vertical.stat-disabled:hover {
   transform: none;
-  background-color: #fafafa;
-  border-color: #e0e0e0;
-  box-shadow: none;
 }
 
-.stat-item-vertical.stat-overdue {
-  border-color: #d32f2f;
-  background-color: rgba(211, 47, 47, 0.05);
-}
-
-.stat-item-vertical.stat-overdue .stat-number-vertical {
-  color: #d32f2f;
-}
-
-.stat-content {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.stat-number-vertical {
-  font-size: 20px;
-  font-weight: 700;
-  color: #1976d2;
-  min-width: 40px;
-}
-
-.stat-label-vertical {
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-}
-
-.stat-check {
-  opacity: 0.8;
-}
-
-/* Component-specific styles that can't be moved to global CSS */
-.chart-content,
-.table-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Vertical Layout Styles */
-.content-section-vertical {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  max-width: 100%;
-}
-
-.chart-card {
-  width: 100%;
-}
-
-.table-card {
-  width: 100%;
-}
-
-/* Legend and responsive styles */
-.legend-inline {
-  display: flex;
-  gap: 8px;
-}
-
-.legend-inline .v-chip {
+/* Legend chip interactions */
+.legend-chip {
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.legend-inline .v-chip:hover {
+.legend-chip:hover {
   transform: scale(1.05);
 }
 
-/* Responsive behavior */
+/* Responsive font adjustments not available in Vuetify */
 @media (max-width: 960px) {
-  .flyout-content,
-  .flyout-content-scrollable {
-    padding: 16px;
-  }
-  
-  .stat-number-vertical {
-    font-size: 18px;
-  }
-  
-  .stat-label-vertical {
-    font-size: 13px;
-  }
-  
   .filter-flyout-trigger-header {
     font-size: 12px !important;
   }
@@ -584,41 +406,16 @@
   .filter-flyout-trigger-header .v-btn__content {
     font-size: 12px !important;
   }
-  
-  .scroll-indicator {
-    padding: 12px 0 16px 0;
-  }
-  
-  .scroll-text {
-    font-size: 11px;
-  }
 }
 
 @media (max-width: 600px) {
-  .legend-inline {
-    flex-direction: column;
-    gap: 4px;
+  .legend-chip-container {
+    flex-direction: column !important;
+    gap: 4px !important;
   }
   
-  .legend-inline .v-chip {
-    align-self: flex-start;
-  }
-  
-  .flyout-content,
-  .flyout-content-scrollable {
-    padding: 12px;
-  }
-  
-  .stat-item-vertical {
-    padding: 10px 12px;
-  }
-  
-  .stat-number-vertical {
-    font-size: 16px;
-  }
-  
-  .stat-label-vertical {
-    font-size: 12px;
+  .legend-chip-container .v-chip {
+    align-self: flex-start !important;
   }
   
   .filter-flyout-trigger-header {
@@ -628,14 +425,6 @@
   
   .filter-flyout-trigger-header .v-btn__content {
     font-size: 11px !important;
-  }
-  
-  .scroll-indicator {
-    padding: 10px 0 12px 0;
-  }
-  
-  .scroll-text {
-    font-size: 10px;
   }
 }
 

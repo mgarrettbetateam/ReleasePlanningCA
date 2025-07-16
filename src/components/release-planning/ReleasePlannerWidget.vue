@@ -445,7 +445,7 @@ import filterService from "@/services/FilterService.js";
 import chartDataService from "@/services/ChartDataService.js";
 import dataTransformationService from "@/services/DataTransformationService.js";
 import exportService from "@/services/ExportService.js";
-import { USE_MOCK_DATA } from "@/assets/config/app-data.json";
+import { USE_MOCK_DATA } from "@/config/ApiConfig.js";
 import { getApiBaseUrl, API_CONFIG } from "@/config/ApiConfig.js";
 
 export default {

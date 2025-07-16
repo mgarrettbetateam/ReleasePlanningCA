@@ -6,6 +6,7 @@
     "scripts": {
         "postinstall": "node node_modules/@widget-lab/widget-templates-config/bin/copy-template.js",
         "build": "npx webpack --config-name prod",
+        "serve": "npx webpack serve --config-name dev --port 8084 --open",
         "start": "npx webpack serve --config-name dev --port 8084 --open",
         "start:alt": "npx webpack serve --config-name dev --port 8084 --open",
         "startS3": "npx webpack serve --config-name devS3",

@@ -63,7 +63,7 @@ if (typeof window !== "undefined") {
       
       // Show subtle notification in console
       const mode = environmentOverride ? "PRODUCTION" : "DEVELOPMENT";
-      const emoji = environmentOverride ? "🔴" : "🟢";
+      const emoji = environmentOverride ? "�" : "�";
       /* eslint-disable no-console */
       console.log(`%c🥚 KONAMI CODE ACTIVATED: ${mode} MODE ${emoji}`, 
         "background: #222; color: #bada55; font-size: 16px; padding: 10px; border-radius: 5px;");
@@ -75,7 +75,7 @@ if (typeof window !== "undefined") {
           const flash = document.createElement("div");
           flash.style.cssText = `
             position: fixed; top: 20px; right: 20px; z-index: 10000;
-            background: ${environmentOverride ? "#f44336" : "#4caf50"};
+            background: ${environmentOverride ? "#4caf50" : "#f44336"};
             color: white; padding: 12px 20px; border-radius: 8px;
             font-family: monospace; font-weight: bold; font-size: 14px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);

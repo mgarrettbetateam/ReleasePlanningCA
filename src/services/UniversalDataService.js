@@ -15,6 +15,10 @@ class UniversalDataService {
         this.CACHE_TTL = 300000; // 5 minutes
         this.MAX_CACHE_SIZE = 100;
         
+        // Logging constants
+        this.MAX_SAMPLE_KEYS = 5;
+        this.MAX_ITEM_KEYS = 10;
+        
         // API Configuration - Set to true to use real API endpoints
         this.USE_API = false; // Change to true to enable API calls
     }
@@ -46,44 +50,134 @@ class UniversalDataService {
             // Try API first, fallback to local data
             if (dataSource.endpoint && this.USE_API && !options.useLocalData) {
                 try {
-                    console.log(`Attempting API call for ${dataSourceKey} to ${dataSource.endpoint}`);
+                    console.log("🌐 API Mode - Attempting API call:", {
+                        dataSourceKey,
+                        endpoint: dataSource.endpoint,
+                        filters,
+                        options
+                    });
                     
                     // Use the specific API methods for different data types
                     if (dataSourceKey === "parts") {
                         const phase = filters.phase || filters.selectedPhase || "Phase 1";
-                        console.log(`Fetching parts data for phase: ${phase}`);
+                        console.log("📦 Fetching PARTS data:", {
+                            phase,
+                            dataSourceKey,
+                            endpoint: dataSource.endpoint
+                        });
                         rawData = await this.api.fetchParts(phase);
+                        console.log("✅ PARTS data received:", {
+                            type: typeof rawData,
+                            isArray: Array.isArray(rawData),
+                            count: Array.isArray(rawData) ? rawData.length : "Not array",
+                            firstItem: Array.isArray(rawData) && rawData.length > 0 ? rawData[0] : null
+                        });
                     } else if (dataSourceKey === "ca") {
+                        console.log("🔄 Fetching CA data - first getting parts for phase:", filters.phase);
                         // For CA data, we need objectIds from parts first
                         const parts = await this.api.fetchParts(filters.phase);
+                        console.log("📦 Parts fetched for CA lookup:", {
+                            count: parts ? parts.length : 0,
+                            samplePart: parts && parts.length > 0 ? parts[0] : null
+                        });
+                        
                         if (parts && Array.isArray(parts)) {
                             // Fetch CA data for each part with staggered requests
-                            const caPromises = parts.map((part, index) => 
-                                this.api.fetchChangeAction(part.physId || part.objectId, index)
-                                    .catch(() => null) // Continue on individual failures
-                            );
+                            console.log("🔗 Fetching CA data for " + parts.length + " parts with staggered requests");
+                            const caPromises = parts.map((part, index) => {
+                                const physId = part.physId || part.objectId;
+                                console.log("🔍 CA Request " + (index + 1) + "/" + parts.length + ":", {
+                                    physId,
+                                    partNumber: part.partNumber,
+                                    index
+                                });
+                                return this.api.fetchChangeAction(physId, index)
+                                    .catch(error => {
+                                        console.warn("⚠️ CA fetch failed for part:", {
+                                            physId,
+                                            partNumber: part.partNumber,
+                                            error: error.message
+                                        });
+                                        return null;
+                                    });
+                            });
                             const caResults = await Promise.all(caPromises);
                             rawData = caResults.filter(ca => ca !== null);
+                            console.log("✅ CA data collection complete:", {
+                                totalRequests: parts.length,
+                                successfulResults: rawData.length,
+                                failedResults: caResults.length - rawData.length,
+                                sampleCA: rawData.length > 0 ? rawData[0] : null
+                            });
                         } else {
+                            console.warn("⚠️ No parts data available for CA lookup");
                             rawData = [];
                         }
                     } else if (dataSourceKey === "stats") {
+                        console.log("📊 Fetching STATS data:", {
+                            dataSourceKey,
+                            endpoint: dataSource.endpoint
+                        });
                         // Fetch stats data using dedicated method
                         rawData = await this.api.get(dataSource.endpoint);
+                        console.log("✅ STATS data received:", {
+                            type: typeof rawData,
+                            keys: rawData && typeof rawData === "object" ? Object.keys(rawData) : "Not object"
+                        });
                     } else {
+                        console.log("🔧 Generic API call:", {
+                            dataSourceKey,
+                            endpoint: dataSource.endpoint,
+                            filters
+                        });
                         // Generic API call for other endpoints
                         const params = this.buildFilterParams(filters);
+                        console.log("📋 Built filter params:", params);
                         rawData = await this.api.get(dataSource.endpoint, params);
+                        console.log("✅ Generic API data received:", {
+                            type: typeof rawData,
+                            isArray: Array.isArray(rawData),
+                            count: Array.isArray(rawData) ? rawData.length : "Not array"
+                        });
                     }
                     
-                    console.log(`API data fetched for ${dataSourceKey}:`, rawData?.length || "N/A", "items");
+                    console.log("🎯 Final API data summary:", {
+                        dataSourceKey,
+                        dataType: typeof rawData,
+                        isArray: Array.isArray(rawData),
+                        itemCount: Array.isArray(rawData) ? rawData.length : "Not array",
+                        hasData: !!rawData,
+                        sampleKeys: rawData && typeof rawData === "object" && !Array.isArray(rawData) 
+                            ? Object.keys(rawData).slice(0, Math.min(Object.keys(rawData).length, this.MAX_SAMPLE_KEYS)) 
+                            : null,
+                        firstItemKeys: Array.isArray(rawData) && rawData.length > 0 && typeof rawData[0] === "object"
+                            ? Object.keys(rawData[0]).slice(0, Math.min(Object.keys(rawData[0]).length, this.MAX_ITEM_KEYS))
+                            : null
+                    });
+                    
                 } catch (apiError) {
-                    console.warn(`API failed for ${dataSourceKey}, falling back to local data:`, apiError.message);
+                    console.warn("❌ API failed, falling back to local data:", {
+                        dataSourceKey,
+                        endpoint: dataSource.endpoint,
+                        error: apiError.message,
+                        stack: apiError.stack
+                    });
                     rawData = await this.loadLocalData(dataSource);
                 }
             } else {
+                console.log("💾 Local Mode - Loading local data:", {
+                    dataSourceKey,
+                    hasEndpoint: !!dataSource.endpoint,
+                    useApi: this.USE_API,
+                    useLocalData: options.useLocalData
+                });
                 rawData = await this.loadLocalData(dataSource);
-                console.log(`Local data loaded for ${dataSourceKey}`);
+                console.log("📁 Local data loaded:", {
+                    dataSourceKey,
+                    type: typeof rawData,
+                    isArray: Array.isArray(rawData),
+                    count: Array.isArray(rawData) ? rawData.length : "Not array"
+                });
             }
 
             // Transform data for different widget types

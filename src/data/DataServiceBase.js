@@ -64,12 +64,29 @@ class DataServiceBase {
   async put(endpoint, data = {}) {
     try {
       const url = `${this.baseURL}${endpoint}`;
-      log("PUT Request:", url, data);
+      log("🟡 PUT Request:", url, data);
       // PUT operations typically don't use caching, so we use direct axios
       const response = await axios.put(url, data, { timeout: 10000 });
+      
+      log("✅ PUT Response:", {
+        url,
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+        data: response.data
+      });
+      
       return response.data;
     } catch (error) {
-      log("PUT Error:", error);
+      log("❌ PUT Error:", {
+        url: `${this.baseURL}${endpoint}`,
+        message: error.message,
+        response: error.response ? {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data
+        } : null
+      });
       throw this.handleError(error);
     }
   }
@@ -82,12 +99,29 @@ class DataServiceBase {
   async delete(endpoint) {
     try {
       const url = `${this.baseURL}${endpoint}`;
-      log("DELETE Request:", url);
+      log("🔴 DELETE Request:", url);
       // DELETE operations typically don't use caching, so we use direct axios
       const response = await axios.delete(url, { timeout: 10000 });
+      
+      log("✅ DELETE Response:", {
+        url,
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+        data: response.data
+      });
+      
       return response.data;
     } catch (error) {
-      log("DELETE Error:", error);
+      log("❌ DELETE Error:", {
+        url: `${this.baseURL}${endpoint}`,
+        message: error.message,
+        response: error.response ? {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data
+        } : null
+      });
       throw this.handleError(error);
     }
   }

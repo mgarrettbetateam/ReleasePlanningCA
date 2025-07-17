@@ -2,6 +2,7 @@
 // Universal Data Service - Consolidates all data operations with caching and transformation
 
 import ApiService from "./ApiService.js";
+import dataService from "@/data/DataServiceBase.js";
 import { DATA_SOURCES } from "@/config/WidgetRegistry.js";
 
 class UniversalDataService {
@@ -72,47 +73,21 @@ class UniversalDataService {
                             count: Array.isArray(rawData) ? rawData.length : "Not array",
                             firstItem: Array.isArray(rawData) && rawData.length > 0 ? rawData[0] : null
                         });
-                    } else if (dataSourceKey === "ca") {
-                        console.log("🔄 Fetching CA data - first getting parts for phase:", filters.phase);
-                        // For CA data, we need objectIds from parts first
-                        const parts = await this.api.fetchParts(filters.phase);
-                        console.log("📦 Parts fetched for CA lookup:", {
-                            count: parts ? parts.length : 0,
-                            samplePart: parts && parts.length > 0 ? parts[0] : null
+                    } else if (dataSourceKey === "cas") {
+                        console.log("🔄 Fetching CAS data for phase:", filters.phase);
+                        const phase = filters.phase || filters.selectedPhase || "Phase 1";
+                        console.log("� Fetching CAS data:", {
+                            phase,
+                            dataSourceKey,
+                            endpoint: dataSource.endpoint
                         });
-                        
-                        if (parts && Array.isArray(parts)) {
-                            // Fetch CA data for each part with staggered requests
-                            console.log("🔗 Fetching CA data for " + parts.length + " parts with staggered requests");
-                            const caPromises = parts.map((part, index) => {
-                                const physId = part.physId || part.objectId;
-                                console.log("🔍 CA Request " + (index + 1) + "/" + parts.length + ":", {
-                                    physId,
-                                    partNumber: part.partNumber,
-                                    index
-                                });
-                                return this.api.fetchChangeAction(physId, index)
-                                    .catch(error => {
-                                        console.warn("⚠️ CA fetch failed for part:", {
-                                            physId,
-                                            partNumber: part.partNumber,
-                                            error: error.message
-                                        });
-                                        return null;
-                                    });
-                            });
-                            const caResults = await Promise.all(caPromises);
-                            rawData = caResults.filter(ca => ca !== null);
-                            console.log("✅ CA data collection complete:", {
-                                totalRequests: parts.length,
-                                successfulResults: rawData.length,
-                                failedResults: caResults.length - rawData.length,
-                                sampleCA: rawData.length > 0 ? rawData[0] : null
-                            });
-                        } else {
-                            console.warn("⚠️ No parts data available for CA lookup");
-                            rawData = [];
-                        }
+                        rawData = await dataService.fetchCAs(phase);
+                        console.log("✅ CAS data received:", {
+                            type: typeof rawData,
+                            isArray: Array.isArray(rawData),
+                            count: Array.isArray(rawData) ? rawData.length : "Not array",
+                            firstItem: Array.isArray(rawData) && rawData.length > 0 ? rawData[0] : null
+                        });
                     } else if (dataSourceKey === "stats") {
                         console.log("📊 Fetching STATS data:", {
                             dataSourceKey,

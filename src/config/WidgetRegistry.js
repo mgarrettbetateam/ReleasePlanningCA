@@ -425,94 +425,50 @@ export const DATA_SOURCES = {
         filters: ["program", "phase", "organization"]
     },
 
-    // Stats data source (aggregated metrics for dashboards)
-    stats: {
-        endpoint: "/api/stats",
-        localData: () => import("@/assets/config/app-data.json").then(module => module.default.stats),
+    // CAS data source (Change Actions)
+    cas: {
+        endpoint: "/internal/resources/AttributeValQuery/retrievePhaseCAs",
+        localData: () => import("@/assets/config/app-data.json").then(module => module.default.cas || []),
         chartAdapter: data => {
-            if (!data) {
+            if (!data || !Array.isArray(data)) {
                 return { labels: [], datasets: [] };
             }
             
-            // Use monthly progress data for line charts
-            if (data.monthlyProgress && Array.isArray(data.monthlyProgress)) {
-                return {
-                    labels: data.monthlyProgress.map(item => item.month),
-                    datasets: [
-                        {
-                            label: "Target",
-                            data: data.monthlyProgress.map(item => item.target),
-                            borderColor: "rgba(75, 192, 192, 1)",
-                            backgroundColor: "rgba(75, 192, 192, 0.2)",
-                            fill: false
-                        },
-                        {
-                            label: "Actual",
-                            data: data.monthlyProgress.map(item => item.actual),
-                            borderColor: "rgba(255, 99, 132, 1)",
-                            backgroundColor: "rgba(255, 99, 132, 0.2)",
-                            fill: false
-                        }
-                    ]
-                };
-            }
+            // Count Change Actions by status for chart visualization
+            const statusCounts = {};
+            data.forEach(ca => {
+                const status = ca.currentState || "Unknown";
+                statusCounts[status] = (statusCounts[status] || 0) + 1;
+            });
             
-            // Fallback to organization breakdown for bar charts
-            if (data.organizations) {
-                return {
-                    labels: Object.keys(data.organizations),
-                    datasets: [{
-                        label: "Parts by Organization",
-                        data: Object.values(data.organizations),
-                        backgroundColor: [
-                            "rgba(255, 99, 132, 0.2)",
-                            "rgba(54, 162, 235, 0.2)",
-                            "rgba(255, 205, 86, 0.2)",
-                            "rgba(75, 192, 192, 0.2)"
-                        ],
-                        borderColor: [
-                            "rgba(255, 99, 132, 1)",
-                            "rgba(54, 162, 235, 1)",
-                            "rgba(255, 205, 86, 1)",
-                            "rgba(75, 192, 192, 1)"
-                        ],
-                        borderWidth: 1
-                    }]
-                };
-            }
-            
-            return { labels: [], datasets: [] };
+            return {
+                labels: Object.keys(statusCounts),
+                datasets: [{
+                    label: "CAs by Status",
+                    data: Object.values(statusCounts),
+                    backgroundColor: [
+                        "rgba(75, 192, 192, 0.2)",
+                        "rgba(255, 99, 132, 0.2)",
+                        "rgba(54, 162, 235, 0.2)",
+                        "rgba(255, 205, 86, 0.2)",
+                        "rgba(153, 102, 255, 0.2)"
+                    ],
+                    borderColor: [
+                        "rgba(75, 192, 192, 1)",
+                        "rgba(255, 99, 132, 1)",
+                        "rgba(54, 162, 235, 1)",
+                        "rgba(255, 205, 86, 1)",
+                        "rgba(153, 102, 255, 1)"
+                    ],
+                    borderWidth: 1
+                }]
+            };
         },
-        tableAdapter: data => {
-            if (!data) return [];
-            
-            // Convert stats object to table format
-            const tableData = [];
-            
-            if (data.organizations) {
-                Object.entries(data.organizations).forEach(([org, count]) => {
-                    tableData.push({
-                        metric: "Organization",
-                        category: org,
-                        value: count
-                    });
-                });
-            }
-            
-            if (data.statusBreakdown) {
-                Object.entries(data.statusBreakdown).forEach(([status, count]) => {
-                    tableData.push({
-                        metric: "Status",
-                        category: status,
-                        value: count
-                    });
-                });
-            }
-            
-            return tableData;
-        },
-        filters: []
+        tableAdapter: data => data || [],
+        filters: ["program", "phase", "organization"]
     },
+
+    // Stats data source (aggregated metrics for dashboards)
 
     // BOM data source (specific to BomViewer)
     bom: {

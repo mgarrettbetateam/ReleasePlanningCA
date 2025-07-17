@@ -212,7 +212,6 @@ const dataService = {
    * @returns {Promise} - Array of items
    */
   async fetchItems(phase, itemType = "parts") {
-    log(`Fetching ${itemType} for phase:`, phase);
     try {
       // Determine endpoint and cache key based on item type
       const endpointMap = {
@@ -221,133 +220,137 @@ const dataService = {
         crs: "/internal/resources/AttributeValQuery/retrievePhaseCRs"
       };
 
-      const responseKeyMap = {
-        parts: "parts",
-        cas: ["CAs", "cas", "parts"], // API returns "CAs" (capital), try that first
-        crs: ["CRs", "crs", "parts"] // API likely returns "CRs" (capital)
-      };
-
       const endpoint = endpointMap[itemType] || endpointMap.parts;
-      const responseKeys = responseKeyMap[itemType] || responseKeyMap.parts;
       const cacheKey = `${itemType.toUpperCase()}:${phase}`;
-
-      log(`Using endpoint: ${endpoint}, cache key: ${cacheKey}`);
 
       const apiCall = async () => {
         const url = `${API_BASE_URL}${endpoint}`;
         const params = { phase };
         
-        log("Making API call details:", {
-          url,
+        const response = await axios.get(url, {
           params,
-          phase,
-          itemType,
-          API_BASE_URL,
-          encodedPhase: encodeURIComponent(phase)
+          timeout: 30000
         });
         
-        try {
-          const response = await axios.get(url, {
-            params,
-            timeout: 30000
-          });
-          
-          log("API call successful - Response details:", {
-            status: response.status,
-            statusText: response.statusText,
-            dataType: typeof response.data,
-            dataKeys: response.data ? Object.keys(response.data) : "No data keys",
-            hasError: !!(response.data && response.data.error),
-            itemType
-          });
-          
-          // Check if response contains an error
-          if (response.data && response.data.error) {
-            log("API returned server-side error:", response.data.error);
-            throw new Error(`API Error: ${response.data.error}`);
-          }
-          
-          // Try to extract data from different possible structures
-          let extractedData = null;
-          const keysToTry = Array.isArray(responseKeys) ? responseKeys : [responseKeys];
-          
-          log(`Trying to extract data with keys: ${keysToTry.join(", ")}`);
-          log(`Available response keys: ${Object.keys(response.data).join(", ")}`);
-          
-          // Try each configured response key
-          for (const key of keysToTry) {
-            log(`Checking key: ${key}, exists: ${!!response.data[key]}, isArray: ${Array.isArray(response.data[key])}`);
-            if (response.data[key] && Array.isArray(response.data[key])) {
-              extractedData = response.data[key];
-              log(`✅ Extracted data from response.data.${key} (array with ${extractedData.length} items)`);
-              break;
-            }
-          }
-          
-          // If no specific key worked, try direct array response
-          if (!extractedData && Array.isArray(response.data)) {
-            extractedData = response.data;
-            log(`Using response.data directly (array with ${extractedData.length} items)`);
-          }
-          
-          // If still no array, use the response as-is
-          if (!extractedData) {
-            extractedData = response.data;
-            log(`Using response.data as-is (type: ${typeof extractedData})`);
-          }
-          
-          log("Final extracted data:", {
-            type: typeof extractedData,
-            isArray: Array.isArray(extractedData),
-            length: Array.isArray(extractedData) ? extractedData.length : "Not an array",
-            keys: extractedData && typeof extractedData === "object" ? Object.keys(extractedData) : "Not an object",
-            sample: Array.isArray(extractedData) && extractedData.length > 0 ? extractedData[0] : extractedData
-          });
-          
-          return extractedData;
-          
-        } catch (axiosError) {
-          log("Axios request failed:", {
-            message: axiosError.message,
-            code: axiosError.code,
-            response: axiosError.response?.data,
-            status: axiosError.response?.status,
-            statusText: axiosError.response?.statusText,
-            itemType
-          });
-          throw axiosError;
+        // Check if response contains an error
+        if (response.data && response.data.error) {
+          throw new Error(`API Error: ${response.data.error}`);
         }
+        
+        return response.data;
       };
       
-      log("About to call ApiService.fetchData with cache key:", cacheKey);
-      const items = await ApiService.fetchData(cacheKey, apiCall);
+      const rawData = await ApiService.fetchData(cacheKey, apiCall);
       
-      log("ApiService.fetchData completed. Result:", {
-        count: Array.isArray(items) ? items.length : "Not an array",
-        type: typeof items,
-        isArray: Array.isArray(items),
-        hasData: !!items,
-        itemType
-      });
+      // Process the API response
+      let processedData = this.processApiResponse(rawData, itemType);
       
-      return items;
+      // Apply field mapping for CAs and CRs to ensure caStatusComment is set
+      if ((itemType === "cas" || itemType === "crs") && Array.isArray(processedData)) {
+        processedData = processedData.map(item => {
+          if (item && item.statusComment && !item.caStatusComment) {
+            return {
+              ...item,
+              caStatusComment: item.statusComment
+            };
+          }
+          return item;
+        });
+      }
+      
+      return processedData;
       
     } catch (error) {
-      log(`Error in fetchItems (${itemType}) - Complete error details:`, {
-        message: error.message,
-        name: error.name,
-        phase,
-        itemType,
-        apiBaseUrl: API_BASE_URL,
-        response: error.response?.data,
-        status: error.response?.status,
-        isApiError: error.message.includes("API Error"),
-        isNetworkError: error.code === "ECONNABORTED" || error.message.includes("Network"),
-        isTimeoutError: error.message.includes("timeout")
-      });
-      
+      console.error(`Error in fetchItems (${itemType}):`, error.message);
       throw error;
     }
+  },
+
+  /**
+   * Process API response data dynamically based on its structure
+   * @param {any} rawData - Raw data from API
+   * @param {string} itemType - Type of items (parts, cas, crs)
+   * @returns {Array} - Processed array of items
+   */
+  processApiResponse(rawData, itemType) {
+    // If it's already an array, return it
+    if (Array.isArray(rawData)) {
+      return rawData;
+    }
+    
+    // If it's a string, try to parse it as JSON
+    if (typeof rawData === "string") {
+      try {
+        // First try: parse as-is (for well-formed JSON)
+        const parsed = JSON.parse(rawData);
+        return this.processApiResponse(parsed, itemType);
+      } catch (firstError) {
+        // Second try: clean control characters and escape them properly
+        try {
+          const cleanedData = rawData
+            .replace(/[\r\n\t\f\b\v]/g, match => {
+              switch (match) {
+                case "\r": return "\\r";
+                case "\n": return "\\n";
+                case "\t": return "\\t";
+                case "\f": return "\\f";
+                case "\b": return "\\b";
+                case "\v": return "\\v";
+                default: return match;
+              }
+            });
+          
+          const parsed = JSON.parse(cleanedData);
+          return this.processApiResponse(parsed, itemType);
+        } catch (secondError) {
+          // Third try: more aggressive cleaning - remove problematic control characters
+          try {
+            // eslint-disable-next-line no-control-regex
+            const aggressiveCleanedData = rawData.replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
+            const parsed = JSON.parse(aggressiveCleanedData);
+            return this.processApiResponse(parsed, itemType);
+          } catch (thirdError) {
+            console.error("Failed to parse JSON string after all attempts:", {
+              originalError: firstError.message,
+              cleanedError: secondError.message,
+              aggressiveError: thirdError.message
+            });
+            const sampleLength = 500;
+            console.error("Raw data sample:", rawData.substring(0, sampleLength));
+            return [];
+          }
+        }
+      }
+    }
+    
+    // If it's an object, try to extract the relevant array
+    if (rawData && typeof rawData === "object") {
+      // Define possible keys based on item type
+      const possibleKeys = {
+        parts: ["parts", "Parts", "items", "data"],
+        cas: ["CAs", "cas", "changeActions", "items", "data"],
+        crs: ["CRs", "crs", "changeRequests", "items", "data"]
+      };
+      
+      const keysToTry = possibleKeys[itemType] || possibleKeys.parts;
+      
+      // Try each possible key
+      for (const key of keysToTry) {
+        if (rawData[key] && Array.isArray(rawData[key])) {
+          return rawData[key];
+        }
+      }
+      
+      // If no specific key worked, look for the first array we can find
+      const firstArrayKey = Object.keys(rawData).find(key => Array.isArray(rawData[key]));
+      if (firstArrayKey) {
+        return rawData[firstArrayKey];
+      }
+      
+      return [];
+    }
+    
+    return [];
   },
 
   // Legacy method for backward compatibility - now uses generic fetchItems

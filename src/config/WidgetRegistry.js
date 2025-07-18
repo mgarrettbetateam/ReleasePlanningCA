@@ -178,7 +178,22 @@ export const WIDGET_DEFINITIONS = {
             { text: "Phase", value: "phase", sortable: true },
             { text: "Quantity", value: "quantity", sortable: true },
             { text: "Target Release", value: "tgtRelease", sortable: true },
-            { text: "Actual Release", value: "actualRelease", sortable: true }
+            { text: "Actual Release", value: "actualRelease", sortable: true },
+            { 
+                text: "Status Comments", 
+                value: "statusComment", 
+                sortable: false,
+                width: "250px",
+                component: "StatusCommentDisplay",
+                componentProps: item => {
+                    return {
+                        statusComment: item.statusComment || item.caStatusComment || "",
+                        objectId: item.physId || item.partNumber || item.partNo,
+                        itemType: "parts",
+                        canEdit: false // Set to true when editing is ready
+                    };
+                }
+            }
         ],
         dataSource: "parts",
         filters: ["program", "phase", "organization"],

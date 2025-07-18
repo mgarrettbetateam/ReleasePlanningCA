@@ -31,7 +31,9 @@ class DataTransformationService {
                     currentState: ["currentState", "state"],
                     physId: ["physId", "id"],
                     caNumber: [], // Populated by ChangeActionCell
-                    caState: []   // Populated by ChangeActionCell
+                    caState: [],   // Populated by ChangeActionCell
+                    statusComment: ["statusComment", "caStatusComment", "partStatusComment"],
+                    caStatusComment: ["caStatusComment", "statusComment", "partStatusComment"]
                 }
             },
             cas: {

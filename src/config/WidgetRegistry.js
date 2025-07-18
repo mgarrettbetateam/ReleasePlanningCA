@@ -449,34 +449,50 @@ export const DATA_SOURCES = {
                 return { labels: [], datasets: [] };
             }
             
-            // Count Change Actions by status for chart visualization
-            const statusCounts = {};
+            // Group by date for Target vs Actual line chart
+            const dateMap = new Map();
             data.forEach(ca => {
-                const status = ca.currentState || "Unknown";
-                statusCounts[status] = (statusCounts[status] || 0) + 1;
+                const targetDate = ca.targetReleaseDate;
+                const actualDate = ca.actualReleaseDate;
+                
+                if (!targetDate) return;
+                
+                const date = new Date(targetDate).toLocaleDateString();
+                if (!dateMap.has(date)) {
+                    dateMap.set(date, { target: 0, actual: 0 });
+                }
+                dateMap.get(date).target++;
+                
+                if (actualDate && actualDate !== "N/A" && actualDate !== null && actualDate !== "" && actualDate.trim() !== "") {
+                    const actualFormattedDate = new Date(actualDate).toLocaleDateString();
+                    if (!dateMap.has(actualFormattedDate)) {
+                        dateMap.set(actualFormattedDate, { target: 0, actual: 0 });
+                    }
+                    dateMap.get(actualFormattedDate).actual++;
+                }
             });
             
+            const sortedDates = Array.from(dateMap.keys()).sort((a, b) => new Date(a) - new Date(b));
             return {
-                labels: Object.keys(statusCounts),
-                datasets: [{
-                    label: "CAs by Status",
-                    data: Object.values(statusCounts),
-                    backgroundColor: [
-                        "rgba(75, 192, 192, 0.2)",
-                        "rgba(255, 99, 132, 0.2)",
-                        "rgba(54, 162, 235, 0.2)",
-                        "rgba(255, 205, 86, 0.2)",
-                        "rgba(153, 102, 255, 0.2)"
-                    ],
-                    borderColor: [
-                        "rgba(75, 192, 192, 1)",
-                        "rgba(255, 99, 132, 1)",
-                        "rgba(54, 162, 235, 1)",
-                        "rgba(255, 205, 86, 1)",
-                        "rgba(153, 102, 255, 1)"
-                    ],
-                    borderWidth: 1
-                }]
+                labels: sortedDates,
+                datasets: [
+                    {
+                        label: "Target Completions",
+                        data: sortedDates.map(date => dateMap.get(date).target),
+                        borderColor: "rgba(75, 192, 192, 1)",
+                        backgroundColor: "rgba(75, 192, 192, 0.2)",
+                        tension: 0.1,
+                        fill: false
+                    },
+                    {
+                        label: "Actual Completions",
+                        data: sortedDates.map(date => dateMap.get(date).actual),
+                        borderColor: "rgba(255, 99, 132, 1)",
+                        backgroundColor: "rgba(255, 99, 132, 0.2)",
+                        tension: 0.1,
+                        fill: false
+                    }
+                ]
             };
         },
         tableAdapter: data => data || [],
@@ -530,39 +546,80 @@ export const DATA_SOURCES = {
         endpoint: "/internal/resources/AttributeValQuery/retrievePhaseCRs",
         localData: () => import("@/assets/config/app-data.json").then(module => module.default.crs || []),
         chartAdapter: data => {
+            console.log("🔍 CRS Chart Adapter - Input data:", data);
+            
             if (!data || !Array.isArray(data)) {
+                console.log("❌ CRS Chart Adapter - No data or not array");
                 return { labels: [], datasets: [] };
             }
             
-            // Count Change Requests by status for chart visualization
-            const statusCounts = {};
-            data.forEach(cr => {
-                const status = cr.status || cr.currentState || "Unknown";
-                statusCounts[status] = (statusCounts[status] || 0) + 1;
+            // Group by date for Target vs Actual line chart
+            const dateMap = new Map();
+            data.forEach((cr, index) => {
+                console.log(`🔍 CRS Chart Adapter - Processing CR ${index}:`, {
+                    crNumber: cr.crNumber,
+                    targetReleaseDate: cr.targetReleaseDate,
+                    actualCompleteDate: cr.actualCompleteDate,
+                    actualReleaseDate: cr.actualReleaseDate,
+                    completedDate: cr.completedDate,
+                    allFields: Object.keys(cr)
+                });
+                
+                const targetDate = cr.targetReleaseDate;
+                const actualDate = cr.actualCompleteDate || cr.actualReleaseDate || cr.completedDate;
+                
+                if (!targetDate) {
+                    console.log(`⚠️ CRS Chart Adapter - No target date for CR ${cr.crNumber}`);
+                    return;
+                }
+                
+                const date = new Date(targetDate).toLocaleDateString();
+                if (!dateMap.has(date)) {
+                    dateMap.set(date, { target: 0, actual: 0 });
+                }
+                dateMap.get(date).target++;
+                
+                if (actualDate && actualDate !== "N/A" && actualDate !== null && actualDate !== "" && actualDate.trim() !== "") {
+                    console.log(`✅ CRS Chart Adapter - Found actual date for CR ${cr.crNumber}: ${actualDate}`);
+                    const actualFormattedDate = new Date(actualDate).toLocaleDateString();
+                    if (!dateMap.has(actualFormattedDate)) {
+                        dateMap.set(actualFormattedDate, { target: 0, actual: 0 });
+                    }
+                    dateMap.get(actualFormattedDate).actual++;
+                } else {
+                    console.log(`❌ CRS Chart Adapter - No actual date for CR ${cr.crNumber} (value: ${actualDate})`);
+                }
             });
             
-            return {
-                labels: Object.keys(statusCounts),
-                datasets: [{
-                    label: "CRs by Status",
-                    data: Object.values(statusCounts),
-                    backgroundColor: [
-                        "rgba(153, 102, 255, 0.2)",
-                        "rgba(255, 159, 64, 0.2)",
-                        "rgba(255, 99, 132, 0.2)",
-                        "rgba(54, 162, 235, 0.2)",
-                        "rgba(75, 192, 192, 0.2)"
-                    ],
-                    borderColor: [
-                        "rgba(153, 102, 255, 1)",
-                        "rgba(255, 159, 64, 1)",
-                        "rgba(255, 99, 132, 1)",
-                        "rgba(54, 162, 235, 1)",
-                        "rgba(75, 192, 192, 1)"
-                    ],
-                    borderWidth: 1
-                }]
+            const sortedDates = Array.from(dateMap.keys()).sort((a, b) => new Date(a) - new Date(b));
+            
+            console.log("🔍 CRS Chart Adapter - DateMap:", Object.fromEntries(dateMap));
+            console.log("🔍 CRS Chart Adapter - Sorted dates:", sortedDates);
+            
+            const result = {
+                labels: sortedDates,
+                datasets: [
+                    {
+                        label: "Target Completions",
+                        data: sortedDates.map(date => dateMap.get(date).target),
+                        borderColor: "rgba(75, 192, 192, 1)",
+                        backgroundColor: "rgba(75, 192, 192, 0.2)",
+                        tension: 0.1,
+                        fill: false
+                    },
+                    {
+                        label: "Actual Completions",
+                        data: sortedDates.map(date => dateMap.get(date).actual),
+                        borderColor: "rgba(255, 99, 132, 1)",
+                        backgroundColor: "rgba(255, 99, 132, 0.2)",
+                        tension: 0.1,
+                        fill: false
+                    }
+                ]
             };
+            
+            console.log("🔍 CRS Chart Adapter - Final result:", result);
+            return result;
         },
         tableAdapter: data => data || [],
         // Table columns configuration for CRS

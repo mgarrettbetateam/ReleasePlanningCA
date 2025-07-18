@@ -77,10 +77,20 @@ export class ChartDataService {
                 actualDate = item.actualReleaseDate;
                 break;
             case "crs":
-                actualDate = item.actualReleaseDate || item.completedDate;
+                actualDate = item.actualCompleteDate || item.actualReleaseDate || item.completedDate;
+                // Debug logging for CRS
+                if (dataType === "crs") {
+                    console.log("🔍 CRS Actual Date Debug:", {
+                        itemName: item.crNumber || item.name,
+                        actualCompleteDate: item.actualCompleteDate,
+                        actualReleaseDate: item.actualReleaseDate,
+                        completedDate: item.completedDate,
+                        resolvedDate: actualDate
+                    });
+                }
                 break;
             default:
-                actualDate = item.actualRelease || item.actualReleaseDate || item.completedDate;
+                actualDate = item.actualRelease || item.actualReleaseDate || item.actualCompleteDate || item.completedDate;
         }
         
         return this.validateDate(actualDate);

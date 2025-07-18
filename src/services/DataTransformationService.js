@@ -46,7 +46,12 @@ class DataTransformationService {
                     targetReleaseDate: ["targetReleaseDate", "targetCompleteDate"],
                     approvedDate: ["approvedDate"],
                     actualReleaseDate: ["actualReleaseDate", "actualCompleteDate"],
-                    organization: ["organization"]
+                    organization: ["organization"],
+                    statusComment: ["statusComment", "caStatusComment"],
+                    caStatusComment: ["caStatusComment", "statusComment"],
+                    name: ["name", "caNumber", "changeActionNumber"],
+                    revision: ["revision", "rev"],
+                    physId: ["physId", "id"]
                 }
             },
             crs: {
@@ -59,7 +64,9 @@ class DataTransformationService {
                     owner: ["owner", "respEngr", "responsibleEngineer"],
                     currentState: ["currentState", "status"],
                     targetReleaseDate: ["targetReleaseDate", "dueDate"],
-                    actualCompleteDate: ["actualCompleteDate", "actualReleaseDate", "completedDate"]
+                    actualCompleteDate: ["actualCompleteDate", "actualReleaseDate", "completedDate"],
+                    statusComment: ["statusComment", "caStatusComment"],
+                    caStatusComment: ["caStatusComment", "statusComment"]
                 }
             }
         };

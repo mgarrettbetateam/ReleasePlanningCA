@@ -305,6 +305,14 @@
                                                 :field="header.componentProps.field"
                                                 @ca-number-loaded="onCaNumberLoaded"
                                             />
+                                            <!-- Use StatusCommentDisplay component for status comment fields -->
+                                            <StatusCommentDisplay
+                                                v-else-if="header.component === 'StatusCommentDisplay'"
+                                                :value="getStatusCommentValue(header, item)"
+                                                :can-edit="getCanEditValue(header, item)"
+                                                @comment-updated="handleCommentUpdate"
+                                                @show-message="showSnackbar"
+                                            />
                                             <!-- Regular cell for all other data -->
                                             <span v-else>{{ item[header.value] || 'N/A' }}</span>
                                         </td>
@@ -440,6 +448,7 @@
 /* eslint-disable no-console */
 import ReleaseChart from "@/components/charts/ReleaseChart.vue";
 import ChangeActionCell from "@/components/release-planning/ChangeActionCell.vue";
+import StatusCommentDisplay from "@/components/common/StatusCommentDisplay.vue";
 import dataService from "@/data/DataServiceBase.js";
 import filterService from "@/services/FilterService.js";
 import chartDataService from "@/services/ChartDataService.js";
@@ -452,7 +461,8 @@ export default {
     name: "EnhancedPartsPlannerWidget",
     components: {
         ReleaseChart,
-        ChangeActionCell
+        ChangeActionCell,
+        StatusCommentDisplay
     },
     props: {
         hideHeader: {
@@ -509,7 +519,8 @@ export default {
                     { text: "Status", value: "currentState", sortable: true, icon: "mdi-flag" },
                     { text: "Target Complete Date", value: "targetReleaseDate", sortable: true, icon: "mdi-calendar-clock" },
                     { text: "Actual Approved Date", value: "approvedDate", sortable: true, icon: "mdi-calendar-check" },
-                    { text: "Actual Complete Date", value: "actualReleaseDate", sortable: true, icon: "mdi-calendar-check" }
+                    { text: "Actual Complete Date", value: "actualReleaseDate", sortable: true, icon: "mdi-calendar-check" },
+                    { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text", component: "StatusCommentDisplay", componentProps: { itemType: "cas" } }
                 ],
                 crs: [
                     { text: "CR Number", value: "crNumber", sortable: true, required: true, icon: "mdi-file-document-outline" },
@@ -517,7 +528,8 @@ export default {
                     { text: "Resp Engr", value: "owner", sortable: true, icon: "mdi-account" },
                     { text: "Status", value: "currentState", sortable: true, icon: "mdi-flag" },
                     { text: "Target Complete Date", value: "targetReleaseDate", sortable: true, icon: "mdi-calendar-plus" },
-                    { text: "Actual Complete Date", value: "actualCompleteDate", sortable: true, icon: "mdi-calendar-check" }
+                    { text: "Actual Complete Date", value: "actualCompleteDate", sortable: true, icon: "mdi-calendar-check" },
+                    { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text", component: "StatusCommentDisplay", componentProps: { itemType: "crs" } }
                 ]
             },
             
@@ -581,6 +593,20 @@ export default {
             console.log("Base config headers:", baseConfig.map(h => h.value));
             console.log("Filtered headers:", filteredHeaders.map(h => h.value));
             console.log("Final header count:", filteredHeaders.length);
+            
+            // Debug StatusCommentDisplay headers specifically
+            const statusCommentHeaders = filteredHeaders.filter(h => h.component === "StatusCommentDisplay");
+            console.log("🔍 StatusCommentDisplay headers found:", statusCommentHeaders);
+            
+            // Debug for CA data type specifically
+            if (this.currentDataType === "cas") {
+                console.log("🔍 CAS headers debug:", {
+                    currentDataType: this.currentDataType,
+                    baseConfig,
+                    filteredHeaders,
+                    statusCommentHeaders
+                });
+            }
 
             return filteredHeaders;
         },
@@ -681,6 +707,49 @@ export default {
                 }
             },
             deep: false // Don't deep watch - we only care about array length changes
+        },
+        
+        // Debug watcher for tableData to track CA-00000268
+        "tableData": {
+            handler(newData) {
+                if (newData && Array.isArray(newData)) {
+                    console.log("🔍 Table data updated:", {
+                        dataType: this.currentDataType,
+                        itemCount: newData.length,
+                        hasCA00000268: newData.some(item => 
+                            item.name === "CA-00000268" || 
+                            item.caNumber === "CA-00000268"
+                        )
+                    });
+                    
+                    // Find and log CA-00000268 specifically
+                    const ca268 = newData.find(item => 
+                        item.name === "CA-00000268" || 
+                        item.caNumber === "CA-00000268"
+                    );
+                    
+                    if (ca268) {
+                        console.log("🔍 Found CA-00000268 in table data:", {
+                            item: ca268,
+                            statusComment: ca268.statusComment,
+                            caStatusComment: ca268.caStatusComment,
+                            name: ca268.name,
+                            caNumber: ca268.caNumber,
+                            allKeys: Object.keys(ca268)
+                        });
+                    } else {
+                        console.log("🔍 CA-00000268 NOT found in table data. Available items:", 
+                            newData.map(item => ({ 
+                                name: item.name, 
+                                caNumber: item.caNumber, 
+                                id: item.id 
+                            }))
+                        );
+                    }
+                }
+            },
+            deep: true,
+            immediate: true
         },
         
         // Watch for filter changes that should trigger chart updates
@@ -1127,6 +1196,139 @@ export default {
             if (rowIndex !== -1) {
                 const updatedItem = dataTransformationService.updateCaData(this.tableData[rowIndex], caData);
                 this.$set(this.tableData, rowIndex, updatedItem);
+            }
+        },
+
+        /**
+         * Handle comment updated event from StatusCommentDisplay component
+         */
+        handleCommentUpdate(updateData) {
+            console.log("💬 Comment updated:", updateData);
+            // Find the corresponding row and update the comment data
+            const rowIndex = this.tableData.findIndex(row => 
+                row.physId === updateData.objectId || 
+                row.caNumber === updateData.objectId || 
+                row.crNumber === updateData.objectId
+            );
+            if (rowIndex !== -1) {
+                this.$set(this.tableData[rowIndex], "statusComment", updateData.statusComment);
+                this.$set(this.tableData[rowIndex], "caStatusComment", updateData.statusComment);
+            }
+        },
+
+        /**
+         * Get status comment value handling both function and object componentProps
+         */
+        getStatusCommentValue(header, item) {
+            // Enhanced debug logging for CA-00000268
+            if (item.name === "CA-00000268" || item.caNumber === "CA-00000268") {
+                console.log("🔍 getStatusCommentValue called for CA-00000268:", {
+                    header,
+                    item,
+                    componentPropsType: typeof header.componentProps,
+                    componentProps: header.componentProps
+                });
+            }
+            
+            if (header.componentProps) {
+                if (typeof header.componentProps === "function") {
+                    // WidgetRegistry style - function that returns props object
+                    const props = header.componentProps(item);
+                    const statusComment = props.statusComment || props.caStatusComment || "";
+                    
+                    // Debug for CA-00000268
+                    if (item.name === "CA-00000268" || item.caNumber === "CA-00000268") {
+                        console.log("🔍 getStatusCommentValue (function) for CA-00000268:", {
+                            props,
+                            statusComment,
+                            propsStatusComment: props.statusComment,
+                            propsCaStatusComment: props.caStatusComment,
+                            item
+                        });
+                    }
+                    
+                    return statusComment;
+                } else if (typeof header.componentProps === "object") {
+                    // Local headerConfigurations style - static object
+                    const statusComment = item.statusComment || item.caStatusComment || "";
+                    
+                    // Debug for CA-00000268
+                    if (item.name === "CA-00000268" || item.caNumber === "CA-00000268") {
+                        console.log("🔍 getStatusCommentValue (object) for CA-00000268:", {
+                            headerComponentProps: header.componentProps,
+                            statusComment,
+                            itemStatusComment: item.statusComment,
+                            itemCaStatusComment: item.caStatusComment,
+                            itemKeys: Object.keys(item),
+                            item
+                        });
+                    }
+                    
+                    return statusComment;
+                }
+            }
+            // Fallback
+            const fallbackComment = this.getStatusCommentForItem(item);
+            
+            // Debug fallback for CA-00000268
+            if (item.name === "CA-00000268" || item.caNumber === "CA-00000268") {
+                console.log("🔍 getStatusCommentValue (fallback) for CA-00000268:", {
+                    fallbackComment,
+                    item
+                });
+            }
+            
+            return fallbackComment;
+        },
+
+        /**
+         * Get canEdit value handling both function and object componentProps
+         */
+        getCanEditValue(header, item) {
+            if (header.componentProps) {
+                if (typeof header.componentProps === "function") {
+                    // WidgetRegistry style - function that returns props object
+                    return header.componentProps(item).canEdit || false;
+                } else if (typeof header.componentProps === "object") {
+                    // Local headerConfigurations style - static object
+                    return header.componentProps.canEdit || false;
+                }
+            }
+            // Fallback
+            return false;
+        },
+
+        /**
+         * Get status comment for an item with debugging (fallback method)
+         */
+        getStatusCommentForItem(item) {
+            const statusComment = item.statusComment || item.caStatusComment || "";
+            
+            // Debug logging for CA-00000268 (fallback case)
+            if (item.name === "CA-00000268" || item.caNumber === "CA-00000268") {
+                console.log("🔍 ReleasePlannerWidget getStatusCommentForItem (fallback) for CA-00000268:", {
+                    item,
+                    statusComment,
+                    itemStatusComment: item.statusComment,
+                    itemCaStatusComment: item.caStatusComment
+                });
+            }
+            
+            return statusComment;
+        },
+
+        /**
+         * Show snackbar message (for StatusCommentDisplay feedback)
+         */
+        showSnackbar(message) {
+            // TODO: Implement snackbar notification system
+            console.log(`📢 ${message.type.toUpperCase()}: ${message.message}`);
+            
+            // For now, just log to console. In the future, you can add a proper snackbar/toast system
+            if (message.type === "error") {
+                console.error(message.message);
+            } else {
+                console.log(message.message);
             }
         }
     }

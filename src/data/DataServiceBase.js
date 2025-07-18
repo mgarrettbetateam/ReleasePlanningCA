@@ -248,6 +248,22 @@ const dataService = {
       // Apply field mapping for CAs and CRs to ensure caStatusComment is set
       if ((itemType === "cas" || itemType === "crs") && Array.isArray(processedData)) {
         processedData = processedData.map(item => {
+          // Debug logging for CA-00000268
+          if (item && (item.name === "CA-00000268" || item.caNumber === "CA-00000268")) {
+            console.log("🔍 Raw API Data for CA-00000268:", {
+              item,
+              allKeys: Object.keys(item),
+              statusRelatedFields: Object.keys(item).filter(key => 
+                key.toLowerCase().includes("status") || 
+                key.toLowerCase().includes("comment") ||
+                key.toLowerCase().includes("notes")
+              ).reduce((acc, key) => {
+                acc[key] = item[key];
+                return acc;
+              }, {})
+            });
+          }
+          
           if (item && item.statusComment && !item.caStatusComment) {
             return {
               ...item,

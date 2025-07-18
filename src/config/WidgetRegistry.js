@@ -465,6 +465,116 @@ export const DATA_SOURCES = {
             };
         },
         tableAdapter: data => data || [],
+        // Table columns configuration for CAS
+        tableColumns: [
+            { text: "CA Number", value: "name", sortable: true, width: "140px" },
+            { text: "Revision", value: "revision", sortable: true, width: "80px" },
+            { text: "Summary", value: "changeSummary", sortable: true, width: "200px" },
+            { text: "Target Release", value: "targetReleaseDate", sortable: true, width: "120px" },
+            { text: "Current State", value: "currentState", sortable: true, width: "120px" },
+            { text: "Organization", value: "organization", sortable: true, width: "150px" },
+            { text: "Responsible Engineer", value: "respEngr", sortable: true, width: "150px" },
+            { 
+                text: "Status Comments", 
+                value: "statusComment", 
+                sortable: false,
+                width: "250px",
+                component: "StatusCommentDisplay",
+                componentProps: item => {
+                    // Debug logging for field access
+                    if (item.name === "CA-00000268" || item.caNumber === "CA-00000268") {
+                        console.log("🔍 WidgetRegistry componentProps for CA-00000268:", {
+                            item,
+                            statusComment: item.statusComment,
+                            caStatusComment: item.caStatusComment,
+                            directFieldAccess: item["statusComment"],
+                            allStatusFields: Object.keys(item).filter(key => 
+                                key.toLowerCase().includes("status") || 
+                                key.toLowerCase().includes("comment")
+                            ).reduce((acc, key) => {
+                                acc[key] = item[key];
+                                return acc;
+                            }, {})
+                        });
+                    }
+                    
+                    return {
+                        statusComment: item.statusComment || item.caStatusComment || "",
+                        objectId: item.physId || item.caNumber || item.name,
+                        itemType: "cas",
+                        canEdit: false // Set to true when editing is ready
+                    };
+                }
+            }
+        ],
+        filters: ["program", "phase", "organization"]
+    },
+
+    // CRS data source (Change Requests)
+    crs: {
+        endpoint: "/internal/resources/AttributeValQuery/retrievePhaseCRs",
+        localData: () => import("@/assets/config/app-data.json").then(module => module.default.crs || []),
+        chartAdapter: data => {
+            if (!data || !Array.isArray(data)) {
+                return { labels: [], datasets: [] };
+            }
+            
+            // Count Change Requests by status for chart visualization
+            const statusCounts = {};
+            data.forEach(cr => {
+                const status = cr.status || cr.currentState || "Unknown";
+                statusCounts[status] = (statusCounts[status] || 0) + 1;
+            });
+            
+            return {
+                labels: Object.keys(statusCounts),
+                datasets: [{
+                    label: "CRs by Status",
+                    data: Object.values(statusCounts),
+                    backgroundColor: [
+                        "rgba(153, 102, 255, 0.2)",
+                        "rgba(255, 159, 64, 0.2)",
+                        "rgba(255, 99, 132, 0.2)",
+                        "rgba(54, 162, 235, 0.2)",
+                        "rgba(75, 192, 192, 0.2)"
+                    ],
+                    borderColor: [
+                        "rgba(153, 102, 255, 1)",
+                        "rgba(255, 159, 64, 1)",
+                        "rgba(255, 99, 132, 1)",
+                        "rgba(54, 162, 235, 1)",
+                        "rgba(75, 192, 192, 1)"
+                    ],
+                    borderWidth: 1
+                }]
+            };
+        },
+        tableAdapter: data => data || [],
+        // Table columns configuration for CRS
+        tableColumns: [
+            { text: "CR Number", value: "crNumber", sortable: true, width: "140px" },
+            { text: "Title", value: "title", sortable: true, width: "200px" },
+            { text: "Status", value: "status", sortable: true, width: "120px" },
+            { text: "Priority", value: "priority", sortable: true, width: "100px" },
+            { text: "Organization", value: "organization", sortable: true, width: "150px" },
+            { text: "Assignee", value: "assignee", sortable: true, width: "150px" },
+            { text: "Created Date", value: "createdDate", sortable: true, width: "120px" },
+            { 
+                text: "Status Comments", 
+                value: "statusComment", 
+                sortable: false,
+                width: "250px",
+                component: "StatusCommentDisplay",
+                componentProps: item => {
+                    return {
+                        statusComment: item.statusComment || item.caStatusComment || "",
+                        objectId: item.physId || item.crNumber,
+                        itemType: "crs",
+                        canEdit: false // Set to true when editing is ready
+                    };
+                }
+            }
+        ],
         filters: ["program", "phase", "organization"]
     },
 

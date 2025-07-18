@@ -39,7 +39,7 @@ export default {
             mounted() {
                 // Register for resize updates if component doesn't already handle it
                 if (!this._responsiveUpdateHandler && !this.onResponsiveResize) {
-                    this._responsiveUpdateHandler = responsiveUtils.onWindowResize((resizeData) => {
+                    this._responsiveUpdateHandler = responsiveUtils.onWindowResize(resizeData => {
                         this.$breakpoint = resizeData.breakpoint;
                         this.$windowSize = {
                             width: resizeData.width,

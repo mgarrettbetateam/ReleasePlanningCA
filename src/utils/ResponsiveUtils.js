@@ -24,11 +24,11 @@ export class ResponsiveUtils {
     getCurrentBreakpoint() {
         const width = window.innerWidth;
         
-        if (width < this.breakpoints.sm) return 'xs';
-        if (width < this.breakpoints.md) return 'sm';
-        if (width < this.breakpoints.lg) return 'md';
-        if (width < this.breakpoints.xl) return 'lg';
-        return 'xl';
+        if (width < this.breakpoints.sm) return "xs";
+        if (width < this.breakpoints.md) return "sm";
+        if (width < this.breakpoints.lg) return "md";
+        if (width < this.breakpoints.xl) return "lg";
+        return "xl";
     }
 
     /**
@@ -42,14 +42,14 @@ export class ResponsiveUtils {
      * Check if current viewport is mobile (xs or sm)
      */
     isMobile() {
-        return this.isBreakpoint('xs') || this.isBreakpoint('sm');
+        return this.isBreakpoint("xs") || this.isBreakpoint("sm");
     }
 
     /**
      * Check if current viewport is tablet (sm or md)
      */
     isTablet() {
-        return this.isBreakpoint('sm') || this.isBreakpoint('md');
+        return this.isBreakpoint("sm") || this.isBreakpoint("md");
     }
 
     /**
@@ -69,7 +69,7 @@ export class ResponsiveUtils {
             : baseConfig;
 
         return {
-            width: config.width || '100%',
+            width: config.width || "100%",
             height: config.height || baseConfig.height || 400,
             minHeight: config.minHeight || baseConfig.minHeight || 200,
             maxHeight: config.maxHeight || baseConfig.maxHeight || 800,
@@ -105,13 +105,13 @@ export class ResponsiveUtils {
                             isDesktop: this.isDesktop()
                         });
                     } catch (error) {
-                        console.error('Error in resize callback:', error);
+                        console.error("Error in resize callback:", error);
                     }
                 });
             }, 100); // Debounce resize events
         };
 
-        window.addEventListener('resize', handleResize);
+        window.addEventListener("resize", handleResize);
         
         // Initial call
         handleResize();
@@ -134,7 +134,7 @@ export class ResponsiveUtils {
      */
     observeElementResize(element, callback) {
         if (!window.ResizeObserver) {
-            console.warn('ResizeObserver not supported, falling back to window resize');
+            console.warn("ResizeObserver not supported, falling back to window resize");
             return this.onWindowResize(callback);
         }
 
@@ -173,7 +173,7 @@ export class ResponsiveUtils {
             plugins: {
                 legend: {
                     display: !this.isMobile() || baseConfig.showLegendOnMobile !== false,
-                    position: this.isMobile() ? 'bottom' : 'top',
+                    position: this.isMobile() ? "bottom" : "top",
                     labels: {
                         boxWidth: this.isMobile() ? 12 : 16,
                         fontSize: this.isMobile() ? 10 : 12
@@ -181,7 +181,7 @@ export class ResponsiveUtils {
                 },
                 tooltip: {
                     enabled: true,
-                    mode: this.isMobile() ? 'nearest' : 'index',
+                    mode: this.isMobile() ? "nearest" : "index",
                     intersect: this.isMobile()
                 }
             },
@@ -310,7 +310,7 @@ export const ResponsiveMixin = {
     
     mounted() {
         // Register for window resize updates
-        this.unsubscribeResize = responsiveUtils.onWindowResize((resizeData) => {
+        this.unsubscribeResize = responsiveUtils.onWindowResize(resizeData => {
             this.currentBreakpoint = resizeData.breakpoint;
             this.windowDimensions = {
                 width: resizeData.width,

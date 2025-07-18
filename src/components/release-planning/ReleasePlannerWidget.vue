@@ -274,7 +274,7 @@
                     </v-menu>
                 </v-card-title>
                 
-                                <v-card-text class="pa-0">
+                <v-card-text class="pa-0">
                     <div :style="{ height: `${currentTableHeight}px`, overflowY: 'auto' }">
                         <v-data-table
                             v-if="filteredTableData.length > 0"

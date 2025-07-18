@@ -121,6 +121,45 @@
     </div>
 </template>
 
+<style scoped>
+.responsive-demo {
+    padding: 20px;
+}
+
+.responsive-info-card {
+    height: 100%;
+}
+
+.info-item {
+    margin-bottom: 8px;
+    padding: 4px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.chart-container-responsive {
+    position: relative;
+    width: 100%;
+}
+
+.chart-container-responsive canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.table-container-responsive {
+    position: relative;
+    width: 100%;
+    overflow: auto;
+}
+
+.grid-responsive-auto {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+</style>
+
 <script>
 import Chart from "chart.js";
 
@@ -269,42 +308,3 @@ export default {
     }
 };
 </script>
-
-<style scoped>
-.responsive-demo {
-    padding: 20px;
-}
-
-.responsive-info-card {
-    height: 100%;
-}
-
-.info-item {
-    margin-bottom: 8px;
-    padding: 4px 0;
-    border-bottom: 1px solid #eee;
-}
-
-.chart-container-responsive {
-    position: relative;
-    width: 100%;
-}
-
-.chart-container-responsive canvas {
-    width: 100% !important;
-    height: 100% !important;
-}
-
-.table-container-responsive {
-    position: relative;
-    width: 100%;
-    overflow: auto;
-}
-
-.grid-responsive-auto {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 16px;
-    margin-top: 16px;
-}
-</style>

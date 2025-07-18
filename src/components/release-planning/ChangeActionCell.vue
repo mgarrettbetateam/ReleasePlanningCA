@@ -8,34 +8,15 @@
             indeterminate
         />
         <template v-else>
-            <!-- Show CA Number as link with tooltip -->
-            <v-tooltip v-if="field === 'number'" bottom>
-                <template #activator="{ on, attrs }">
-                    <a 
-                        :href="caLink" 
-                        target="_blank"
-                        class="ca-link"
-                        v-bind="attrs"
-                        v-on="on"
-                    >
-                        {{ caNumber }}
-                    </a>
-                </template>
-                <div class="ca-tooltip">
-                    <div class="tooltip-header">
-                        <v-icon small color="white" class="mr-1">mdi-file-document</v-icon>
-                        Change Action Details
-                    </div>
-                    <div class="tooltip-content">
-                        <div><strong>CA Number:</strong> {{ caNumber }}</div>
-                        <div><strong>Status:</strong> {{ caState }}</div>
-                        <div class="tooltip-action">
-                            <v-icon small color="lightblue" class="mr-1">mdi-open-in-new</v-icon>
-                            Click to view in new tab
-                        </div>
-                    </div>
-                </div>
-            </v-tooltip>
+            <!-- Show CA Number as link without tooltip -->
+            <a 
+                v-if="field === 'number'"
+                :href="caLink" 
+                target="_blank"
+                class="ca-link"
+            >
+                {{ caNumber }}
+            </a>
             <!-- Show CA State -->
             <span v-else-if="field === 'state'">{{ caState }}</span>
             <!-- Default: show CA Number with tooltip -->

@@ -1082,6 +1082,109 @@
 }
 
 /* =============================================================================
+   RESPONSIVE DESIGN ENHANCEMENTS
+   ============================================================================= */
+
+/* Dynamic viewport units for responsive sizing */
+.h-screen { height: 100vh; }
+.w-screen { width: 100vw; }
+.min-h-screen { min-height: 100vh; }
+.max-h-screen { max-height: 100vh; }
+
+/* Responsive container sizes */
+.container-responsive {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-md);
+}
+
+/* Responsive chart containers */
+.chart-container-responsive {
+  position: relative;
+  width: 100%;
+  height: 400px;
+  min-height: 200px;
+}
+
+.chart-container-responsive canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Responsive table containers */
+.table-container-responsive {
+  position: relative;
+  width: 100%;
+  height: 500px;
+  min-height: 200px;
+  overflow: auto;
+}
+
+/* Responsive grid layouts */
+.grid-responsive-auto {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.grid-responsive-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-md);
+}
+
+.grid-responsive-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-md);
+}
+
+/* Responsive breakpoint utilities */
+@media (max-width: 600px) {
+  .grid-responsive-2,
+  .grid-responsive-3 {
+    grid-template-columns: 1fr;
+  }
+  
+  .chart-container-responsive {
+    height: 300px;
+  }
+  
+  .table-container-responsive {
+    height: 300px;
+  }
+  
+  .container-responsive {
+    padding: 0 var(--spacing-sm);
+  }
+}
+
+@media (max-width: 960px) {
+  .grid-responsive-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .chart-container-responsive {
+    height: 350px;
+  }
+  
+  .table-container-responsive {
+    height: 400px;
+  }
+}
+
+@media (min-width: 1264px) {
+  .chart-container-responsive {
+    height: 450px;
+  }
+  
+  .table-container-responsive {
+    height: 550px;
+  }
+}
+
+/* =============================================================================
    RESPONSIVE DESIGN
    ============================================================================= */
 

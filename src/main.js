@@ -3,6 +3,7 @@ import { widget, disableDefaultCSS, requirejs, onVisibilityChange } from "@widge
 import Vue from "vue";
 import App from "./app.vue";
 import vuetify from "./plugins/vuetify";
+import ResponsivePlugin from "./plugins/responsive";
 // Import global styles
 import "./assets/styles/BetaStyles.css";
 
@@ -10,6 +11,9 @@ const start = () => {
     disableDefaultCSS(true);
 
     widget.setTitle("Widget Template Vue");
+
+    // Install responsive plugin
+    Vue.use(ResponsivePlugin);
 
     const mainComponent = new Vue({
         vuetify,

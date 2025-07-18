@@ -62,13 +62,16 @@
             :headers="computedHeaders"
             :items="filteredItems"
             :loading="loading"
-            :items-per-page="itemsPerPage"
+            :items-per-page="responsiveItemsPerPage"
             :sort-by="sortBy"
             :sort-desc="sortDesc"
             :show-expand="expandable"
             :single-expand="singleExpand"
-            :dense="dense"
+            :dense="responsiveDense"
             :height="tableHeight"
+            :mobile-breakpoint="600"
+            :hide-default-footer="isMobile"
+            :fixed-header="isDesktop"
             class="universal-table"
             @click:row="handleRowClick"
         >
@@ -136,8 +139,11 @@
 </style>
 
 <script>
+import { responsiveUtils, ResponsiveMixin } from "@/utils/ResponsiveUtils.js";
+
 export default {
     name: "UniversalTable",
+    mixins: [ResponsiveMixin],
     props: {
         headers: {
             type: Array,
@@ -203,15 +209,45 @@ export default {
     data() {
         return {
             searchTerm: "",
-            selectedFilter: null
+            selectedFilter: null,
+            currentHeight: null,
+            currentItemsPerPage: 10
         };
     },
     computed: {
+        tableHeight() {
+            return this.currentHeight || this.height || 400;
+        },
+        
+        responsiveItemsPerPage() {
+            const tableConfig = responsiveUtils.getTableConfig({
+                itemsPerPage: this.itemsPerPage,
+                height: this.height
+            });
+            return tableConfig.itemsPerPage;
+        },
+        
+        responsiveDense() {
+            const tableConfig = responsiveUtils.getTableConfig({});
+            return tableConfig.dense;
+        },
+        
         computedHeaders() {
-            return this.headers.map(header => ({
+            // Filter headers based on screen size
+            let visibleHeaders = this.headers;
+            
+            if (this.isMobile) {
+                // On mobile, show only essential headers
+                visibleHeaders = this.headers.filter(header => 
+                    header.essential !== false && header.mobileVisible !== false
+                );
+            }
+            
+            return visibleHeaders.map(header => ({
                 ...header,
                 sortable: header.sortable !== false,
-                filterable: header.filterable !== false
+                filterable: header.filterable !== false,
+                width: this.isMobile ? undefined : header.width
             }));
         },
         
@@ -252,16 +288,34 @@ export default {
                 text: value,
                 value
             }));
-        },
-        
-        tableHeight() {
-            if (this.height) {
-                return typeof this.height === "number" ? `${this.height}px` : this.height;
-            }
-            return null;
         }
     },
+    mounted() {
+        this.calculateResponsiveHeight();
+    },
     methods: {
+        calculateResponsiveHeight() {
+            if (this.$el && this.$el.parentElement) {
+                const optimalHeight = responsiveUtils.calculateOptimalHeight(
+                    this.$el.parentElement,
+                    this.items
+                );
+                this.currentHeight = optimalHeight;
+            }
+        },
+        
+        onResponsiveResize(_resizeData) {
+            // Handle responsive resize from mixin
+            this.calculateResponsiveHeight();
+            
+            // Update items per page based on new screen size
+            const tableConfig = responsiveUtils.getTableConfig({
+                itemsPerPage: this.itemsPerPage,
+                height: this.currentHeight
+            });
+            this.currentItemsPerPage = tableConfig.itemsPerPage;
+        },
+        
         formatCellValue(value, header) {
             if (value === null || value === undefined) return "";
             

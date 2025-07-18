@@ -66,9 +66,11 @@
 
 <script>
 import Chart from "chart.js";
+import { responsiveUtils, ResponsiveMixin } from "@/utils/ResponsiveUtils.js";
 
 export default {
     name: "UniversalChart",
+    mixins: [ResponsiveMixin],
     props: {
         type: {
             type: String,
@@ -113,18 +115,23 @@ export default {
         showExportButton: {
             type: Boolean,
             default: true
+        },
+        baseConfig: {
+            type: Object,
+            default: () => ({})
         }
     },
     data() {
         return {
             chart: null,
-            resizeObserver: null
+            resizeObserver: null,
+            currentHeight: 400
         };
     },
     computed: {
         containerStyle() {
             return {
-                height: typeof this.height === "number" ? `${this.height}px` : this.height,
+                height: typeof this.currentHeight === "number" ? `${this.currentHeight}px` : this.currentHeight,
                 position: "relative"
             };
         },
@@ -146,16 +153,30 @@ export default {
                    this.data.labels.length > 0;
         },
         chartOptions() {
+            const responsiveConfig = responsiveUtils.getChartConfig(this.baseConfig);
+            
             const baseOptions = {
                 responsive: true,
                 maintainAspectRatio: false,
+                aspectRatio: responsiveConfig.aspectRatio,
+                layout: responsiveConfig.layout,
                 plugins: {
                     legend: {
                         display: true,
-                        position: "top"
+                        position: responsiveConfig.plugins.legend.position,
+                        labels: responsiveConfig.plugins.legend.labels
                     },
                     decimation: {
                         enabled: false // Disable decimation to show all points
+                    },
+                    tooltip: responsiveConfig.plugins.tooltip
+                },
+                scales: {
+                    x: {
+                        ticks: responsiveConfig.scales.x.ticks
+                    },
+                    y: {
+                        ticks: responsiveConfig.scales.y.ticks
                     }
                 },
                 spanGaps: false, // Do not skip points
@@ -171,14 +192,16 @@ export default {
                         title: {
                             display: true,
                             text: "Quantity"
-                        }
+                        },
+                        ticks: responsiveConfig.scales.x.ticks
                     },
                     y: {
                         type: "linear",
                         title: {
                             display: true,
                             text: "Days Until Release"
-                        }
+                        },
+                        ticks: responsiveConfig.scales.y.ticks
                     }
                 };
                 
@@ -218,6 +241,7 @@ export default {
         this.$nextTick(() => {
             this.initChart();
             this.setupResizeObserver();
+            this.calculateInitialHeight();
         });
     },
     beforeDestroy() {
@@ -227,6 +251,29 @@ export default {
         }
     },
     methods: {
+        calculateInitialHeight() {
+            if (this.$el && this.$el.parentElement) {
+                const optimalHeight = responsiveUtils.calculateOptimalHeight(
+                    this.$el.parentElement,
+                    this.data
+                );
+                this.currentHeight = optimalHeight;
+            } else {
+                this.currentHeight = this.height;
+            }
+        },
+        
+        onResponsiveResize(resizeData) {
+            // Handle responsive resize from mixin
+            this.calculateInitialHeight();
+            
+            if (this.chart) {
+                // Update chart with new responsive options
+                this.chart.options = this.chartOptions;
+                this.chart.resize();
+                this.chart.update();
+            }
+        },
         initChart() {
             if (!this.$refs.chartCanvas) {
                 console.warn("Canvas ref not available for chart initialization");

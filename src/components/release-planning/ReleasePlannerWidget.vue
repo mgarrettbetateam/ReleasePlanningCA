@@ -218,7 +218,7 @@
                 </v-card-title>
                 
                 <v-card-text class="pa-2">
-                    <div style="height: 400px; width: 100%;">
+                    <div :style="{ height: `${currentChartHeight}px`, width: '100%' }">
                         <ReleaseChart
                             v-if="chartData.labels?.length > 0"
                             ref="lineChart"
@@ -274,19 +274,21 @@
                     </v-menu>
                 </v-card-title>
                 
-                <v-card-text class="pa-0">
-                    <div style="height: 500px; overflow-y: auto;">
+                                <v-card-text class="pa-0">
+                    <div :style="{ height: `${currentTableHeight}px`, overflowY: 'auto' }">
                         <v-data-table
                             v-if="filteredTableData.length > 0"
                             :headers="tableHeaders"
                             :items="filteredTableData"
                             :loading="loading"
-                            dense
-                            :height="500"
-                            fixed-header
-                            :items-per-page="20"
-                            hide-default-footer
+                            :dense="isMobile"
+                            :height="currentTableHeight"
+                            :fixed-header="isDesktop"
+                            :items-per-page="isMobile ? 5 : isTablet ? 10 : 20"
+                            :hide-default-footer="isMobile"
+                            :mobile-breakpoint="600"
                             item-value="partNo"
+                            class="pa-0"
                             @click:row="handleRowClick"
                         >
                             <template #body="{ items }">
@@ -456,6 +458,7 @@ import dataTransformationService from "@/services/DataTransformationService.js";
 import exportService from "@/services/ExportService.js";
 import { USE_MOCK_DATA } from "@/config/ApiConfig.js";
 import { getApiBaseUrl, API_CONFIG } from "@/config/ApiConfig.js";
+import { responsiveUtils, ResponsiveMixin } from "@/utils/ResponsiveUtils.js";
 
 export default {
     name: "EnhancedPartsPlannerWidget",
@@ -464,6 +467,7 @@ export default {
         ChangeActionCell,
         StatusCommentDisplay
     },
+    mixins: [ResponsiveMixin],
     props: {
         hideHeader: {
             type: Boolean,
@@ -553,7 +557,32 @@ export default {
             selectedStatFilter: "all",
             
             // Chart refresh key to force chart updates
-            chartKey: 0
+            chartKey: 0,
+            
+            // Responsive dimensions
+            currentChartHeight: 400,
+            currentTableHeight: 500,
+            
+            // Base config for responsive utilities
+            baseConfig: {
+                chart: {
+                    height: 400,
+                    breakpoints: {
+                        mobile: { height: 300 },
+                        tablet: { height: 350 },
+                        desktop: { height: 400 }
+                    }
+                },
+                table: {
+                    height: 500,
+                    itemsPerPage: 15,
+                    breakpoints: {
+                        mobile: { height: 300, itemsPerPage: 5 },
+                        tablet: { height: 400, itemsPerPage: 10 },
+                        desktop: { height: 500, itemsPerPage: 15 }
+                    }
+                }
+            }
         };
     },
     
@@ -808,11 +837,46 @@ export default {
         console.log("🏷️  Widget title:", this.widgetTitle);
         console.log(" USE_MOCK_DATA:", USE_MOCK_DATA);
         
+        // Initialize responsive dimensions
+        this.initializeResponsiveDimensions();
+        
         // Initialize by fetching programs first
         await this.fetchPrograms();
     },
     
     methods: {
+        /**
+         * Handle responsive resize events from ResponsiveMixin
+         */
+        onResponsiveResize(_resizeData) {
+            // Update chart height
+            const chartConfig = responsiveUtils.getResponsiveDimensions(this.baseConfig.chart);
+            this.currentChartHeight = chartConfig.height;
+            
+            // Update table height
+            const tableConfig = responsiveUtils.getResponsiveDimensions(this.baseConfig.table);
+            this.currentTableHeight = tableConfig.height;
+            
+            // Force chart resize
+            this.$nextTick(() => {
+                if (this.$refs.lineChart && this.$refs.lineChart.chart) {
+                    this.$refs.lineChart.chart.resize();
+                }
+                
+                // Update chart data to reflect new responsive options
+                this.updateChartFromFiltered();
+            });
+        },
+        
+        /**
+         * Initialize responsive dimensions on component mount
+         */
+        initializeResponsiveDimensions() {
+            this.onResponsiveResize({});
+        },
+        
+        // ===== EXISTING METHODS CONTINUE =====
+        
         /**
          * ⚠️  CRITICAL: DATA TYPE MAPPING FUNCTION
          * 

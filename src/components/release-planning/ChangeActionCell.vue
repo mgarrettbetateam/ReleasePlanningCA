@@ -8,38 +8,38 @@
             indeterminate
         />
         <template v-else>
-            <!-- Show CA Number as link without tooltip -->
+            <!-- Show CA/CR Number as link without tooltip -->
             <a 
                 v-if="field === 'number'"
-                :href="caLink" 
+                :href="displayLink" 
                 target="_blank"
                 class="ca-link"
             >
-                {{ caNumber }}
+                {{ displayNumber }}
             </a>
-            <!-- Show CA State -->
-            <span v-else-if="field === 'state'">{{ caState }}</span>
-            <!-- Default: show CA Number with tooltip -->
+            <!-- Show CA/CR State -->
+            <span v-else-if="field === 'state'">{{ displayState }}</span>
+            <!-- Default: show CA/CR Number with tooltip -->
             <v-tooltip v-else bottom>
                 <template #activator="{ on, attrs }">
                     <a 
-                        :href="caLink" 
+                        :href="displayLink" 
                         target="_blank"
                         class="ca-link"
                         v-bind="attrs"
                         v-on="on"
                     >
-                        {{ caNumber }}
+                        {{ displayNumber }}
                     </a>
                 </template>
                 <div class="ca-tooltip">
                     <div class="tooltip-header">
                         <v-icon small color="white" class="mr-1">mdi-file-document</v-icon>
-                        Change Action Details
+                        {{ tooltipTitle }}
                     </div>
                     <div class="tooltip-content">
-                        <div><strong>CA Number:</strong> {{ caNumber }}</div>
-                        <div><strong>Status:</strong> {{ caState }}</div>
+                        <div><strong>{{ tooltipNumberLabel }}</strong> {{ displayNumber }}</div>
+                        <div><strong>Status:</strong> {{ displayState }}</div>
                         <div class="tooltip-action">
                             <v-icon small color="lightblue" class="mr-1">mdi-open-in-new</v-icon>
                             Click to view in new tab
@@ -116,6 +116,20 @@ export default {
             type: String,
             default: "number",
             validator: value => ["number", "state"].includes(value)
+        },
+        itemType: {
+            type: String,
+            default: "ca",
+            validator: value => ["ca", "cr"].includes(value)
+        },
+        // Direct props for when data is already available (CAS/CRS)
+        itemNumber: {
+            type: String,
+            default: ""
+        },
+        itemState: {
+            type: String,
+            default: ""
         }
     },
     data() {
@@ -126,26 +140,60 @@ export default {
             caState: ""
         };
     },
-  async mounted() {
-    this.loading = true;
-    
-    try {
-      const data = await ApiService.fetchChangeAction(this.objId, this.rowIndex);
-      this.setCAData(data);
-    } catch (err) {
-      this.handleError(err);
-    } finally {
-      this.loading = false;
-    }
-  },
-  
-  methods: {
-    setCAData(data) {
-      this.caNumber = data.caNumber;
-      this.caLink = data.caLink;
-      this.caState = data.caState;
-      this.emitData();
+
+    computed: {
+        displayNumber() {
+            return this.itemNumber || this.caNumber;
+        },
+        displayState() {
+            return this.itemState || this.caState;
+        },
+        displayLink() {
+            if (this.itemNumber) {
+                // Use direct data (CAS/CRS case)
+                return this.generateLink(this.itemNumber);
+            }
+            return this.caLink; // Use API data (PARTS case)
+        },
+        tooltipTitle() {
+            return this.itemType === "cr" ? "Change Request Details" : "Change Action Details";
+        },
+        tooltipNumberLabel() {
+            return this.itemType === "cr" ? "CR Number:" : "CA Number:";
+        }
     },
+    async mounted() {
+        // Only fetch data if we don't have direct props (PARTS case)
+        if (!this.itemNumber) {
+            this.loading = true;
+            
+            try {
+                const data = await ApiService.fetchChangeAction(this.objId, this.rowIndex);
+                this.setCAData(data);
+            } catch (err) {
+                this.handleError(err);
+            } finally {
+                this.loading = false;
+            }
+        }
+    },
+  
+    methods: {
+        generateLink(itemNumber) {
+            // Generate link based on item type
+            if (this.itemType === "cr") {
+                return `https://your-system.com/cr/${itemNumber}`;
+            }
+            // Default to CA link
+            return `https://your-system.com/ca/${itemNumber}`;
+        },
+
+        setCAData(data) {
+            this.caNumber = data.caNumber;
+            this.caLink = data.caLink;
+            this.caState = data.caState;
+            this.emitData();
+        },
 
     handleError(err) {
       console.error("Error fetching CA data after all retries:", err);
@@ -172,14 +220,16 @@ export default {
       }
     },
     
-    emitData() {
-      this.$emit("ca-number-loaded", {
-        objectId: this.objId,
-        caNumber: this.caNumber,
-        caLink: this.caLink,
-        caState: this.caState
-      });
-    }
+        emitData() {
+            const eventName = this.itemType === "cr" ? "cr-number-loaded" : "ca-number-loaded";
+            this.$emit(eventName, {
+                objectId: this.objId,
+                itemNumber: this.displayNumber,
+                itemLink: this.displayLink,
+                itemState: this.displayState,
+                itemType: this.itemType
+            });
+        }
   }
 };
 </script>

@@ -299,13 +299,17 @@
                                         @click="handleRowClick(item)"
                                     >
                                         <td v-for="header in tableHeaders" :key="header.value">
-                                            <!-- Use ChangeActionCell component for CA fields (only in parts data) -->
+                                            <!-- Use ChangeActionCell component for CA/CR fields -->
                                             <ChangeActionCell
                                                 v-if="header.component === 'ChangeActionCell'"
-                                                :obj-id="item.physId"
+                                                :obj-id="item.physId || item.objId"
                                                 :row-index="index"
                                                 :field="header.componentProps.field"
+                                                :item-type="header.componentProps.itemType || 'ca'"
+                                                :item-number="getItemNumberForCell(header, item)"
+                                                :item-state="getItemStateForCell(header, item)"
                                                 @ca-number-loaded="onCaNumberLoaded"
+                                                @cr-number-loaded="onCrNumberLoaded"
                                             />
                                             <!-- Use StatusCommentDisplay component for status comment fields -->
                                             <StatusCommentDisplay
@@ -514,11 +518,10 @@ export default {
                     { text: "Actual Release", value: "actualRelease", sortable: true, icon: "mdi-calendar-check" },
                     { text: "State", value: "currentState", sortable: true, icon: "mdi-flag" },
                     { text: "Change Action", value: "caNumber", sortable: false, component: "ChangeActionCell", componentProps: { field: "number" } },
-                    { text: "CA State", value: "caState", sortable: false, component: "ChangeActionCell", componentProps: { field: "state" } },
                     { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text", component: "StatusCommentDisplay", componentProps: { itemType: "parts" } }
                 ],
                 cas: [
-                    { text: "CA Number", value: "caNumber", sortable: true, required: true, icon: "mdi-file-document" },
+                    { text: "CA Number", value: "caNumber", sortable: true, required: true, icon: "mdi-file-document", component: "ChangeActionCell", componentProps: { field: "number", itemType: "ca" } },
                     { text: "Description", value: "changeSummary", sortable: true, icon: "mdi-text" },
                     { text: "Resp Engr", value: "resEngr", sortable: true, icon: "mdi-account" },
                     { text: "Status", value: "currentState", sortable: true, icon: "mdi-flag" },
@@ -528,7 +531,7 @@ export default {
                     { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text", component: "StatusCommentDisplay", componentProps: { itemType: "cas" } }
                 ],
                 crs: [
-                    { text: "CR Number", value: "crNumber", sortable: true, required: true, icon: "mdi-file-document-outline" },
+                    { text: "CR Number", value: "crNumber", sortable: true, required: true, icon: "mdi-file-document-outline", component: "ChangeActionCell", componentProps: { field: "number", itemType: "cr" } },
                     { text: "Description", value: "reasonforChange", sortable: true, icon: "mdi-format-title" },
                     { text: "Resp Engr", value: "owner", sortable: true, icon: "mdi-account" },
                     { text: "Status", value: "currentState", sortable: true, icon: "mdi-flag" },
@@ -1262,6 +1265,38 @@ export default {
                 const updatedItem = dataTransformationService.updateCaData(this.tableData[rowIndex], caData);
                 this.$set(this.tableData, rowIndex, updatedItem);
             }
+        },
+
+        /**
+         * Handle CR number loaded event from ChangeActionCell component
+         */
+        onCrNumberLoaded(crData) {
+            console.log("📝 CR data loaded:", crData);
+            // Find the corresponding row and update the CR data
+            const rowIndex = this.tableData.findIndex(row => row.objId === crData.objectId);
+            if (rowIndex !== -1) {
+                // Update CR data in table
+                this.$set(this.tableData[rowIndex], "crLink", crData.itemLink);
+                this.$set(this.tableData[rowIndex], "crState", crData.itemState);
+            }
+        },
+
+        /**
+         * Get item number for ChangeActionCell component
+         */
+        getItemNumberForCell(header, item) {
+            if (header.componentProps.itemType === "cr") {
+                return item.crNumber || item.name;
+            } else {
+                return item.caNumber || item.name;
+            }
+        },
+
+        /**
+         * Get item state for ChangeActionCell component  
+         */
+        getItemStateForCell(header, item) {
+            return item.currentState || "";
         },
 
         /**

@@ -11,9 +11,10 @@
             <!-- Show CA/CR Number as link without tooltip -->
             <a 
                 v-if="field === 'number'"
+                v-bind="cellDragAttributes"
                 :href="displayLink" 
                 target="_blank"
-                class="ca-link"
+                class="ca-link draggable-ca-link"
             >
                 {{ displayNumber }}
             </a>
@@ -23,10 +24,10 @@
             <v-tooltip v-else bottom>
                 <template #activator="{ on, attrs }">
                     <a 
+                        v-bind="{ ...attrs, ...cellDragAttributes }"
                         :href="displayLink" 
                         target="_blank"
-                        class="ca-link"
-                        v-bind="attrs"
+                        class="ca-link draggable-ca-link"
                         v-on="on"
                     >
                         {{ displayNumber }}
@@ -62,6 +63,37 @@
 .ca-link:hover {
     color: #1565c0;
     text-decoration: underline;
+}
+
+/* Draggable CA Link Styles */
+.draggable-ca-link[draggable="true"] {
+    cursor: grab;
+    position: relative;
+}
+
+.draggable-ca-link[draggable="true"]:active {
+    cursor: grabbing;
+}
+
+.draggable-ca-link[draggable="true"].dragging {
+    opacity: 0.7;
+    transform: scale(1.05);
+}
+
+.draggable-ca-link[draggable="true"]::after {
+    content: "⋮⋮";
+    position: absolute;
+    right: -12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #bbb;
+    font-size: 10px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.draggable-ca-link[draggable="true"]:hover::after {
+    opacity: 0.6;
 }
 
 .ca-tooltip {
@@ -100,6 +132,7 @@
 /* eslint-disable no-console */
 import ApiService from "../../services/ApiService.js";
 import { USE_MOCK_DATA, getApiBaseUrl } from "../../config/ApiConfig.js";
+import { useDragAndDrop } from "../../composables/useDragAndDrop.js";
 
 
 export default {
@@ -138,7 +171,13 @@ export default {
         }
     },
     data() {
+        // Initialize drag and drop composable
+        const dragDropComposable = useDragAndDrop();
+        
         return {
+            // Drag and drop functionality
+            dragDrop: dragDropComposable,
+            
             loading: false,
             caNumber: "",
             caLink: "",
@@ -165,6 +204,25 @@ export default {
         },
         tooltipNumberLabel() {
             return this.itemType === "cr" ? "CR Number:" : "CA Number:";
+        },
+        
+        /**
+         * Get drag attributes for the cell content
+         * @returns {Object} Drag attributes for v-bind
+         */
+        cellDragAttributes() {
+            if (!this.physId && !this.displayNumber) {
+                return {};
+            }
+            
+            return this.dragDrop.createDragAttributes({
+                physId: this.physId,
+                itemNumber: this.displayNumber,
+                itemState: this.displayState,
+                itemType: this.itemType
+            }, {
+                dataType: this.itemType.toUpperCase()
+            });
         }
     },
     async mounted() {
@@ -183,10 +241,10 @@ export default {
         }
     },
   
-    /// https://3dspace-prod.beta.team/3dspace/common/emxNavigator.jsp?objectId=5B1B136F000137E867E59E86000028E2
-    /// https://dev-3ds-app.beta.team/3dspace/common/emxNavigator.jsp?objectId=5B1B136F000137E867E59E86000028E2
+    // https://3dspace-prod.beta.team/3dspace/common/emxNavigator.jsp?objectId=5B1B136F000137E867E59E86000028E2
+    // https://dev-3ds-app.beta.team/3dspace/common/emxNavigator.jsp?objectId=5B1B136F000137E867E59E86000028E2
 
-    //https://3dspace-prod.beta.team/3dspace/common/emxNavigator.jsp?objectId=7049.44432.28745.26563
+    // https://3dspace-prod.beta.team/3dspace/common/emxNavigator.jsp?objectId=7049.44432.28745.26563
     methods: {
         generateLink(itemNumber, physId) {
             // Only use 3DX links for CAS and CRS items (when we have direct props)

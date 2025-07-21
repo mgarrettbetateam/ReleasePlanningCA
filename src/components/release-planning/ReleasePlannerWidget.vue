@@ -296,6 +296,8 @@
                                     <tr
                                         v-for="(item, index) in items"
                                         :key="item.partNo || item.caNumber || item.crNumber || item.itemNumber || index"
+                                        v-bind="getRowDragAttributes(item)"
+                                        class="draggable-table-row"
                                         @click="handleRowClick(item)"
                                     >
                                         <td v-for="header in tableHeaders" :key="header.value">
@@ -449,6 +451,44 @@
     display: none;
   }
 }
+
+/* Drag and Drop Styles */
+.draggable-table-row {
+  cursor: grab;
+  transition: all 0.2s ease;
+}
+
+.draggable-table-row:active {
+  cursor: grabbing;
+}
+
+.draggable-table-row.dragging {
+  opacity: 0.7;
+  transform: rotate(2deg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+}
+
+.draggable-table-row:hover {
+  background-color: rgba(25, 118, 210, 0.04);
+  transform: translateY(-1px);
+}
+
+/* Drag feedback indicator */
+.draggable-table-row[draggable="true"]::before {
+  content: "⋮⋮";
+  position: absolute;
+  left: 8px;
+  color: #bbb;
+  font-size: 12px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.draggable-table-row:hover[draggable="true"]::before {
+  opacity: 0.6;
+}
 </style>
 
 <script>
@@ -464,6 +504,7 @@ import exportService from "@/services/ExportService.js";
 import { USE_MOCK_DATA } from "@/config/ApiConfig.js";
 import { getApiBaseUrl, API_CONFIG } from "@/config/ApiConfig.js";
 import { responsiveUtils, ResponsiveMixin } from "@/utils/ResponsiveUtils.js";
+import { useDragAndDrop } from "@/composables/useDragAndDrop.js";
 
 export default {
     name: "EnhancedPartsPlannerWidget",
@@ -480,7 +521,13 @@ export default {
         }
     },
     data() {
+        // Initialize drag and drop composable
+        const dragDropComposable = useDragAndDrop();
+        
         return {
+            // Drag and drop functionality
+            dragDrop: dragDropComposable,
+            
             // Filter flyout state
             showFilterFlyout: false,
             
@@ -849,6 +896,32 @@ export default {
     },
     
     methods: {
+        /**
+         * Get drag attributes for a table row
+         * @param {Object} item - Table row item
+         * @returns {Object} Drag attributes for v-bind
+         */
+        getRowDragAttributes(item) {
+            const tableDrag = this.dragDrop.setupTableRowDrag(
+                this.filteredTableData,
+                // Function to extract physId from row data
+                rowData => {
+                    return rowData.physId || rowData.objId || rowData.id;
+                },
+                // Function to extract additional item data
+                rowData => {
+                    return {
+                        itemType: this.currentDataType,
+                        itemNumber: rowData.itemNumber || rowData.partNo || rowData.caNumber || rowData.crNumber || rowData.name,
+                        itemState: rowData.state || rowData.status || rowData.itemState,
+                        physId: rowData.physId || rowData.objId || rowData.id
+                    };
+                }
+            );
+            
+            return tableDrag.getRowDragAttributes(item);
+        },
+
         /**
          * Handle responsive resize events from ResponsiveMixin
          */

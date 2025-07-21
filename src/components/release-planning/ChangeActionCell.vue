@@ -226,6 +226,12 @@ export default {
         }
     },
     async mounted() {
+        // Emit data immediately if we have direct props (CAS/CRS case)
+        if (this.itemNumber && this.physId) {
+            this.emitData();
+            return;
+        }
+        
         // Only fetch data if we don't have direct props (PARTS case)
         if (!this.itemNumber) {
             this.loading = true;

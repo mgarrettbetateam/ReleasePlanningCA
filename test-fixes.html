@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test CA/CR/Part Number Fixes</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin-bottom: 30px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>CA/CR/Part Number Fixes Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Data Verification</h2>
+        <div id="data-test">Loading...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Scatter Chart Data Processing</h2>
+        <div id="scatter-test">Loading...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Field Mapping Test</h2>
+        <div id="mapping-test">Loading...</div>
+    </div>
+
+    <script type="module">
+        try {
+            // Test 1: Verify test data is available
+            const testData = await import('./src/assets/config/app-data.json', { assert: { type: 'json' } });
+            
+            const casCount = testData.default.cas?.length || 0;
+            const crsCount = testData.default.crs?.length || 0;
+            const partsCount = testData.default.parts?.length || 0;
+            
+            document.getElementById('data-test').innerHTML = `
+                <span class="${casCount > 0 && crsCount > 0 && partsCount > 0 ? 'success' : 'error'}">
+                    ✓ Parts: ${partsCount}, CAs: ${casCount}, CRs: ${crsCount}
+                    ${casCount > 0 && crsCount > 0 && partsCount > 0 ? '- All data available!' : '- Missing data!'}
+                </span>
+            `;
+            
+            // Test 2: Check scatter chart data processing (simulated)
+            const samplePart = testData.default.parts[0];
+            const hasPartNumber = samplePart.partNumber || samplePart.partNo;
+            
+            document.getElementById('scatter-test').innerHTML = `
+                <span class="${hasPartNumber ? 'success' : 'error'}">
+                    ${hasPartNumber ? '✓' : '✗'} Part number field available: ${hasPartNumber || 'Missing'}
+                </span>
+            `;
+            
+            // Test 3: Check CA/CR data structure
+            const sampleCA = testData.default.cas?.[0];
+            const sampleCR = testData.default.crs?.[0];
+            
+            const caFields = sampleCA ? `caNumber: ${sampleCA.caNumber}, physId: ${sampleCA.physId}` : 'No CA data';
+            const crFields = sampleCR ? `crNumber: ${sampleCR.crNumber}, physId: ${sampleCR.physId}` : 'No CR data';
+            
+            document.getElementById('mapping-test').innerHTML = `
+                <div class="${sampleCA && sampleCR ? 'success' : 'error'}">
+                    CA Fields: ${caFields}<br>
+                    CR Fields: ${crFields}
+                </div>
+            `;
+            
+        } catch (error) {
+            document.body.innerHTML += `
+                <div class="test-section">
+                    <h2 class="error">Error</h2>
+                    <div class="error">Failed to load test data: ${error.message}</div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

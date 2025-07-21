@@ -191,12 +191,7 @@ export function useDragAndDrop() {
                         draggable: "true",
                         onDragstart: event => onDragStart(event, physId, itemData),
                         onDragend: onDragEnd,
-                        style: {
-                            cursor: "grab"
-                        },
-                        class: {
-                            "draggable-row": true
-                        }
+                        style: "cursor: grab;"
                     };
                 } catch (error) {
                     console.error("❌ Error setting up row drag:", error);

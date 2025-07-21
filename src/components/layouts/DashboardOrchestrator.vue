@@ -398,7 +398,7 @@ export default {
                 return {
                     x: quantity,
                     y: daysUntilRelease,
-                    label: part.partNumber || part.title || "Unknown Part",
+                    label: part.partNo || part.partNumber || part.title || part.name || "Unknown Part",
                     status: part.status || part.currentState || "Unknown",
                     organization: part.organization || "Unknown"
                 };

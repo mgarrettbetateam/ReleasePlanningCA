@@ -81,6 +81,97 @@
       "physId": "phys-005"
     }
   ],
+  "cas": [
+    {
+      "name": "CA-00000268",
+      "caNumber": "CA-00000268",
+      "changeSummary": "Update engine mount design",
+      "revision": "A",
+      "respEngr": "John Smith",
+      "currentState": "APPROVED",
+      "targetReleaseDate": "2025-01-15",
+      "actualReleaseDate": "2025-01-18",
+      "approvedDate": "2025-01-10",
+      "organization": "Engineering",
+      "program": "CX300 Pre-Production Builds",
+      "phase": "Phase 1",
+      "statusComment": "Review completed successfully",
+      "physId": "CA5B1B136F000137E867E59E86000028E2"
+    },
+    {
+      "name": "CA-12345",
+      "caNumber": "CA-12345",
+      "changeSummary": "Improve brake system response",
+      "revision": "B",
+      "respEngr": "Jane Doe",
+      "currentState": "PENDING",
+      "targetReleaseDate": "2025-01-20",
+      "actualReleaseDate": null,
+      "approvedDate": null,
+      "organization": "Manufacturing",
+      "program": "CX300 Pre-Production Builds", 
+      "phase": "Phase 2",
+      "statusComment": "Waiting for final approval",
+      "physId": "CA7B1B136F000137E867E59E86000028F3"
+    },
+    {
+      "name": "CA-56789",
+      "caNumber": "CA-56789",
+      "changeSummary": "Transmission housing modification",
+      "revision": "A",
+      "respEngr": "Mike Johnson",
+      "currentState": "IN_WORK",
+      "targetReleaseDate": "2025-01-25",
+      "actualReleaseDate": null,
+      "approvedDate": "2025-01-12",
+      "organization": "Quality",
+      "program": "Demo Program 1",
+      "phase": "Phase 1",
+      "statusComment": "Implementation in progress",
+      "physId": "CA8B1B136F000137E867E59E86000028G4"
+    }
+  ],
+  "crs": [
+    {
+      "crNumber": "CR-67890",
+      "reasonforChange": "Customer requested enhanced safety features",
+      "owner": "Sarah Wilson",
+      "currentState": "APPROVED",
+      "targetReleaseDate": "2025-01-18",
+      "actualCompleteDate": "2025-01-20",
+      "organization": "Engineering",
+      "program": "CX300 Pre-Production Builds",
+      "phase": "Phase 1", 
+      "statusComment": "Successfully implemented",
+      "physId": "CR7049.44432.28745.26563"
+    },
+    {
+      "crNumber": "CR-11111",
+      "reasonforChange": "Performance optimization request",
+      "owner": "David Brown",
+      "currentState": "PENDING",
+      "targetReleaseDate": "2025-01-22",
+      "actualCompleteDate": null,
+      "organization": "Manufacturing",
+      "program": "CX300 Pre-Production Builds",
+      "phase": "Phase 2",
+      "statusComment": "Under review",
+      "physId": "CR8049.44432.28745.26564"
+    },
+    {
+      "crNumber": "CR-22222",
+      "reasonforChange": "Material specification change",
+      "owner": "Lisa Garcia",
+      "currentState": "IN_WORK", 
+      "targetReleaseDate": "2025-01-28",
+      "actualCompleteDate": null,
+      "organization": "Quality",
+      "program": "Demo Program 1",
+      "phase": "Phase 1",
+      "statusComment": "Testing new materials",
+      "physId": "CR9049.44432.28745.26565"
+    }
+  ],
   "stats": {
     "totalParts": 156,
     "releasedParts": 89,

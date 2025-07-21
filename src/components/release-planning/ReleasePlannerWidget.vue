@@ -288,45 +288,34 @@
                             :hide-default-footer="isMobile"
                             :mobile-breakpoint="600"
                             item-value="partNo"
-                            class="pa-0"
+                            class="pa-0 draggable-table"
                             @click:row="handleRowClick"
                         >
-                            <template #body="{ items }">
-                                <tbody>
-                                    <tr
-                                        v-for="(item, index) in items"
-                                        :key="item.partNo || item.caNumber || item.crNumber || item.itemNumber || index"
-                                        v-bind="getRowDragAttributes(item)"
-                                        class="draggable-table-row"
-                                        @click="handleRowClick(item)"
-                                    >
-                                        <td v-for="header in tableHeaders" :key="header.value">
-                                            <!-- Use ChangeActionCell component for CA/CR fields -->
-                                            <ChangeActionCell
-                                                v-if="header.component === 'ChangeActionCell'"
-                                                :obj-id="item.physId || item.objId"
-                                                :row-index="index"
-                                                :field="header.componentProps.field"
-                                                :item-type="header.componentProps.itemType || 'ca'"
-                                                :item-number="getItemNumberForCell(header, item)"
-                                                :item-state="getItemStateForCell(header, item)"
-                                                :phys-id="item.physId || item.objId"
-                                                @ca-number-loaded="onCaNumberLoaded"
-                                                @cr-number-loaded="onCrNumberLoaded"
-                                            />
-                                            <!-- Use StatusCommentDisplay component for status comment fields -->
-                                            <StatusCommentDisplay
-                                                v-else-if="header.component === 'StatusCommentDisplay'"
-                                                :value="getStatusCommentValue(header, item)"
-                                                :can-edit="getCanEditValue(header, item)"
-                                                @comment-updated="handleCommentUpdate"
-                                                @show-message="showSnackbar"
-                                            />
-                                            <!-- Regular cell for all other data -->
-                                            <span v-else>{{ item[header.value] || 'N/A' }}</span>
-                                        </td>
-                                    </tr>
-                                </tbody>
+                            <!-- Custom cell rendering using item slots for specific columns -->
+                            <template v-for="header in tableHeaders.filter(h => h.component)" #[`item.${header.value}`]="{ item, index }">
+                                <!-- Use ChangeActionCell component for CA/CR fields -->
+                                <ChangeActionCell
+                                    v-if="header.component === 'ChangeActionCell'"
+                                    :key="`ca-${header.value}-${index}`"
+                                    :obj-id="item.physId || item.objId"
+                                    :row-index="index"
+                                    :field="header.componentProps.field"
+                                    :item-type="header.componentProps.itemType || 'ca'"
+                                    :item-number="getItemNumberForCell(header, item)"
+                                    :item-state="getItemStateForCell(header, item)"
+                                    :phys-id="item.physId || item.objId"
+                                    @ca-number-loaded="onCaNumberLoaded"
+                                    @cr-number-loaded="onCrNumberLoaded"
+                                />
+                                <!-- Use StatusCommentDisplay component for status comment fields -->
+                                <StatusCommentDisplay
+                                    v-else-if="header.component === 'StatusCommentDisplay'"
+                                    :key="`comment-${header.value}-${index}`"
+                                    :value="getStatusCommentValue(header, item)"
+                                    :can-edit="getCanEditValue(header, item)"
+                                    @comment-updated="handleCommentUpdate"
+                                    @show-message="showSnackbar"
+                                />
                             </template>
                         </v-data-table>
                         <div v-else class="no-data-message d-flex flex-column align-center justify-center" style="height: 100%;">
@@ -786,6 +775,9 @@ export default {
                 } else {
                     console.log("👀 CHART WATCH: Ignoring content-only changes (same count)");
                 }
+                
+                // Set up drag listeners for table rows whenever data changes
+                this.setupTableDragListeners();
             },
             deep: false // Don't deep watch - we only care about array length changes
         },
@@ -893,6 +885,9 @@ export default {
         
         // Initialize by fetching programs first
         await this.fetchPrograms();
+        
+        // Setup drag listeners after initial render
+        this.setupTableDragListeners();
     },
     
     methods: {
@@ -920,6 +915,54 @@ export default {
             );
             
             return tableDrag.getRowDragAttributes(item);
+        },
+
+        /**
+         * Get a specific drag attribute for a table row
+         * @param {Object} item - Table row item
+         * @param {String} attributeName - Name of the attribute to get
+         * @returns {*} The requested attribute value
+         */
+        getDragAttribute(item, attributeName) {
+            const dragAttrs = this.getRowDragAttributes(item);
+            return dragAttrs[attributeName];
+        },
+
+        /**
+         * Set up drag and drop functionality on table rows
+         * Called after table data changes to apply drag to new/updated rows
+         */
+        setupTableDragListeners() {
+            this.$nextTick(() => {
+                const tableRows = this.$el.querySelectorAll(".v-data-table tbody tr");
+                
+                tableRows.forEach((row, index) => {
+                    if (index < this.filteredTableData.length) {
+                        const item = this.filteredTableData[index];
+                        const dragAttrs = this.getRowDragAttributes(item);
+                        
+                        // Apply drag attributes to the row
+                        row.setAttribute("draggable", dragAttrs.draggable || "false");
+                        row.style.cssText = (row.style.cssText || "") + "; " + (dragAttrs.style || "");
+                        row.classList.add("draggable-table-row");
+                        
+                        // Remove existing listeners to prevent duplicates
+                        row.removeEventListener("dragstart", row._dragStartHandler);
+                        row.removeEventListener("dragend", row._dragEndHandler);
+                        
+                        // Add new listeners
+                        row._dragStartHandler = dragAttrs.onDragstart;
+                        row._dragEndHandler = dragAttrs.onDragend;
+                        
+                        if (row._dragStartHandler) {
+                            row.addEventListener("dragstart", row._dragStartHandler);
+                        }
+                        if (row._dragEndHandler) {
+                            row.addEventListener("dragend", row._dragEndHandler);
+                        }
+                    }
+                });
+            });
         },
 
         /**
@@ -1333,10 +1376,17 @@ export default {
          */
         onCaNumberLoaded(caData) {
             console.log("📝 CA data loaded:", caData);
-            // Find the corresponding row and update the CA data using DataTransformationService
-            const rowIndex = this.tableData.findIndex(row => row.physId === caData.objectId);
+            // Find the corresponding row and update the CA data using DataTransformationService with consistent ID matching
+            const rowIndex = this.tableData.findIndex(row => 
+                (row.physId && row.physId === caData.objectId) || 
+                (row.objId && row.objId === caData.objectId)
+            );
             if (rowIndex !== -1) {
-                const updatedItem = dataTransformationService.updateCaData(this.tableData[rowIndex], caData);
+                const updatedItem = dataTransformationService.updateCaData(this.tableData[rowIndex], {
+                    caNumber: caData.itemNumber,
+                    caState: caData.itemState,
+                    caLink: caData.itemLink
+                });
                 this.$set(this.tableData, rowIndex, updatedItem);
             }
         },
@@ -1346,10 +1396,14 @@ export default {
          */
         onCrNumberLoaded(crData) {
             console.log("📝 CR data loaded:", crData);
-            // Find the corresponding row and update the CR data
-            const rowIndex = this.tableData.findIndex(row => row.objId === crData.objectId);
+            // Find the corresponding row and update the CR data using consistent ID matching
+            const rowIndex = this.tableData.findIndex(row => 
+                (row.physId && row.physId === crData.objectId) || 
+                (row.objId && row.objId === crData.objectId)
+            );
             if (rowIndex !== -1) {
                 // Update CR data in table
+                this.$set(this.tableData[rowIndex], "crNumber", crData.itemNumber);
                 this.$set(this.tableData[rowIndex], "crLink", crData.itemLink);
                 this.$set(this.tableData[rowIndex], "crState", crData.itemState);
             }

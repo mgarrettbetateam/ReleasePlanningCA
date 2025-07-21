@@ -1256,3 +1256,33 @@
 .filter-select .v-menu__content {
   min-width: 200px !important;
 }
+
+/* Draggable Table Styles */
+.draggable-table .v-data-table__wrapper tbody tr {
+  cursor: grab;
+  transition: all 0.2s ease;
+}
+
+.draggable-table .v-data-table__wrapper tbody tr:hover {
+  background-color: rgba(25, 118, 210, 0.04) !important;
+}
+
+.draggable-table .v-data-table__wrapper tbody tr.dragging {
+  opacity: 0.7;
+  cursor: grabbing;
+  background-color: rgba(25, 118, 210, 0.1) !important;
+}
+
+.draggable-table-row {
+  cursor: grab;
+}
+
+.draggable-table-row:hover {
+  background-color: rgba(25, 118, 210, 0.04) !important;
+}
+
+.draggable-table-row.dragging {
+  opacity: 0.7;
+  cursor: grabbing;
+  background-color: rgba(25, 118, 210, 0.1) !important;
+}

@@ -300,7 +300,7 @@ class DataTransformationService {
      * This is typically called when CA data is loaded asynchronously.
      * 
      * @param {Object} tableItem - The table item to update
-     * @param {Object} caData - CA data with caNumber and caState
+     * @param {Object} caData - CA data with caNumber, caState, and caLink
      * @returns {Object} Updated table item
      */
     updateCaData(tableItem, caData) {
@@ -311,7 +311,8 @@ class DataTransformationService {
         return {
             ...tableItem,
             caNumber: caData.caNumber || tableItem.caNumber || "",
-            caState: caData.caState || tableItem.caState || ""
+            caState: caData.caState || tableItem.caState || "",
+            caLink: caData.caLink || tableItem.caLink || ""
         };
     }
 

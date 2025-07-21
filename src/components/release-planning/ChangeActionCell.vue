@@ -99,7 +99,7 @@
 <script>
 /* eslint-disable no-console */
 import ApiService from "../../services/ApiService.js";
-import { USE_MOCK_DATA } from "../../config/ApiConfig.js";
+import { USE_MOCK_DATA, getApiBaseUrl } from "../../config/ApiConfig.js";
 
 
 export default {
@@ -192,14 +192,8 @@ export default {
             // Only use 3DX links for CAS and CRS items (when we have direct props)
             if (this.itemNumber && physId) {
                 // This is a CAS or CRS item with direct data
-                // Determine environment based on hostname or config
-                const isDev = window.location.hostname.includes("dev") || 
-                             window.location.hostname.includes("localhost") ||
-                             process.env.NODE_ENV === "development";
-                
-                const baseUrl = isDev 
-                    ? "https://dev-3ds-app.beta.team" 
-                    : "https://3dspace-prod.beta.team";
+                // Use the centralized API configuration
+                const baseUrl = getApiBaseUrl();
                     
                 return `${baseUrl}/3dspace/common/emxNavigator.jsp?objectId=${physId}`;
             }

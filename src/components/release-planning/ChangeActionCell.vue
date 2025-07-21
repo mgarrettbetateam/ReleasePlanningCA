@@ -101,6 +101,7 @@
 import ApiService from "../../services/ApiService.js";
 import { USE_MOCK_DATA } from "../../config/ApiConfig.js";
 
+
 export default {
     name: "ChangeActionCell",
     props: {
@@ -130,6 +131,10 @@ export default {
         itemState: {
             type: String,
             default: ""
+        },
+        physId: {
+            type: String,
+            default: ""
         }
     },
     data() {
@@ -150,8 +155,8 @@ export default {
         },
         displayLink() {
             if (this.itemNumber) {
-                // Use direct data (CAS/CRS case)
-                return this.generateLink(this.itemNumber);
+                // Use direct data (CAS/CRS case) with physId for 3DX link
+                return this.generateLink(this.itemNumber, this.physId);
             }
             return this.caLink; // Use API data (PARTS case)
         },
@@ -178,13 +183,33 @@ export default {
         }
     },
   
+    /// https://3dspace-prod.beta.team/3dspace/common/emxNavigator.jsp?objectId=5B1B136F000137E867E59E86000028E2
+    /// https://dev-3ds-app.beta.team/3dspace/common/emxNavigator.jsp?objectId=5B1B136F000137E867E59E86000028E2
+
+    //https://3dspace-prod.beta.team/3dspace/common/emxNavigator.jsp?objectId=7049.44432.28745.26563
     methods: {
-        generateLink(itemNumber) {
-            // Generate link based on item type
+        generateLink(itemNumber, physId) {
+            // Only use 3DX links for CAS and CRS items (when we have direct props)
+            if (this.itemNumber && physId) {
+                // This is a CAS or CRS item with direct data
+                // Determine environment based on hostname or config
+                const isDev = window.location.hostname.includes("dev") || 
+                             window.location.hostname.includes("localhost") ||
+                             process.env.NODE_ENV === "development";
+                
+                const baseUrl = isDev 
+                    ? "https://dev-3ds-app.beta.team" 
+                    : "https://3dspace-prod.beta.team";
+                    
+                return `${baseUrl}/3dspace/common/emxNavigator.jsp?objectId=${physId}`;
+            }
+            
+            // Fallback for PARTS only (when no itemNumber/physId - legacy API-based links)
+            // This should only be reached by PARTS items that don't have itemNumber prop
             if (this.itemType === "cr") {
                 return `https://your-system.com/cr/${itemNumber}`;
             }
-            // Default to CA link
+            // Default to CA link for PARTS
             return `https://your-system.com/ca/${itemNumber}`;
         },
 

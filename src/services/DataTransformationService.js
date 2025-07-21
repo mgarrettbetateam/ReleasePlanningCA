@@ -163,7 +163,7 @@ class DataTransformationService {
 
         // Add internal ID for lookups (always try to preserve)
         if (!mappedItem.physId) {
-            mappedItem.physId = item.physId || item.id || item._id || "";
+            mappedItem.physId = item.physId || item.objId || item.id || item._id || "";
         }
 
         return mappedItem;

@@ -308,6 +308,7 @@
                                                 :item-type="header.componentProps.itemType || 'ca'"
                                                 :item-number="getItemNumberForCell(header, item)"
                                                 :item-state="getItemStateForCell(header, item)"
+                                                :phys-id="item.physId || item.objId"
                                                 @ca-number-loaded="onCaNumberLoaded"
                                                 @cr-number-loaded="onCrNumberLoaded"
                                             />

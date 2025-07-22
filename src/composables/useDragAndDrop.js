@@ -1,5 +1,5 @@
 /**
- * Vue 3 Composable for Drag and Drop functionality
+ * Vue 3 Composable for Drag and Drop functionality (Table Rows Only)
  * Integrates with 3DX Content protocol and Release Planning framework
  */
 import { ref, reactive } from "vue";
@@ -16,38 +16,37 @@ export function useDragAndDrop() {
     });
 
     /**
-     * Create 3DX Content protocol data
+     * Create 3DX Content protocol data with exact specification
      * @param {string} physId - Physical ID of the object
-     * @param {Object} customData - Additional data to include
-     * @param {Object} options - Configuration options
+     * @param {Object} customData - Additional data to include (optional)
+     * @param {Object} options - Configuration options (optional)
      * @returns {string} JSON protocol string
      */
     function createDragProtocol(physId, customData = {}, options = {}) {
         const defaultOptions = {
-            widgetId: "ReleasePlanningWidget",
-            envId: "DEV",
-            serviceId: "ReleasePlanningService",
-            contextId: "ReleasePlanningContext",
-            objectType: "ChangeAction"
+            widgetId: "preview-ac2fb2",
+            envId: "OnPremise",
+            serviceId: "3DSpace",
+            contextId: "",
+            objectType: "VPMReference",
+            source: "X3DSEAR_AP"
         };
 
         const config = { ...defaultOptions, ...options };
         
         const protocol = {
-            "3DXContent": {
-                data: [
+            protocol: "3DXContent",
+            version: "1.1",
+            source: config.source,
+            widgetId: config.widgetId,
+            data: {
+                items: [
                     {
-                        id: physId,
-                        type: config.objectType,
-                        properties: {
-                            physId,
-                            widgetId: config.widgetId,
-                            envId: config.envId,
-                            serviceId: config.serviceId,
-                            contextId: config.contextId,
-                            timestamp: new Date().toISOString(),
-                            ...customData
-                        }
+                        envId: config.envId,
+                        serviceId: config.serviceId,
+                        contextId: config.contextId,
+                        objectId: physId,
+                        objectType: config.objectType
                     }
                 ]
             }
@@ -56,12 +55,17 @@ export function useDragAndDrop() {
         const protocolString = JSON.stringify(protocol);
         
         /* eslint-disable no-console */
-        console.log("🎯 Created drag protocol:", {
+        console.group("🎯 DRAG PROTOCOL CREATED");
+        console.log("📋 Payload for receiving widget:", protocolString);
+        console.log("📊 Structured data:", protocol);
+        console.log("🔑 Key properties:", {
             physId,
-            customData,
-            options: config,
-            protocol: protocolString
+            itemType: customData.itemType || "unknown",
+            itemNumber: customData.itemNumber || "N/A",
+            widgetSource: config.widgetId,
+            protocolVersion: "1.1"
         });
+        console.groupEnd();
         /* eslint-enable no-console */
         
         return protocolString;
@@ -92,7 +96,7 @@ export function useDragAndDrop() {
                 protocolData = createDragProtocol(customProtocol, itemData);
             }
             
-            // Set drag data
+            // Set drag data for receiving widgets
             event.dataTransfer.setData("text/plain", protocolData);
             event.dataTransfer.setData("application/json", protocolData);
             event.dataTransfer.setData("3DXContent", protocolData);
@@ -113,12 +117,26 @@ export function useDragAndDrop() {
             }
             
             /* eslint-disable no-console */
-            console.log("🎯 Drag started:", {
+            console.group("🚀 ROW DRAG STARTED");
+            console.log("📦 Data Transfer Object contains:");
+            console.log("  • text/plain:", protocolData);
+            console.log("  • application/json:", protocolData);
+            console.log("  • 3DXContent:", protocolData);
+            console.log("🎯 Row details:", {
                 physId: dragData.physId,
                 itemType: dragData.itemType,
                 itemNumber: dragData.itemNumber,
-                protocol: protocolData
+                rowElement: event.target
             });
+            console.log("📋 Full payload for drop target:", protocolData);
+            console.log("🔍 Event target info:", {
+                tagName: event.target.tagName,
+                className: event.target.className,
+                draggable: event.target.draggable
+            });
+            console.log("🎯 DRAG PAYLOAD JSON:");
+            console.log(protocolData);
+            console.groupEnd();
             /* eslint-enable no-console */
             
         } catch (error) {
@@ -202,46 +220,116 @@ export function useDragAndDrop() {
     }
 
     /**
-     * Set up drag for chart elements
-     * @param {Array} chartData - Array of chart data points
-     * @param {Function} getPhysIdCallback - Function to extract physId from data point
-     * @param {Function} getItemDataCallback - Function to extract additional item data
+     * Register drag listeners for table rows
+     * @param {Vue.Ref} tableRef - Reference to the table element
+     * @param {Function} getRowData - Function to get row data from element
      */
-    function setupChartElementDrag(chartData, getPhysIdCallback, getItemDataCallback) {
-        return {
-            /**
-             * Apply drag attributes to chart element
-             * @param {Object} elementData - Chart element data
-             */
-            getElementDragAttributes(elementData) {
-                try {
-                    const physId = getPhysIdCallback ? getPhysIdCallback(elementData) : elementData.physId;
-                    const itemData = getItemDataCallback ? getItemDataCallback(elementData) : elementData;
-                    
-                    if (!physId) {
-                        /* eslint-disable no-console */
-                        console.warn("⚠️ No physId found for chart element:", elementData);
-                        /* eslint-enable no-console */
-                        return {};
-                    }
-                    
-                    return {
-                        draggable: "true",
-                        onDragstart: event => onDragStart(event, physId, itemData),
-                        onDragend: onDragEnd,
-                        style: {
-                            cursor: "grab"
-                        },
-                        class: {
-                            "draggable-element": true
-                        }
-                    };
-                } catch (error) {
-                    console.error("❌ Error setting up chart element drag:", error);
-                    return {};
-                }
+    function registerRowDragListeners(tableRef, getRowData) {
+        /* eslint-disable no-console */
+        console.log("🔧 registerRowDragListeners called", {
+            tableRef: tableRef?.value,
+            hasGetRowData: typeof getRowData === "function"
+        });
+        /* eslint-enable no-console */
+        
+        const processTableRows = () => {
+            if (!tableRef?.value) {
+                /* eslint-disable no-console */
+                console.warn("⚠️ No tableRef.value found");
+                /* eslint-enable no-console */
+                return;
             }
+            
+            const tbody = tableRef.value.querySelector("tbody");
+            if (!tbody) {
+                /* eslint-disable no-console */
+                console.warn("⚠️ No tbody found in table");
+                /* eslint-enable no-console */
+                return;
+            }
+            
+            const rows = tbody.querySelectorAll("tr");
+            
+            /* eslint-disable no-console */
+            console.log(`🔍 Found ${rows.length} table rows to make draggable`);
+            /* eslint-enable no-console */
+            
+            rows.forEach((row, index) => {
+                // Skip if already has listeners
+                if (row.hasAttribute("data-drag-enabled")) {
+                    /* eslint-disable no-console */
+                    console.log(`⏭️ Row ${index} already has drag enabled`);
+                    /* eslint-enable no-console */
+                    return;
+                }
+                
+                /* eslint-disable no-console */
+                console.log(`🎯 Setting up drag for row ${index}`, row);
+                /* eslint-enable no-console */
+                
+                // Make row draggable
+                row.draggable = true;
+                row.setAttribute("data-drag-enabled", "true");
+                row.style.cursor = "grab";
+                
+                // Add drag event listeners
+                /* eslint-disable-next-line arrow-parens */
+                row.addEventListener("dragstart", (event) => {
+                    /* eslint-disable no-console */
+                    console.log(`🚀 Drag started on row ${index}`);
+                    /* eslint-enable no-console */
+                    
+                    const rowData = getRowData ? getRowData(row, index) : {
+                        physId: row.dataset.physId || `row-${index}`,
+                        itemNumber: row.dataset.itemNumber || "",
+                        itemType: "table-row"
+                    };
+                    
+                    /* eslint-disable no-console */
+                    console.log("📋 Row data for drag:", rowData);
+                    /* eslint-enable no-console */
+                    
+                    onDragStart(event, rowData.physId, rowData);
+                });
+                
+                row.addEventListener("dragend", onDragEnd);
+                
+                // Visual feedback for draggable rows
+                row.addEventListener("mouseenter", () => {
+                    if (!isDragging.value) {
+                        row.style.backgroundColor = "#f5f5f5";
+                        row.title = "Drag this row to another widget";
+                    }
+                });
+                
+                row.addEventListener("mouseleave", () => {
+                    if (!isDragging.value) {
+                        row.style.backgroundColor = "";
+                    }
+                });
+            });
+            
+            /* eslint-disable no-console */
+            console.log(`🎯 Enabled drag for ${rows.length} table rows`);
+            /* eslint-enable no-console */
         };
+        
+        // Initial setup
+        processTableRows();
+        
+        // Watch for table changes
+        if (tableRef?.value) {
+            const observer = new MutationObserver(processTableRows);
+            observer.observe(tableRef.value, {
+                childList: true,
+                subtree: true
+            });
+            
+            // Store observer for cleanup
+            if (!tableRef.value._dragObserver) {
+                tableRef.value._dragObserver = observer;
+            }
+        }
     }
 
     /**
@@ -272,9 +360,9 @@ export function useDragAndDrop() {
         onDragStart,
         onDragEnd,
         
-        // Helper functions
+        // Table row specific functions
         setupTableRowDrag,
-        setupChartElementDrag,
+        registerRowDragListeners,
         createDragAttributes
     };
 }

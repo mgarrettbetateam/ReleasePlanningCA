@@ -199,6 +199,9 @@
             
             <!-- Main Content Area -->
             <div class="dashboard-container">
+                <!-- Drag Test Component (controlled by boolean) -->
+                <DragTestComponent v-if="ui.content.showDragTest" />
+                
                 <!-- Widget Development Area -->
                 <WidgetDevelopmentArea
                     v-if="ui.content.showDevelopmentArea && isDevelopmentMode"
@@ -271,13 +274,15 @@
 <script>
 import DashboardOrchestrator from "./components/layouts/DashboardOrchestrator.vue";
 import WidgetDevelopmentArea from "./components/dev/WidgetDevelopmentArea.vue";
+import DragTestComponent from "./components/dev/DragTestComponent.vue";
 import WidgetRegistry from "./config/WidgetRegistry.js";
 
 export default {
     name: "App",
     components: {
         DashboardOrchestrator,
-        WidgetDevelopmentArea
+        WidgetDevelopmentArea,
+        DragTestComponent
     },
     data() {
         return {
@@ -315,6 +320,7 @@ export default {
                     showDashboard: true,
                     showDevelopmentArea: true,
                     showReleasePlanning: true,
+                    showDragTest: true,        // Turn on drag test component
                     hideWidgetHeaders: false    // Show widget internal headers
                 },
                 

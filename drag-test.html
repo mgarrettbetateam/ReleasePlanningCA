@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drag Test</title>
+    <style>
+        table { border-collapse: collapse; width: 100%; margin: 20px; }
+        td, th { border: 1px solid #ccc; padding: 10px; text-align: left; }
+        .draggable-row { cursor: grab; }
+        .draggable-row:hover { background-color: #f5f5f5; }
+        .drop-zone { 
+            width: 300px; 
+            height: 200px; 
+            border: 2px dashed #ccc; 
+            margin: 20px; 
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <h1>Drag and Drop Test</h1>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="draggable-row" draggable="true" data-phys-id="item-1">
+                <td>1</td>
+                <td>Test Item 1</td>
+                <td>Active</td>
+            </tr>
+            <tr class="draggable-row" draggable="true" data-phys-id="item-2">
+                <td>2</td>
+                <td>Test Item 2</td>
+                <td>Pending</td>
+            </tr>
+            <tr class="draggable-row" draggable="true" data-phys-id="item-3">
+                <td>3</td>
+                <td>Test Item 3</td>
+                <td>Complete</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="drop-zone" id="dropZone">
+        <h3>Drop Zone</h3>
+        <p>Drag table rows here to test</p>
+        <div id="dropResult"></div>
+    </div>
+
+    <script>
+        // Simple drag start handler
+        document.querySelectorAll('.draggable-row').forEach(row => {
+            row.addEventListener('dragstart', (e) => {
+                const physId = e.target.dataset.physId || 'unknown';
+                const rowData = {
+                    physId: physId,
+                    name: e.target.children[1].textContent,
+                    status: e.target.children[2].textContent
+                };
+                
+                console.log('🚀 Drag started:', rowData);
+                
+                e.dataTransfer.setData('text/plain', JSON.stringify(rowData));
+                e.dataTransfer.setData('application/json', JSON.stringify(rowData));
+                e.dataTransfer.effectAllowed = 'copy';
+                
+                e.target.style.opacity = '0.7';
+            });
+            
+            row.addEventListener('dragend', (e) => {
+                console.log('🎯 Drag ended');
+                e.target.style.opacity = '';
+            });
+        });
+
+        // Drop zone handlers
+        const dropZone = document.getElementById('dropZone');
+        const dropResult = document.getElementById('dropResult');
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+            dropZone.style.borderColor = '#007cba';
+        });
+
+        dropZone.addEventListener('dragleave', (e) => {
+            dropZone.style.borderColor = '#ccc';
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#ccc';
+            
+            const data = e.dataTransfer.getData('application/json') || e.dataTransfer.getData('text/plain');
+            console.log('📥 Drop received:', data);
+            
+            try {
+                const parsed = JSON.parse(data);
+                dropResult.innerHTML = `
+                    <h4>Dropped Item:</h4>
+                    <p><strong>ID:</strong> ${parsed.physId}</p>
+                    <p><strong>Name:</strong> ${parsed.name}</p>
+                    <p><strong>Status:</strong> ${parsed.status}</p>
+                `;
+            } catch (error) {
+                dropResult.innerHTML = `<p>Raw data: ${data}</p>`;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -316,6 +316,34 @@
                                 @show-message="showSnackbar"
                             />
                         </template>
+                        
+                        <!-- Individual column slots with drag functionality applied to table rows via CSS and events -->
+                        <!-- Custom cell rendering using item slots for specific columns -->
+                        <template v-for="header in tableHeaders.filter(h => h.component)" #[`item.${header.value}`]="{ item, index }">
+                            <!-- Use ChangeActionCell component for CA/CR fields -->
+                            <ChangeActionCell
+                                v-if="header.component === 'ChangeActionCell'"
+                                :key="`ca-${header.value}-${index}`"
+                                :obj-id="item.physId || item.objId"
+                                :row-index="index"
+                                :field="header.componentProps.field"
+                                :item-type="header.componentProps.itemType || 'ca'"
+                                :item-number="getItemNumberForCell(header, item)"
+                                :item-state="getItemStateForCell(header, item)"
+                                :phys-id="item.physId || item.objId"
+                                @ca-number-loaded="onCaNumberLoaded"
+                                @cr-number-loaded="onCrNumberLoaded"
+                            />
+                            <!-- Use StatusCommentDisplay component for status comment fields -->
+                            <StatusCommentDisplay
+                                v-else-if="header.component === 'StatusCommentDisplay'"
+                                :key="`comment-${header.value}-${index}`"
+                                :value="getStatusCommentValue(header, item)"
+                                :can-edit="getCanEditValue(header, item)"
+                                @comment-updated="handleCommentUpdate"
+                                @show-message="showSnackbar"
+                            />
+                        </template>
                     </v-data-table>
                     <div v-else class="no-data-message d-flex flex-column align-center justify-center" :style="{ height: `${currentTableHeight}px` }">
                         <v-icon size="48" color="grey">mdi-table-off</v-icon>
@@ -440,6 +468,30 @@
 }
 
 /* Drag and Drop Styles */
+/* Table alignment fixes for custom body slot */
+.draggable-table >>> tbody td {
+  vertical-align: middle !important;
+  padding: 8px 16px !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12) !important;
+}
+
+.draggable-table >>> thead th,
+.draggable-table >>> tbody td {
+  width: auto !important;
+  text-align: left !important;
+}
+
+/* Ensure header and body column widths stay in sync */
+.draggable-table >>> table {
+  table-layout: fixed !important;
+  width: 100% !important;
+}
+
+.draggable-table >>> .v-data-table__wrapper {
+  overflow-x: auto !important;
+}
+
+/* Draggable row styles */
 .draggable-table-row {
   cursor: grab;
   transition: all 0.2s ease;
@@ -476,6 +528,27 @@
 .draggable-table-row:hover[draggable="true"]::before {
   opacity: 0.6;
 }
+
+/* Enhanced drag feedback */
+.draggable-table-row[draggable="true"] {
+  cursor: grab;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.draggable-table-row[draggable="true"]:hover {
+  background-color: rgba(25, 118, 210, 0.08) !important;
+}
+
+.draggable-table-row[draggable="true"].dragging {
+  opacity: 0.7;
+  transform: scale(0.98);
+  cursor: grabbing;
+}
+
+/* Drag handle icon styling */
+.draggable-table-row[draggable="true"]:hover .drag-handle {
+  opacity: 1;
+}
 </style>
 
 <script>
@@ -493,6 +566,7 @@ import { getApiBaseUrl, API_CONFIG } from "@/config/ApiConfig.js";
 import { responsiveUtils, ResponsiveMixin } from "@/utils/ResponsiveUtils.js";
 import { useDragAndDrop } from "@/composables/useDragAndDrop.js";
 
+/* eslint-disable no-console */
 export default {
     name: "EnhancedPartsPlannerWidget",
     components: {
@@ -867,6 +941,18 @@ export default {
                 console.log("👀 CHART WATCH: Data type changed from", oldType, "to", newType);
                 this.$nextTick(() => {
                     this.updateChartFromFiltered();
+                    // Re-setup drag listeners when data type changes
+                    this.setupTableDragListeners();
+                });
+            }
+        },
+        
+        // Watch tableHeaders changes to re-setup drag listeners
+        "tableHeaders": {
+            handler() {
+                console.log("👀 TABLE WATCH: Headers changed, re-setting up drag listeners");
+                this.$nextTick(() => {
+                    this.setupTableDragListeners();
                 });
             }
         }
@@ -907,12 +993,93 @@ export default {
                         itemType: this.currentDataType,
                         itemNumber: rowData.itemNumber || rowData.partNo || rowData.caNumber || rowData.crNumber || rowData.name,
                         itemState: rowData.state || rowData.status || rowData.itemState,
-                        physId: rowData.physId || rowData.objId || rowData.id
+                        physId: rowData.physId || rowData.objId || rowData.id,
+                        title: rowData.title || rowData.name || ""
                     };
                 }
             );
             
-            return tableDrag.getRowDragAttributes(item);
+            const attrs = tableDrag.getRowDragAttributes(item);
+            
+            // Debug log when drag attributes are applied
+            if (attrs.draggable === "true") {
+                console.log("✅ Applied drag attributes to item:", {
+                    physId: item.physId || item.objId,
+                    itemNumber: item.itemNumber || item.partNo,
+                    draggable: attrs.draggable
+                });
+            }
+            
+            return attrs;
+        },
+
+        /**
+         * Handle drag start for table rows (new direct event handler approach)
+         * @param {Object} item - Row item data
+         * @param {DragEvent} event - Drag event
+         */
+        handleRowDragStart(item, event) {
+            const physId = item.physId || item.objId || item.id;
+            const itemData = {
+                itemType: this.currentDataType,
+                itemNumber: item.itemNumber || item.partNo || item.caNumber || item.crNumber || item.name,
+                itemState: item.state || item.status || item.itemState,
+                physId,
+                title: item.title || item.name || ""
+            };
+            
+            // Call the composable's onDragStart directly
+            this.dragDrop.onDragStart(event, physId, itemData);
+        },
+
+        /**
+         * Handle drag end for table rows
+         * @param {DragEvent} event - Drag event
+         */
+        handleRowDragEnd(event) {
+            this.dragDrop.onDragEnd(event);
+        },
+
+        /**
+         * Get column value for display in table cell
+         * @param {Object} item - Table row item
+         * @param {string} columnKey - Column key/property name
+         * @returns {any} Column value
+         */
+        getColumnValue(item, columnKey) {
+            // Handle nested property access (e.g., "properties.status")
+            if (columnKey.includes(".")) {
+                return columnKey.split(".").reduce((obj, key) => obj?.[key], item);
+            }
+            return item[columnKey];
+        },
+
+        /**
+         * Get column styling for proper alignment with headers
+         * @param {Object} header - Table header object
+         * @returns {Object} Style object for the column
+         */
+        getColumnStyle(header) {
+            const style = {};
+            
+            // Apply width if specified
+            if (header.width) {
+                style.width = header.width;
+                style.minWidth = header.width;
+                style.maxWidth = header.width;
+            }
+            
+            // Apply text alignment
+            if (header.align) {
+                style.textAlign = header.align;
+            }
+            
+            // Apply any custom styles from header
+            if (header.cellStyle) {
+                Object.assign(style, header.cellStyle);
+            }
+            
+            return style;
         },
 
         /**
@@ -928,36 +1095,39 @@ export default {
 
         /**
          * Set up drag and drop functionality on table rows
-         * Called after table data changes to apply drag to new/updated rows
+         * Adds event listeners to table rows after they render
          */
         setupTableDragListeners() {
+            // Wait for DOM to update, then find and setup drag listeners
             this.$nextTick(() => {
-                const tableRows = this.$el.querySelectorAll(".v-data-table tbody tr");
+                const tableElement = this.$el.querySelector(".v-data-table tbody");
+                if (!tableElement) {
+                    console.log("🎯 Table tbody not found yet, will retry on next update");
+                    return;
+                }
                 
-                tableRows.forEach((row, index) => {
-                    if (index < this.filteredTableData.length) {
-                        const item = this.filteredTableData[index];
-                        const dragAttrs = this.getRowDragAttributes(item);
+                const rows = tableElement.querySelectorAll("tr");
+                console.log(`🎯 Setting up drag listeners for ${rows.length} table rows`);
+                
+                rows.forEach((row, index) => {
+                    // Make row draggable
+                    row.setAttribute("draggable", "true");
+                    row.style.cursor = "grab";
+                    row.classList.add("draggable-table-row");
+                    
+                    // Get the corresponding data item
+                    const item = this.filteredTableData[index];
+                    if (item) {
+                        row.title = `Drag row: ${item.itemNumber || item.number || "N/A"}`;
                         
-                        // Apply drag attributes to the row
-                        row.setAttribute("draggable", dragAttrs.draggable || "false");
-                        row.style.cssText = (row.style.cssText || "") + "; " + (dragAttrs.style || "");
-                        row.classList.add("draggable-table-row");
+                        // Add drag event listeners
+                        row.addEventListener("dragstart", event => {
+                            this.handleRowDragStart(item, event);
+                        });
                         
-                        // Remove existing listeners to prevent duplicates
-                        row.removeEventListener("dragstart", row._dragStartHandler);
-                        row.removeEventListener("dragend", row._dragEndHandler);
-                        
-                        // Add new listeners
-                        row._dragStartHandler = dragAttrs.onDragstart;
-                        row._dragEndHandler = dragAttrs.onDragend;
-                        
-                        if (row._dragStartHandler) {
-                            row.addEventListener("dragstart", row._dragStartHandler);
-                        }
-                        if (row._dragEndHandler) {
-                            row.addEventListener("dragend", row._dragEndHandler);
-                        }
+                        row.addEventListener("dragend", event => {
+                            this.handleRowDragEnd(event);
+                        });
                     }
                 });
             });
@@ -1559,4 +1729,5 @@ export default {
         }
     }
 };
+/* eslint-enable no-console */
 </script>

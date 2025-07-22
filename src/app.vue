@@ -320,7 +320,7 @@ export default {
                     showDashboard: true,
                     showDevelopmentArea: true,
                     showReleasePlanning: true,
-                    showDragTest: true,        // Turn on drag test component
+                    showDragTest: false,        // Turn on drag test component
                     hideWidgetHeaders: false    // Show widget internal headers
                 },
                 

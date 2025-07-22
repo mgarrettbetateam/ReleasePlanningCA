@@ -631,7 +631,7 @@ export default {
                 ],
                 cas: [
                     { text: "CA Number", value: "caNumber", sortable: true, required: true, icon: "mdi-file-document", component: "ChangeActionCell", componentProps: { field: "number", itemType: "ca" } },
-                    { text: "Description", value: "changeSummary", sortable: true, icon: "mdi-text" },
+                    { text: "Description", value: "changeDescription", sortable: true, icon: "mdi-text" },
                     { text: "Resp Engr", value: "resEngr", sortable: true, icon: "mdi-account" },
                     { text: "Status", value: "currentState", sortable: true, icon: "mdi-flag" },
                     { text: "Target Complete Date", value: "targetReleaseDate", sortable: true, icon: "mdi-calendar-clock" },
@@ -641,7 +641,7 @@ export default {
                 ],
                 crs: [
                     { text: "CR Number", value: "crNumber", sortable: true, required: true, icon: "mdi-file-document-outline", component: "ChangeActionCell", componentProps: { field: "number", itemType: "cr" } },
-                    { text: "Description", value: "reasonforChange", sortable: true, icon: "mdi-format-title" },
+                    { text: "Description", value: "changeDescription", sortable: true, icon: "mdi-format-title" },
                     { text: "Resp Engr", value: "owner", sortable: true, icon: "mdi-account" },
                     { text: "Status", value: "currentState", sortable: true, icon: "mdi-flag" },
                     { text: "Target Complete Date", value: "targetReleaseDate", sortable: true, icon: "mdi-calendar-plus" },

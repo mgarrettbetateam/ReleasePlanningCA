@@ -42,7 +42,7 @@ class DataTransformationService {
                 apiKeys: ["CAs", "cas", "parts", "data", "items", "results"],
                 fieldMappings: {
                     caNumber: ["caNumber", "changeActionNumber"],
-                    changeSummary: ["changeSummary", "description"],
+                    changeDescription: ["changeDescription", "changeSummary", "description"],
                     resEngr: ["respEngr", "responsibleEngineer"],
                     currentState: ["currentState", "status"],
                     targetReleaseDate: ["targetReleaseDate", "targetCompleteDate"],
@@ -62,7 +62,7 @@ class DataTransformationService {
                 apiKeys: ["CRs", "crs", "parts", "data", "items", "results"],
                 fieldMappings: {
                     crNumber: ["crNumber", "changeRequestNumber"],
-                    reasonforChange: ["reasonforChange", "name", "summary", "description"],
+                    changeDescription: ["changeDescription", "reasonforChange", "name", "summary", "description"],
                     owner: ["owner", "respEngr", "responsibleEngineer"],
                     currentState: ["currentState", "status"],
                     targetReleaseDate: ["targetReleaseDate", "dueDate"],

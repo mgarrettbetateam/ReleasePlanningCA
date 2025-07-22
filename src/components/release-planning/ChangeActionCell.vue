@@ -226,14 +226,25 @@ export default {
         }
     },
     async mounted() {
+        console.log("🔧 ChangeActionCell mounted:", {
+            objId: this.objId,
+            rowIndex: this.rowIndex,
+            itemType: this.itemType,
+            hasDirectProps: !!(this.itemNumber && this.physId),
+            itemNumber: this.itemNumber,
+            physId: this.physId
+        });
+        
         // Emit data immediately if we have direct props (CAS/CRS case)
         if (this.itemNumber && this.physId) {
+            console.log("📄 Using direct props (CAS/CRS), no API call needed");
             this.emitData();
             return;
         }
         
         // Only fetch data if we don't have direct props (PARTS case)
         if (!this.itemNumber) {
+            console.log("📡 PARTS item detected, making API call for Change Action data");
             this.loading = true;
             
             try {
@@ -272,10 +283,56 @@ export default {
         },
 
         setCAData(data) {
+            console.log("🔗 ChangeActionCell: Setting CA data", {
+                objId: this.objId,
+                caNumber: data.caNumber,
+                caLink: data.caLink,
+                caPhysId: data.caPhysId,
+                caState: data.caState,
+                hasApiLink: !!data.caLink,
+                hasPhysId: !!data.caPhysId
+            });
+            
             this.caNumber = data.caNumber;
-            this.caLink = data.caLink;
             this.caState = data.caState;
+            
+            // For PARTS items, prefer caLink from API, but if not available, use caPhysId to generate link
+            if (data.caLink) {
+                console.log("✅ Using API-provided caLink");
+                this.caLink = data.caLink;
+            } else if (data.caPhysId) {
+                console.log("✅ Using caPhysId to generate Change Action link");
+                // Generate link using Change Action's physical ID
+                const baseUrl = getApiBaseUrl();
+                this.caLink = `${baseUrl}/3dspace/common/emxNavigator.jsp?objectId=${data.caPhysId}`;
+            } else {
+                console.warn("⚠️ No caLink or caPhysId found, using fallback link generation");
+                console.warn("⚠️ This may result in linking to the part instead of the Change Action!");
+                // Fallback to generated link
+                this.caLink = this.generateFallbackLink(data.caNumber);
+            }
+            
+            console.log("🔗 ChangeActionCell: Final CA link set to", this.caLink);
             this.emitData();
+        },
+
+        generateFallbackLink(caNumber) {
+            // Fallback link generation when API doesn't provide caLink or caPhysId
+            if (!caNumber) return "#";
+            
+            const cleanNumber = caNumber.toString().trim();
+            
+            // For CA and CX items, try to build a reasonable fallback
+            if (cleanNumber.startsWith("CA") || cleanNumber.startsWith("CX")) {
+                const baseUrl = getApiBaseUrl();
+                // Try to use the same pattern as other Change Actions
+                return `${baseUrl}/3dspace/common/emxNavigator.jsp?changeAction=${cleanNumber}`;
+            } else if (cleanNumber.startsWith("CR")) {
+                const baseUrl = getApiBaseUrl();
+                return `${baseUrl}/3dspace/common/emxNavigator.jsp?changeRequest=${cleanNumber}`;
+            }
+            
+            return "#";
         },
 
     handleError(err) {

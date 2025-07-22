@@ -398,6 +398,8 @@ class ApiService {
       const processedData = {
         caNumber: response.data.caNumber || "",
         caLink: response.data.caLink || "",
+        caPhysId: response.data.caPhysId || response.data.physId || response.data.objectId || 
+                  response.data.caObjectId || response.data.changeActionId || response.data.id || "",
         caState: response.data.caState || ""
       };
       
@@ -411,7 +413,16 @@ class ApiService {
         },
         processedData,
         availableFields: Object.keys(response.data || {}),
-        dataTypes: this.analyzeDataStructure(response.data)
+        dataTypes: this.analyzeDataStructure(response.data),
+        // Debug: Show all potential ID fields
+        potentialIdFields: {
+          caPhysId: response.data.caPhysId,
+          physId: response.data.physId,
+          objectId: response.data.objectId,
+          caObjectId: response.data.caObjectId,
+          changeActionId: response.data.changeActionId,
+          id: response.data.id
+        }
       });
       
       return processedData;

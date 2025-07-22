@@ -275,64 +275,62 @@
                 </v-card-title>
                 
                 <v-card-text class="pa-0">
-                    <div :style="{ height: `${currentTableHeight}px`, overflowY: 'auto' }">
-                        <v-data-table
-                            v-if="filteredTableData.length > 0"
-                            :headers="tableHeaders"
-                            :items="filteredTableData"
-                            :loading="loading"
-                            :dense="isMobile"
-                            :height="currentTableHeight"
-                            :fixed-header="isDesktop"
-                            :items-per-page="isMobile ? 5 : isTablet ? 10 : 20"
-                            :hide-default-footer="isMobile"
-                            :mobile-breakpoint="600"
-                            item-value="partNo"
-                            class="pa-0 draggable-table"
-                            @click:row="handleRowClick"
+                    <v-data-table
+                        v-if="filteredTableData.length > 0"
+                        :headers="tableHeaders"
+                        :items="filteredTableData"
+                        :loading="loading"
+                        :dense="isMobile"
+                        :height="currentTableHeight"
+                        :fixed-header="isDesktop"
+                        :items-per-page="isMobile ? 5 : isTablet ? 10 : 20"
+                        :hide-default-footer="isMobile"
+                        :mobile-breakpoint="600"
+                        item-value="partNo"
+                        class="pa-0 draggable-table"
+                        @click:row="handleRowClick"
+                    >
+                        <!-- Custom cell rendering using item slots for specific columns -->
+                        <template v-for="header in tableHeaders.filter(h => h.component)" #[`item.${header.value}`]="{ item, index }">
+                            <!-- Use ChangeActionCell component for CA/CR fields -->
+                            <ChangeActionCell
+                                v-if="header.component === 'ChangeActionCell'"
+                                :key="`ca-${header.value}-${index}`"
+                                :obj-id="item.physId || item.objId"
+                                :row-index="index"
+                                :field="header.componentProps.field"
+                                :item-type="header.componentProps.itemType || 'ca'"
+                                :item-number="getItemNumberForCell(header, item)"
+                                :item-state="getItemStateForCell(header, item)"
+                                :phys-id="item.physId || item.objId"
+                                @ca-number-loaded="onCaNumberLoaded"
+                                @cr-number-loaded="onCrNumberLoaded"
+                            />
+                            <!-- Use StatusCommentDisplay component for status comment fields -->
+                            <StatusCommentDisplay
+                                v-else-if="header.component === 'StatusCommentDisplay'"
+                                :key="`comment-${header.value}-${index}`"
+                                :value="getStatusCommentValue(header, item)"
+                                :can-edit="getCanEditValue(header, item)"
+                                @comment-updated="handleCommentUpdate"
+                                @show-message="showSnackbar"
+                            />
+                        </template>
+                    </v-data-table>
+                    <div v-else class="no-data-message d-flex flex-column align-center justify-center" :style="{ height: `${currentTableHeight}px` }">
+                        <v-icon size="48" color="grey">mdi-table-off</v-icon>
+                        <p class="mt-4">No table data available</p>
+                        <p class="caption">Use the filter panel to select data</p>
+                        <v-btn
+                            color="primary"
+                            outlined
+                            small
+                            class="mt-3"
+                            @click="showFilterFlyout = true"
                         >
-                            <!-- Custom cell rendering using item slots for specific columns -->
-                            <template v-for="header in tableHeaders.filter(h => h.component)" #[`item.${header.value}`]="{ item, index }">
-                                <!-- Use ChangeActionCell component for CA/CR fields -->
-                                <ChangeActionCell
-                                    v-if="header.component === 'ChangeActionCell'"
-                                    :key="`ca-${header.value}-${index}`"
-                                    :obj-id="item.physId || item.objId"
-                                    :row-index="index"
-                                    :field="header.componentProps.field"
-                                    :item-type="header.componentProps.itemType || 'ca'"
-                                    :item-number="getItemNumberForCell(header, item)"
-                                    :item-state="getItemStateForCell(header, item)"
-                                    :phys-id="item.physId || item.objId"
-                                    @ca-number-loaded="onCaNumberLoaded"
-                                    @cr-number-loaded="onCrNumberLoaded"
-                                />
-                                <!-- Use StatusCommentDisplay component for status comment fields -->
-                                <StatusCommentDisplay
-                                    v-else-if="header.component === 'StatusCommentDisplay'"
-                                    :key="`comment-${header.value}-${index}`"
-                                    :value="getStatusCommentValue(header, item)"
-                                    :can-edit="getCanEditValue(header, item)"
-                                    @comment-updated="handleCommentUpdate"
-                                    @show-message="showSnackbar"
-                                />
-                            </template>
-                        </v-data-table>
-                        <div v-else class="no-data-message d-flex flex-column align-center justify-center" style="height: 100%;">
-                            <v-icon size="48" color="grey">mdi-table-off</v-icon>
-                            <p class="mt-4">No table data available</p>
-                            <p class="caption">Use the filter panel to select data</p>
-                            <v-btn
-                                color="primary"
-                                outlined
-                                small
-                                class="mt-3"
-                                @click="showFilterFlyout = true"
-                            >
-                                <v-icon small left>mdi-filter-variant</v-icon>
-                                Open Filters
-                            </v-btn>
-                        </div>
+                            <v-icon small left>mdi-filter-variant</v-icon>
+                            Open Filters
+                        </v-btn>
                     </div>
                 </v-card-text>
             </v-card>

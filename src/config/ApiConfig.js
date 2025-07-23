@@ -7,7 +7,16 @@
 /**
  * Set this to true for production, false for development
  */
-let USE_PRODUCTION = false; // Change this to toggle environments
+let USE_PRODUCTION = true; // Change this to toggle environments
+
+/**
+ * Force clear any localStorage overrides to ensure production default
+ * This ensures the app always starts in production mode unless explicitly overridden
+ */
+if (typeof window !== "undefined") {
+  // Clear any existing override on module load to ensure clean production start
+  localStorage.removeItem("env_override");
+}
 
 /**
  * Set this to true to use mock data instead of real API calls
@@ -35,11 +44,6 @@ const KONAMI_CODE = [
 
 let konamiSequence = [];
 let environmentOverride = null;
-
-// Check for stored override on load
-if (typeof window !== "undefined" && localStorage.getItem("env_override")) {
-  environmentOverride = localStorage.getItem("env_override") === "true";
-}
 
 // Listen for the secret key combination
 if (typeof window !== "undefined") {
@@ -123,6 +127,7 @@ export const getApiBaseUrl = () => {
     }
   }
   
+  // Default to production when no override is set
   return USE_PRODUCTION ? API_CONFIG.production : API_CONFIG.development;
 };
 

@@ -142,6 +142,10 @@ export default {
             type: String,
             required: true
         },
+        uniqueId: {
+            type: String,
+            default: ""
+        },
         rowIndex: {
             type: Number,
             default: 0
@@ -228,6 +232,7 @@ export default {
     async mounted() {
         console.log("🔧 ChangeActionCell mounted:", {
             objId: this.objId,
+            uniqueId: this.uniqueId,
             rowIndex: this.rowIndex,
             itemType: this.itemType,
             hasDirectProps: !!(this.itemNumber && this.physId),
@@ -248,7 +253,8 @@ export default {
             this.loading = true;
             
             try {
-                const data = await ApiService.fetchChangeAction(this.objId, this.rowIndex);
+                // Use unique identifier for caching instead of row index
+                const data = await ApiService.fetchChangeAction(this.objId, this.uniqueId || this.objId, this.rowIndex);
                 this.setCAData(data);
             } catch (err) {
                 this.handleError(err);

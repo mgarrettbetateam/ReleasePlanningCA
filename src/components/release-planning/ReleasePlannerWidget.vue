@@ -384,7 +384,7 @@
                         :dense="isMobile"
                         :height="currentTableHeight"
                         :fixed-header="isDesktop"
-                        :items-per-page="isMobile ? 5 : isTablet ? 10 : 20"
+                        :items-per-page="currentItemsPerPage"
                         :hide-default-footer="isMobile"
                         :mobile-breakpoint="600"
                         item-value="partNo"
@@ -396,8 +396,9 @@
                             <!-- Use ChangeActionCell component for CA/CR fields -->
                             <ChangeActionCell
                                 v-if="header.component === 'ChangeActionCell'"
-                                :key="`ca-${header.value}-${index}`"
+                                :key="`ca-${header.value}-${item.uniqueId || item.physId || item.objId || index}-${changeActionRefreshKey}`"
                                 :obj-id="item.physId || item.objId"
+                                :unique-id="item.uniqueId || item.physId || item.objId || `row_${index}`"
                                 :row-index="index"
                                 :field="header.componentProps.field"
                                 :item-type="header.componentProps.itemType || 'ca'"
@@ -424,14 +425,17 @@
                             <!-- Use ChangeActionCell component for CA/CR fields -->
                             <ChangeActionCell
                                 v-if="header.component === 'ChangeActionCell'"
-                                :key="`ca-${header.value}-${index}`"
+                                :key="`ca-${header.value}-${item.uniqueId || item.physId || item.objId || index}-${changeActionRefreshKey}`"
                                 :obj-id="item.physId || item.objId"
+                                :unique-id="item.uniqueId || item.physId || item.objId || `row_${index}`"
                                 :row-index="index"
                                 :field="header.componentProps.field"
                                 :item-type="header.componentProps.itemType || 'ca'"
                                 :item-number="currentDataType === 'parts' ? '' : getItemNumberForCell(header, item)"
                                 :item-state="currentDataType === 'parts' ? '' : getItemStateForCell(header, item)"
                                 :phys-id="currentDataType === 'parts' ? '' : (item.physId || item.objId)"
+                                :filter-context="filterValues"
+                                :current-data-type="currentDataType"
                                 @ca-number-loaded="onCaNumberLoaded"
                                 @cr-number-loaded="onCrNumberLoaded"
                             />
@@ -834,6 +838,9 @@ export default {
             // Chart refresh key to force chart updates
             chartKey: 0,
             
+            // Change Action refresh key to force CA link updates when filters change
+            changeActionRefreshKey: 0,
+            
             // Responsive dimensions
             currentChartHeight: 400,
             currentTableHeight: 500,
@@ -922,6 +929,18 @@ export default {
             }
 
             return filteredHeaders;
+        },
+
+        // Responsive items per page based on screen size and configuration
+        currentItemsPerPage() {
+            const tableConfig = this.baseConfig.table;
+            if (this.isMobile) {
+                return tableConfig.breakpoints.mobile.itemsPerPage;
+            } else if (this.isTablet) {
+                return tableConfig.breakpoints.tablet.itemsPerPage;
+            } else {
+                return tableConfig.breakpoints.desktop.itemsPerPage;
+            }
         },
 
         // Filter configuration using FilterService
@@ -1094,6 +1113,7 @@ export default {
         "filterValues.program": {
             handler() {
                 console.log("👀 CHART WATCH: Program filter changed");
+                this.changeActionRefreshKey++; // Refresh Change Action links
                 this.$nextTick(() => {
                     this.updateChartFromFiltered();
                 });
@@ -1103,6 +1123,7 @@ export default {
         "filterValues.phase": {
             handler() {
                 console.log("👀 CHART WATCH: Phase filter changed");
+                this.changeActionRefreshKey++; // Refresh Change Action links
                 this.$nextTick(() => {
                     this.updateChartFromFiltered();
                 });
@@ -1112,6 +1133,7 @@ export default {
         "filterValues.organization": {
             handler() {
                 console.log("👀 CHART WATCH: Organization filter changed");
+                this.changeActionRefreshKey++; // Refresh Change Action links
                 this.$nextTick(() => {
                     this.updateChartFromFiltered();
                 });
@@ -1132,6 +1154,7 @@ export default {
         "currentDataType": {
             handler(newType, oldType) {
                 console.log("👀 CHART WATCH: Data type changed from", oldType, "to", newType);
+                this.changeActionRefreshKey++; // Refresh Change Action links
                 this.$nextTick(() => {
                     this.updateChartFromFiltered();
                     // Re-setup drag listeners when data type changes

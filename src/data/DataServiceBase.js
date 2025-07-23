@@ -295,9 +295,9 @@ const dataService = {
    * @returns {Array} - Processed array of items
    */
   processApiResponse(rawData, itemType) {
-    // If it's already an array, return it
+    // If it's already an array, process it for unique identifiers
     if (Array.isArray(rawData)) {
-      return rawData;
+      return this.addUniqueIdentifiers(rawData, itemType);
     }
     
     // If it's a string, try to parse it as JSON
@@ -366,13 +366,78 @@ const dataService = {
       // If no specific key worked, look for the first array we can find
       const firstArrayKey = Object.keys(rawData).find(key => Array.isArray(rawData[key]));
       if (firstArrayKey) {
-        return rawData[firstArrayKey];
+        return this.addUniqueIdentifiers(rawData[firstArrayKey], itemType);
       }
       
       return [];
     }
     
     return [];
+  },
+
+  /**
+   * Add unique identifiers to each item for stable caching
+   * @param {Array} data - Array of data items
+   * @param {string} itemType - Type of items (parts, cas, crs)
+   * @returns {Array} - Array with unique identifiers added
+   */
+  addUniqueIdentifiers(data, itemType) {
+    if (!Array.isArray(data)) {
+      return data;
+    }
+
+    return data.map((item, index) => {
+      // Skip if item already has a uniqueId
+      if (item && item.uniqueId) {
+        return item;
+      }
+
+      // Determine the best unique identifier based on item type and available fields
+      let uniqueId;
+      
+      if (itemType === "parts") {
+        // For parts, prioritize part-specific identifiers
+        uniqueId = item?.physId || 
+                  item?.objId || 
+                  item?.objectId || 
+                  item?.partNumber || 
+                  item?.id || 
+                  `part_${index}`;
+      } else if (itemType === "cas") {
+        // For change actions, prioritize CA-specific identifiers
+        uniqueId = item?.physId || 
+                  item?.objId || 
+                  item?.caPhysId || 
+                  item?.caObjectId || 
+                  item?.caNumber || 
+                  item?.changeActionId || 
+                  item?.id || 
+                  `ca_${index}`;
+      } else if (itemType === "crs") {
+        // For change requests, prioritize CR-specific identifiers
+        uniqueId = item?.physId || 
+                  item?.objId || 
+                  item?.crPhysId || 
+                  item?.crObjectId || 
+                  item?.crNumber || 
+                  item?.changeRequestId || 
+                  item?.id || 
+                  `cr_${index}`;
+      } else {
+        // Generic fallback for other item types
+        uniqueId = item?.physId || 
+                  item?.objId || 
+                  item?.objectId || 
+                  item?.id || 
+                  `${itemType}_${index}`;
+      }
+
+      return {
+        ...item,
+        uniqueId,
+        rowUniqueId: uniqueId // Alternative property name for backward compatibility
+      };
+    });
   },
 
   // Legacy method for backward compatibility - now uses generic fetchItems
@@ -398,11 +463,12 @@ const dataService = {
     return service.filterData(data, predicate);
   },
 
-  async fetchChangeAction(objectId) {
-    log("Fetching Change Action for objectId:", objectId);
+  async fetchChangeAction(objectId, uniqueId = null) {
+    log("Fetching Change Action for objectId:", objectId, "uniqueId:", uniqueId);
     try {
       // Use ApiService directly - it already has this method implemented
-      const data = await ApiService.fetchChangeAction(objectId);
+      // Pass the unique identifier for better caching
+      const data = await ApiService.fetchChangeAction(objectId, uniqueId);
       log("Change Action fetched:", data);
       return data;
     } catch (error) {

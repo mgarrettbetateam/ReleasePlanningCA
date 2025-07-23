@@ -379,9 +379,14 @@ class ApiService {
   }
 
   // Change Action specific method (backwards compatibility)
-  async fetchChangeAction(objectId, rowIndex = 0) {
+  async fetchChangeAction(objectId, uniqueId = null, rowIndex = 0) {
+    // Use unique identifier for caching if provided, otherwise fall back to objectId
+    const cacheIdentifier = uniqueId || objectId;
+    
     console.log("🟠 Fetching Change Action:", {
       objectId,
+      uniqueId,
+      cacheIdentifier,
       rowIndex,
       endpoint: getApiBaseUrl() + "/internal/resources/AttributeValQuery/retrieveReleaseChangeAction"
     });
@@ -428,7 +433,8 @@ class ApiService {
       return processedData;
     };
 
-    const cacheKey = `CA:${objectId}`;
+    // Use stable cache key based on unique identifier
+    const cacheKey = `CA:${cacheIdentifier}`;
     return this.fetchData(cacheKey, apiCall, {}, rowIndex);
   }
 

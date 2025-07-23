@@ -315,6 +315,48 @@
                 </v-card-text>
             </v-card>
             
+            <!-- Simple Filter Summary Bar -->
+            <v-card v-if="currentDataType || hasActiveFilters" class="filter-summary-card mb-3" flat outlined>
+                <v-card-text class="py-2 px-3">
+                    <div class="d-flex align-center flex-wrap" style="gap: 12px;">
+                        <!-- Data Type -->
+                        <div v-if="currentDataType" class="d-flex align-center" style="gap: 6px;">
+                            <v-icon small color="primary">mdi-table</v-icon>
+                            <span class="filter-label">Data Type:</span>
+                            <span class="filter-value">{{ currentDataType.toUpperCase() }}</span>
+                        </div>
+
+                        <!-- Program -->
+                        <div v-if="filterValues.program && filterValues.program !== ''" class="d-flex align-center" style="gap: 6px;">
+                            <v-icon small color="info">mdi-folder</v-icon>
+                            <span class="filter-label">Program:</span>
+                            <span class="filter-value">{{ filterValues.program }}</span>
+                        </div>
+
+                        <!-- Phase -->
+                        <div v-if="filterValues.phase && filterValues.phase !== ''" class="d-flex align-center" style="gap: 6px;">
+                            <v-icon small color="info">mdi-timeline</v-icon>
+                            <span class="filter-label">Phase:</span>
+                            <span class="filter-value">{{ filterValues.phase }}</span>
+                        </div>
+
+                        <!-- Organization -->
+                        <div v-if="filterValues.organization && filterValues.organization !== 'All'" class="d-flex align-center" style="gap: 6px;">
+                            <v-icon small color="info">mdi-domain</v-icon>
+                            <span class="filter-label">Organization:</span>
+                            <span class="filter-value">{{ filterValues.organization }}</span>
+                        </div>
+
+                        <!-- Results Count -->
+                        <v-spacer />
+                        <div v-if="currentDataType && filteredTableData.length > 0" class="d-flex align-center" style="gap: 6px;">
+                            <v-icon small color="success">mdi-check-circle</v-icon>
+                            <span class="results-count">{{ filteredTableData.length }} items</span>
+                        </div>
+                    </div>
+                </v-card-text>
+            </v-card>
+            
             <!-- Table - Full Width Below -->
             <v-card class="table-card">
                 <v-card-title class="table-header pa-3">
@@ -712,6 +754,39 @@
 /* Drag handle icon styling */
 .draggable-table-row[draggable="true"]:hover .drag-handle {
   opacity: 1;
+}
+
+/* Simple Filter Summary Styling */
+.filter-summary-card {
+  border-left: 3px solid #1976d2 !important;
+  background-color: #f8f9fa !important;
+}
+
+.filter-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.filter-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.87);
+}
+
+.results-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4caf50;
+}
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+  .filter-summary-card .d-flex {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
 }
 </style>
 

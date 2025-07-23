@@ -2,7 +2,7 @@
 
 import axios from "axios";
 import ApiService from "../services/ApiService.js";
-import { API_BASE_URL } from "../config/ApiConfig.js";
+import { getApiBaseUrl } from "../config/ApiConfig.js";
 
 const log = (...args) => {
   // Simple logger, can be enhanced or replaced with a logging library
@@ -170,7 +170,7 @@ const dataService = {
       // Use ApiService with the environment-specific endpoint
       const cacheKey = "PROGRAMS";
       const apiCall = async () => {
-        const response = await axios.get(`${API_BASE_URL}/internal/resources/AttributeValQuery/retrievePrograms`);
+        const response = await axios.get(`${getApiBaseUrl()}/internal/resources/AttributeValQuery/retrievePrograms`);
         return response.data.programs;
       };
       
@@ -189,7 +189,7 @@ const dataService = {
       // Use ApiService with the environment-specific endpoint
       const cacheKey = `PHASES:${program}`;
       const apiCall = async () => {
-        const response = await axios.get(`${API_BASE_URL}/internal/resources/AttributeValQuery/retrievePhases`, {
+        const response = await axios.get(`${getApiBaseUrl()}/internal/resources/AttributeValQuery/retrievePhases`, {
           params: { program }
         });
         return response.data.phases;
@@ -213,6 +213,12 @@ const dataService = {
    */
   async fetchItems(phase, itemType = "parts") {
     try {
+      // Guard clause: Handle null or undefined itemType
+      if (!itemType) {
+        console.warn("⚠️ fetchItems called with null/undefined itemType, defaulting to 'parts'");
+        itemType = "parts";
+      }
+      
       // Determine endpoint and cache key based on item type
       const endpointMap = {
         parts: "/internal/resources/AttributeValQuery/retrievePhaseParts",
@@ -224,7 +230,7 @@ const dataService = {
       const cacheKey = `${itemType.toUpperCase()}:${phase}`;
 
       const apiCall = async () => {
-        const url = `${API_BASE_URL}${endpoint}`;
+        const url = `${getApiBaseUrl()}${endpoint}`;
         const params = { phase };
         
         const response = await axios.get(url, {

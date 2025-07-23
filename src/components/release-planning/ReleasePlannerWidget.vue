@@ -65,11 +65,65 @@
                     <div class="text-subtitle-2 font-weight-bold primary--text text-uppercase mb-3 d-flex align-center">
                         <v-icon small color="primary" class="mr-2">mdi-database</v-icon>
                         Data Type
+                        <v-spacer />
+                        <v-chip 
+                            v-if="currentDataType"
+                            x-small
+                            color="success"
+                            class="ml-2"
+                        >
+                            {{ currentDataType.toUpperCase() }} Active
+                        </v-chip>
+                        <v-chip 
+                            v-else
+                            x-small
+                            color="grey"
+                            outlined
+                            class="ml-2"
+                        >
+                            None Selected
+                        </v-chip>
                     </div>
+                    
+                    <!-- Show currently selected data type prominently -->
+                    <v-alert
+                        v-if="currentDataType"
+                        type="success"
+                        dense
+                        class="mb-3 selected-data-type-alert"
+                        style="font-size: 13px; font-weight: 500;"
+                    >
+                        <div class="d-flex align-center">
+                            <v-icon small left color="success">mdi-check-circle</v-icon>
+                            <span class="font-weight-bold">{{ currentDataType.toUpperCase() }}</span>
+                            <span class="ml-2">data type selected</span>
+                            <v-spacer />
+                            <v-chip
+                                x-small
+                                color="success"
+                                outlined
+                                class="ml-2"
+                            >
+                                Active
+                            </v-chip>
+                        </div>
+                    </v-alert>
+                    
+                    <!-- Helpful message when no data type is selected -->
+                    <v-alert
+                        v-if="!currentDataType"
+                        type="info"
+                        dense
+                        text
+                        class="mb-3"
+                        style="font-size: 12px;"
+                    >
+                        <v-icon small left>mdi-information</v-icon>
+                        Choose a data type to get started
+                    </v-alert>
                     
                     <v-chip-group 
                         v-model="currentDataType" 
-                        mandatory 
                         column
                         class="ma-0"
                     >
@@ -79,11 +133,14 @@
                             :value="dataType"
                             small
                             block
-                            class="mb-2"
+                            class="mb-2 data-type-chip"
+                            :class="{ 'selected-chip': currentDataType === dataType }"
                             @click="switchDataType(dataType)"
                         >
-                            <v-icon small left>mdi-table</v-icon>
+                            <v-icon small left>{{ currentDataType === dataType ? 'mdi-check-circle' : 'mdi-table' }}</v-icon>
                             {{ dataType.toUpperCase() }}
+                            <v-spacer />
+                            <v-icon v-if="currentDataType === dataType" small color="white">mdi-check-bold</v-icon>
                         </v-chip>
                     </v-chip-group>
                 </div>
@@ -162,6 +219,19 @@
         <v-card-title class="planner-header">
             <v-icon left color="primary">mdi-clipboard-list</v-icon>
             {{ widgetTitle }}
+            
+            <!-- Show selected data type prominently in header -->
+            <v-chip 
+                v-if="currentDataType"
+                color="primary"
+                small
+                class="ml-3 selected-data-type-header-chip"
+                style="font-weight: 600;"
+            >
+                <v-icon small left>mdi-check-circle</v-icon>
+                {{ currentDataType.toUpperCase() }}
+            </v-chip>
+            
             <v-spacer />
             
             <!-- Discrete Filter Button in Header -->
@@ -249,7 +319,19 @@
             <v-card class="table-card">
                 <v-card-title class="table-header pa-3">
                     <v-icon left>mdi-table</v-icon>
-                    <span class="text-h6">{{ currentDataType.toUpperCase() }} Data</span>
+                    <span class="text-h6">{{ currentDataType ? currentDataType.toUpperCase() + ' Data' : 'Data Table' }}</span>
+                    
+                    <!-- Enhanced data type indicator in table header -->
+                    <v-chip 
+                        v-if="currentDataType"
+                        color="primary"
+                        small
+                        class="ml-3 table-data-type-chip"
+                    >
+                        <v-icon small left>mdi-check-circle</v-icon>
+                        {{ currentDataType.toUpperCase() }}
+                    </v-chip>
+                    
                     <v-spacer />
                     <v-chip small color="success" outlined class="mr-2">
                         {{ filteredTableData.length }} Items
@@ -275,8 +357,27 @@
                 </v-card-title>
                 
                 <v-card-text class="pa-0">
+                    <!-- Show getting started message when no data type is selected -->
+                    <div v-if="!currentDataType" class="getting-started-message d-flex flex-column align-center justify-center" :style="{ height: `${currentTableHeight}px` }">
+                        <v-icon size="64" color="primary" class="mb-4">mdi-format-list-checks</v-icon>
+                        <h3 class="text-h5 font-weight-light primary--text mb-2">Welcome to Release Planner</h3>
+                        <p class="text-body-1 grey--text text--darken-2 mb-4 text-center">
+                            Select a data type from the filter panel to get started
+                        </p>
+                        <v-btn
+                            color="primary"
+                            large
+                            outlined
+                            @click="showFilterFlyout = true"
+                        >
+                            <v-icon left>mdi-filter-variant</v-icon>
+                            Open Filters
+                        </v-btn>
+                    </div>
+                    
+                    <!-- Show data table when data type is selected and data is available -->
                     <v-data-table
-                        v-if="filteredTableData.length > 0"
+                        v-else-if="currentDataType && filteredTableData.length > 0"
                         :headers="tableHeaders"
                         :items="filteredTableData"
                         :loading="loading"
@@ -345,10 +446,12 @@
                             />
                         </template>
                     </v-data-table>
-                    <div v-else class="no-data-message d-flex flex-column align-center justify-center" :style="{ height: `${currentTableHeight}px` }">
+                    
+                    <!-- Show no data message when data type is selected but no data is available -->
+                    <div v-else-if="currentDataType" class="no-data-message d-flex flex-column align-center justify-center" :style="{ height: `${currentTableHeight}px` }">
                         <v-icon size="48" color="grey">mdi-table-off</v-icon>
-                        <p class="mt-4">No table data available</p>
-                        <p class="caption">Use the filter panel to select data</p>
+                        <p class="mt-4 text-h6">No {{ currentDataType.toUpperCase() }} data available</p>
+                        <p class="caption">Try adjusting your filters or check if data exists for this phase</p>
                         <v-btn
                             color="primary"
                             outlined
@@ -356,8 +459,8 @@
                             class="mt-3"
                             @click="showFilterFlyout = true"
                         >
-                            <v-icon small left>mdi-filter-variant</v-icon>
-                            Open Filters
+                            <v-icon left small>mdi-filter-variant</v-icon>
+                            Adjust Filters
                         </v-btn>
                     </div>
                 </v-card-text>
@@ -427,6 +530,63 @@
 
 .legend-chip:hover {
   transform: scale(1.05);
+}
+
+/* Data Type Selection Enhancements */
+.selected-data-type-alert {
+  border-left: 4px solid #4caf50 !important;
+  background-color: rgba(76, 175, 80, 0.1) !important;
+  animation: selectedPulse 2s ease-in-out;
+}
+
+.selected-data-type-header-chip {
+  animation: headerChipGlow 3s ease-in-out infinite;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3) !important;
+}
+
+.data-type-chip {
+  transition: all 0.3s ease !important;
+  border: 2px solid transparent !important;
+}
+
+.data-type-chip.selected-chip {
+  background-color: #1976d2 !important;
+  color: white !important;
+  border: 2px solid #1565c0 !important;
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.4) !important;
+  transform: scale(1.02);
+  font-weight: 600 !important;
+}
+
+.data-type-chip:not(.selected-chip):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+@keyframes selectedPulse {
+  0% { 
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+  }
+  70% { 
+    box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+  }
+  100% { 
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+  }
+}
+
+@keyframes headerChipGlow {
+  0%, 100% { 
+    box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+  }
+  50% { 
+    box-shadow: 0 2px 16px rgba(25, 118, 210, 0.6);
+  }
+}
+
+.table-data-type-chip {
+  font-weight: 600 !important;
+  box-shadow: 0 2px 6px rgba(25, 118, 210, 0.3) !important;
 }
 
 /* Responsive font adjustments not available in Vuetify */
@@ -611,7 +771,7 @@ export default {
             chartData: { labels: [], datasets: [] },
             
             // Current data type being displayed - determines which header configuration to use
-            currentDataType: "parts", // "parts", "cas", "crs", etc.
+            currentDataType: null, // null initially - user must select "parts", "cas", "crs", etc.
             
             // Configuration for different data types - easily extensible
             // ⚠️  IMPORTANT: When adding new data types here, you MUST also update 
@@ -661,6 +821,9 @@ export default {
             loading: false,
             lastUpdated: new Date().toLocaleTimeString(),
             
+            // Environment change detection
+            environmentChangeKey: 0, // Force reactivity updates when environment changes
+            
             // Chart line visibility
             showTargetLine: true,
             showActualLine: true,
@@ -701,11 +864,19 @@ export default {
     computed: {
         // Dynamic widget title based on current data type using DataTransformationService
         widgetTitle() {
+            if (!this.currentDataType) {
+                return "Release Planner - Select Data Type";
+            }
             return dataTransformationService.getDataTypeTitle(this.currentDataType);
         },
 
         // Dynamic table headers based on current data type and available data
         tableHeaders() {
+            // Return empty array if no data type is selected
+            if (!this.currentDataType) {
+                return [];
+            }
+            
             // Get base configuration for current data type
             const baseConfig = this.headerConfigurations[this.currentDataType] || [];
             
@@ -794,11 +965,29 @@ export default {
 
         // Dynamic chart options using ChartDataService
         dynamicChartOptions() {
+            // Return default options if no data type is selected
+            if (!this.currentDataType) {
+                return {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                };
+            }
+            
             return chartDataService.createChartOptions(this.currentDataType);
         },
 
         // Filter table data using FilterService
         filteredTableData() {
+            // Return empty array if no data type is selected
+            if (!this.currentDataType) {
+                return [];
+            }
+            
             return filterService.applyAllFilters(
                 this.tableData,
                 this.filterValues,
@@ -818,6 +1007,10 @@ export default {
 
         // API environment indicator for header chip
         apiEnvironmentChip() {
+            // Force reactivity by including environmentChangeKey
+            // eslint-disable-next-line no-unused-vars
+            const changeKey = this.environmentChangeKey;
+            
             const currentUrl = getApiBaseUrl();
             const isProduction = currentUrl === API_CONFIG.production;
             const isOverride = typeof window !== "undefined" && localStorage.getItem("env_override") !== null;
@@ -972,6 +1165,9 @@ export default {
         
         // Setup drag listeners after initial render
         this.setupTableDragListeners();
+        
+        // Listen for environment changes from Konami code
+        this.setupEnvironmentChangeListener();
     },
     
     methods: {
@@ -1163,6 +1359,45 @@ export default {
             this.onResponsiveResize({});
         },
         
+        /**
+         * Setup listener for environment changes from Konami code
+         */
+        setupEnvironmentChangeListener() {
+            // Listen for storage events (localStorage changes)
+            window.addEventListener("storage", event => {
+                if (event.key === "env_override") {
+                    console.log("🔄 Environment change detected via storage event:", event.newValue);
+                    this.handleEnvironmentChange();
+                }
+            });
+            
+            // Also listen for custom events that we can dispatch from Konami code
+            window.addEventListener("environmentChanged", () => {
+                console.log("🔄 Environment change detected via custom event");
+                this.handleEnvironmentChange();
+            });
+        },
+        
+        /**
+         * Handle environment change - refresh data and UI
+         */
+        handleEnvironmentChange() {
+            console.log("🔄 Handling environment change...");
+            
+            // Force reactivity update
+            this.environmentChangeKey += 1;
+            
+            // Log current state
+            console.log("🔄 Current API URL:", getApiBaseUrl());
+            console.log("🔄 Environment chip will update:", this.apiEnvironmentChip);
+            
+            // Refresh data if we have selections
+            if (this.currentDataType && this.filterValues.phase) {
+                console.log("🔄 Refreshing data for new environment...");
+                this.refreshData();
+            }
+        },
+        
         // ===== EXISTING METHODS CONTINUE =====
         
         /**
@@ -1331,6 +1566,16 @@ export default {
                 console.log("=== FETCHDATA START ===");
                 console.log("Phase parameter:", phase);
                 console.log("Current data type:", this.currentDataType);
+                
+                // Guard clause: Don't fetch data if no data type is selected
+                if (!this.currentDataType) {
+                    console.log("⚠️  No data type selected, skipping data fetch");
+                    this.tableData = [];
+                    this.organizations = ["All"];
+                    this.updateChartFromFiltered();
+                    return;
+                }
+                
                 console.log("🔥 CRITICAL: About to call fetchItems with itemType:", this.currentDataType);
                 console.log("USE_MOCK_DATA flag:", USE_MOCK_DATA);
                 

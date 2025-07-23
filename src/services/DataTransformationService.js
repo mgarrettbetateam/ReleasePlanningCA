@@ -30,6 +30,8 @@ class DataTransformationService {
                     actualRelease: ["actualReleaseDate", "actualRelease"],
                     currentState: ["currentState", "state"],
                     physId: ["physId", "id"],
+                    makeBuy: ["makeBuy"],
+                    partType: ["partType"],
                     caNumber: [], // Populated by ChangeActionCell
                     caState: [],   // Populated by ChangeActionCell
                     statusComment: ["statusComment", "caStatusComment", "partStatusComment"],

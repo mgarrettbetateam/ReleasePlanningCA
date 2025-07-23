@@ -861,6 +861,8 @@ export default {
                     { text: "Part Number", value: "partNo", sortable: true, required: true, icon: "mdi-barcode" },
                     { text: "Rev", value: "rev", sortable: true, icon: "mdi-source-branch" },
                     { text: "Description", value: "description", sortable: true, icon: "mdi-text" },
+                    { text: "Make / Buy", value: "makeBuy", sortable: true, icon: "mdi-factory" },
+                    { text: "Part Type", value: "partType", sortable: true, icon: "mdi-shape" },
                     { text: "Organization", value: "organization", sortable: true, icon: "mdi-domain" },
                     { text: "Target Release", value: "tgtRelease", sortable: true, icon: "mdi-calendar-clock" },
                     { text: "Actual Release", value: "actualRelease", sortable: true, icon: "mdi-calendar-check" },

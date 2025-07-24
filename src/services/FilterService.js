@@ -23,13 +23,10 @@ export class FilterService {
      * @param {Array} options.programs - Available programs
      * @param {Array} options.phases - Available phases
      * @param {Array} options.organizations - Available organizations
-     * @param {Array} options.makeBuyOptions - Available Make/Buy values (PARTS only)
-     * @param {Array} options.partTypeOptions - Available Part Type values (PARTS only)
      * @param {Object} options.filterValues - Current filter values
-     * @param {string} options.currentDataType - Current data type (parts, cas, crs)
      * @returns {Array} Filter configuration array
      */
-    createFilterConfig({ programs = [], phases = [], organizations = [], makeBuyOptions = [], partTypeOptions = [], filterValues = {}, currentDataType = null }) {
+    createFilterConfig({ programs = [], phases = [], organizations = [], filterValues = {} }) {
         const baseConfig = [
             {
                 type: "select",
@@ -66,32 +63,8 @@ export class FilterService {
             }
         ];
 
-        // Add Make/Buy filter only for PARTS data type
-        if (currentDataType === "parts") {
-            baseConfig.push({
-                type: "select",
-                key: "makeBuyFilter",
-                label: "Make / Buy",
-                icon: "mdi-factory",
-                value: filterValues.makeBuyFilter,
-                options: makeBuyOptions,
-                clearable: false,
-                placeholder: "Select Make / Buy",
-                color: "warning"
-            });
-
-            baseConfig.push({
-                type: "select",
-                key: "partTypeFilter",
-                label: "Part Type",
-                icon: "mdi-shape",
-                value: filterValues.partTypeFilter,
-                options: partTypeOptions,
-                clearable: false,
-                placeholder: "Select Part Type",
-                color: "success"
-            });
-        }
+        // Note: Make/Buy and Part Type filters are now handled in a separate section
+        // in the filter flyout, so they are not included in the general filter config
 
         return baseConfig;
     }    /**

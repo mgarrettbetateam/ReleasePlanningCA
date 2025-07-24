@@ -28,39 +28,7 @@
             <v-divider />
 
             <div class="flyout-content-scrollable pa-5 overflow-y-auto" style="height: calc(100vh - 120px); scrollbar-width: thin; scrollbar-color: rgba(25, 118, 210, 0.3) transparent;">
-                <!-- Filter Controls Grid -->
-                <div class="mb-6">
-                    <div class="text-subtitle-2 font-weight-bold primary--text text-uppercase mb-3 d-flex align-center">
-                        <v-icon small color="primary" class="mr-2">mdi-tune</v-icon>
-                        Data Filters
-                    </div>
-                    
-                    <div 
-                        v-for="filter in filterConfig"
-                        :key="filter.key"
-                        class="mb-4"
-                    >
-                        <label class="caption font-weight-bold grey--text text--darken-2 mb-2 d-flex align-center text-uppercase">
-                            <v-icon small class="mr-1">{{ filter.icon }}</v-icon>
-                            {{ filter.label }}
-                        </label>
-                        <v-select
-                            :value="filterValues[filter.key]"
-                            :items="filter.options"
-                            :placeholder="filter.placeholder"
-                            dense
-                            outlined
-                            hide-details
-                            clearable
-                            class="mb-3"
-                            @change="handleFilterChange({ key: filter.key, value: $event, allFilters: { ...filterValues, [filter.key]: $event } })"
-                        />
-                    </div>
-                </div>
-
-                <v-divider class="my-4" />
-
-                <!-- Data Type Switcher -->
+                <!-- Data Type Switcher - First priority at the top -->
                 <div class="mb-6">
                     <div class="text-subtitle-2 font-weight-bold primary--text text-uppercase mb-3 d-flex align-center">
                         <v-icon small color="primary" class="mr-2">mdi-database</v-icon>
@@ -143,6 +111,93 @@
                             <v-icon v-if="currentDataType === dataType" small color="white">mdi-check-bold</v-icon>
                         </v-chip>
                     </v-chip-group>
+                </div>
+
+                <v-divider class="my-4" />
+
+                <!-- PARTS-Specific Filters - Only shown for PARTS data type -->
+                <div v-if="currentDataType === 'parts'" class="mb-6">
+                    <div class="text-subtitle-2 font-weight-bold warning--text text-uppercase mb-3 d-flex align-center">
+                        <v-icon small color="warning" class="mr-2">mdi-cog-outline</v-icon>
+                        Part Filters
+                        <v-spacer />
+                        <v-chip 
+                            x-small
+                            color="warning"
+                            outlined
+                            class="ml-2"
+                        >
+                            PARTS Only
+                        </v-chip>
+                    </div>
+                    
+                    <!-- Make/Buy Filter -->
+                    <div class="mb-4">
+                        <label class="caption font-weight-bold grey--text text--darken-2 mb-2 d-flex align-center text-uppercase">
+                            <v-icon small class="mr-1">mdi-factory</v-icon>
+                            Make / Buy
+                        </label>
+                        <v-select
+                            v-model="filterValues.makeBuyFilter"
+                            :items="makeBuyOptions"
+                            placeholder="Select Make / Buy"
+                            dense
+                            outlined
+                            hide-details
+                            class="mb-3"
+                            @change="changeActionRefreshKey++"
+                        />
+                    </div>
+
+                    <!-- Part Type Filter -->
+                    <div class="mb-4">
+                        <label class="caption font-weight-bold grey--text text--darken-2 mb-2 d-flex align-center text-uppercase">
+                            <v-icon small class="mr-1">mdi-shape</v-icon>
+                            Part Type
+                        </label>
+                        <v-select
+                            v-model="filterValues.partTypeFilter"
+                            :items="partTypeOptions"
+                            placeholder="Select Part Type"
+                            dense
+                            outlined
+                            hide-details
+                            class="mb-3"
+                            @change="changeActionRefreshKey++"
+                        />
+                    </div>
+                </div>
+
+                <v-divider v-if="currentDataType === 'parts'" class="my-4" />
+
+                <!-- Filter Controls Grid -->
+                <div class="mb-6">
+                    <div class="text-subtitle-2 font-weight-bold primary--text text-uppercase mb-3 d-flex align-center">
+                        <v-icon small color="primary" class="mr-2">mdi-tune</v-icon>
+                        Data Filters
+                    </div>
+                    
+                    <div 
+                        v-for="filter in filterConfig"
+                        :key="filter.key"
+                        class="mb-4"
+                    >
+                        <label class="caption font-weight-bold grey--text text--darken-2 mb-2 d-flex align-center text-uppercase">
+                            <v-icon small class="mr-1">{{ filter.icon }}</v-icon>
+                            {{ filter.label }}
+                        </label>
+                        <v-select
+                            :value="filterValues[filter.key]"
+                            :items="filter.options"
+                            :placeholder="filter.placeholder"
+                            dense
+                            outlined
+                            hide-details
+                            clearable
+                            class="mb-3"
+                            @change="handleFilterChange({ key: filter.key, value: $event, allFilters: { ...filterValues, [filter.key]: $event } })"
+                        />
+                    </div>
                 </div>
 
                 <v-divider class="my-4" />
@@ -1044,10 +1099,7 @@ export default {
                 programs: this.programs,
                 phases: this.phases,
                 organizations: this.organizations,
-                makeBuyOptions: this.makeBuyOptions,
-                partTypeOptions: this.partTypeOptions,
-                filterValues: this.filterValues,
-                currentDataType: this.currentDataType
+                filterValues: this.filterValues
             });
             return config;
         },

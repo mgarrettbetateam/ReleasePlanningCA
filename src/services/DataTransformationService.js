@@ -256,6 +256,29 @@ class DataTransformationService {
     }
 
     /**
+     * Extract unique Make/Buy values from table data for filter dropdown
+     * @param {Array} tableData - The table data array
+     * @returns {Array} - Array of unique Make/Buy values with "All" as first option
+     */
+    extractMakeBuyValues(tableData) {
+        if (!Array.isArray(tableData)) {
+            return ["All"];
+        }
+
+        const makeBuySet = new Set();
+        
+        tableData.forEach(item => {
+            if (item.makeBuy && item.makeBuy !== "Unknown" && item.makeBuy.trim() !== "") {
+                makeBuySet.add(item.makeBuy.trim());
+            }
+        });
+
+        const makeBuyValues = ["All", ...Array.from(makeBuySet).sort()];
+        
+        return makeBuyValues;
+    }
+
+    /**
      * Validate data type and provide suggestions
      * 
      * Checks if a data type is valid and provides helpful error messages

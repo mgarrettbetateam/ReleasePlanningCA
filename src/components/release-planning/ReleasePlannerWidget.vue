@@ -347,6 +347,13 @@
                             <span class="filter-value">{{ filterValues.organization }}</span>
                         </div>
 
+                        <!-- Make/Buy Filter - Only for PARTS -->
+                        <div v-if="currentDataType === 'parts' && filterValues.makeBuyFilter && filterValues.makeBuyFilter !== 'All'" class="d-flex align-center" style="gap: 6px;">
+                            <v-icon small color="info">mdi-factory</v-icon>
+                            <span class="filter-label">Make / Buy:</span>
+                            <span class="filter-value">{{ filterValues.makeBuyFilter }}</span>
+                        </div>
+
                         <!-- Results Count -->
                         <v-spacer />
                         <div v-if="currentDataType && filteredTableData.length > 0" class="d-flex align-center" style="gap: 6px;">
@@ -835,13 +842,15 @@ export default {
             filterValues: {
                 program: "",
                 phase: "",
-                organization: "All"
+                organization: "All",
+                makeBuyFilter: "All" // Only used for PARTS data type
             },
             
             // Filter options - will be loaded dynamically
             programs: [],
             phases: [],
             organizations: ["All"], // Initialize with default
+            makeBuyOptions: ["All"], // Initialize with default - only for PARTS
             
             // Raw data
             tableData: [],
@@ -1026,7 +1035,9 @@ export default {
                 programs: this.programs,
                 phases: this.phases,
                 organizations: this.organizations,
-                filterValues: this.filterValues
+                makeBuyOptions: this.makeBuyOptions,
+                filterValues: this.filterValues,
+                currentDataType: this.currentDataType
             });
             return config;
         },
@@ -1048,7 +1059,8 @@ export default {
         hasActiveFilters() {
             return (this.filterValues.program && this.filterValues.program !== "") ||
                    (this.filterValues.phase && this.filterValues.phase !== "") ||
-                   (this.filterValues.organization && this.filterValues.organization !== "All");
+                   (this.filterValues.organization && this.filterValues.organization !== "All") ||
+                   (this.currentDataType === "parts" && this.filterValues.makeBuyFilter && this.filterValues.makeBuyFilter !== "All");
         },
         
         activeFilterCount() {
@@ -1056,6 +1068,8 @@ export default {
             if (this.filterValues.program && this.filterValues.program !== "") count++;
             if (this.filterValues.phase && this.filterValues.phase !== "") count++;
             if (this.filterValues.organization && this.filterValues.organization !== "All") count++;
+            // Only count Make/Buy filter when viewing PARTS
+            if (this.currentDataType === "parts" && this.filterValues.makeBuyFilter && this.filterValues.makeBuyFilter !== "All") count++;
             return count;
         },
 
@@ -1672,6 +1686,8 @@ export default {
                     console.log("⚠️  No data type selected, skipping data fetch");
                     this.tableData = [];
                     this.organizations = ["All"];
+                    this.makeBuyOptions = ["All"];
+                    this.filterValues.makeBuyFilter = "All";
                     this.updateChartFromFiltered();
                     return;
                 }
@@ -1705,6 +1721,16 @@ export default {
                 this.organizations = dataTransformationService.extractOrganizations(this.tableData);
                 console.log("✅ Organizations updated from data:", this.organizations);
 
+                // Update Make/Buy options - only for PARTS data type
+                if (this.currentDataType === "parts") {
+                    this.makeBuyOptions = dataTransformationService.extractMakeBuyValues(this.tableData);
+                    console.log("✅ Make/Buy options updated from PARTS data:", this.makeBuyOptions);
+                } else {
+                    // Reset Make/Buy options and filter when not viewing PARTS
+                    this.makeBuyOptions = ["All"];
+                    this.filterValues.makeBuyFilter = "All";
+                }
+
                 // Update chart data from the filtered table data
                 this.updateChartFromFiltered();
 
@@ -1720,6 +1746,8 @@ export default {
                 console.log("Clearing data due to API failure");
                 this.tableData = [];
                 this.organizations = ["All"];
+                this.makeBuyOptions = ["All"];
+                this.filterValues.makeBuyFilter = "All";
                 this.updateChartFromFiltered();
             } finally {
                 this.loading = false;

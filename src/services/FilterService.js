@@ -23,11 +23,13 @@ export class FilterService {
      * @param {Array} options.programs - Available programs
      * @param {Array} options.phases - Available phases
      * @param {Array} options.organizations - Available organizations
+     * @param {Array} options.makeBuyOptions - Available Make/Buy values (PARTS only)
      * @param {Object} options.filterValues - Current filter values
+     * @param {string} options.currentDataType - Current data type (parts, cas, crs)
      * @returns {Array} Filter configuration array
      */
-    createFilterConfig({ programs = [], phases = [], organizations = [], filterValues = {} }) {
-        return [
+    createFilterConfig({ programs = [], phases = [], organizations = [], makeBuyOptions = [], filterValues = {}, currentDataType = null }) {
+        const baseConfig = [
             {
                 type: "select",
                 key: "program",
@@ -40,7 +42,7 @@ export class FilterService {
                 color: "primary"
             },
             {
-                type: "select", 
+                type: "select",
                 key: "phase",
                 label: "Phase",
                 icon: "mdi-timeline",
@@ -62,9 +64,24 @@ export class FilterService {
                 color: "info"
             }
         ];
-    }
 
-    /**
+        // Add Make/Buy filter only for PARTS data type
+        if (currentDataType === "parts") {
+            baseConfig.push({
+                type: "select",
+                key: "makeBuyFilter",
+                label: "Make / Buy",
+                icon: "mdi-factory",
+                value: filterValues.makeBuyFilter,
+                options: makeBuyOptions,
+                clearable: false,
+                placeholder: "Select Make / Buy",
+                color: "warning"
+            });
+        }
+
+        return baseConfig;
+    }    /**
      * Apply all filters to table data
      * @param {Array} tableData - Raw table data
      * @param {Object} filterValues - Filter values (program, phase, organization)
@@ -152,6 +169,15 @@ export class FilterService {
                 item.organization === filterValues.organization
             );
             console.log(`  - Organization filter (${filterValues.organization}): ${beforeCount} -> ${filtered.length}`);
+        }
+
+        // Make/Buy filter - only apply if filter value is set and not "All"
+        if (filterValues.makeBuyFilter && filterValues.makeBuyFilter !== "All") {
+            const beforeCount = filtered.length;
+            filtered = filtered.filter(item => 
+                item.makeBuy === filterValues.makeBuyFilter
+            );
+            console.log(`  - Make/Buy filter (${filterValues.makeBuyFilter}): ${beforeCount} -> ${filtered.length}`);
         }
 
         return filtered;

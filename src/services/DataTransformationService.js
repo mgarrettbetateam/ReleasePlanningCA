@@ -279,6 +279,29 @@ class DataTransformationService {
     }
 
     /**
+     * Extract unique Part Type values from table data for filter dropdown
+     * @param {Array} tableData - The table data array
+     * @returns {Array} - Array of unique Part Type values with "All" as first option
+     */
+    extractPartTypeValues(tableData) {
+        if (!Array.isArray(tableData)) {
+            return ["All"];
+        }
+
+        const partTypeSet = new Set();
+        
+        tableData.forEach(item => {
+            if (item.partType && item.partType !== "Unknown" && item.partType.trim() !== "") {
+                partTypeSet.add(item.partType.trim());
+            }
+        });
+
+        const partTypeValues = ["All", ...Array.from(partTypeSet).sort()];
+        
+        return partTypeValues;
+    }
+
+    /**
      * Validate data type and provide suggestions
      * 
      * Checks if a data type is valid and provides helpful error messages

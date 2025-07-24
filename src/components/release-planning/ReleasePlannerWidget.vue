@@ -354,6 +354,13 @@
                             <span class="filter-value">{{ filterValues.makeBuyFilter }}</span>
                         </div>
 
+                        <!-- Part Type Filter - Only for PARTS -->
+                        <div v-if="currentDataType === 'parts' && filterValues.partTypeFilter && filterValues.partTypeFilter !== 'All'" class="d-flex align-center" style="gap: 6px;">
+                            <v-icon small color="info">mdi-shape</v-icon>
+                            <span class="filter-label">Part Type:</span>
+                            <span class="filter-value">{{ filterValues.partTypeFilter }}</span>
+                        </div>
+
                         <!-- Results Count -->
                         <v-spacer />
                         <div v-if="currentDataType && filteredTableData.length > 0" class="d-flex align-center" style="gap: 6px;">
@@ -843,7 +850,8 @@ export default {
                 program: "",
                 phase: "",
                 organization: "All",
-                makeBuyFilter: "All" // Only used for PARTS data type
+                makeBuyFilter: "All", // Only used for PARTS data type
+                partTypeFilter: "All" // Only used for PARTS data type
             },
             
             // Filter options - will be loaded dynamically
@@ -851,6 +859,7 @@ export default {
             phases: [],
             organizations: ["All"], // Initialize with default
             makeBuyOptions: ["All"], // Initialize with default - only for PARTS
+            partTypeOptions: ["All"], // Initialize with default - only for PARTS
             
             // Raw data
             tableData: [],
@@ -1036,6 +1045,7 @@ export default {
                 phases: this.phases,
                 organizations: this.organizations,
                 makeBuyOptions: this.makeBuyOptions,
+                partTypeOptions: this.partTypeOptions,
                 filterValues: this.filterValues,
                 currentDataType: this.currentDataType
             });
@@ -1060,7 +1070,8 @@ export default {
             return (this.filterValues.program && this.filterValues.program !== "") ||
                    (this.filterValues.phase && this.filterValues.phase !== "") ||
                    (this.filterValues.organization && this.filterValues.organization !== "All") ||
-                   (this.currentDataType === "parts" && this.filterValues.makeBuyFilter && this.filterValues.makeBuyFilter !== "All");
+                   (this.currentDataType === "parts" && this.filterValues.makeBuyFilter && this.filterValues.makeBuyFilter !== "All") ||
+                   (this.currentDataType === "parts" && this.filterValues.partTypeFilter && this.filterValues.partTypeFilter !== "All");
         },
         
         activeFilterCount() {
@@ -1070,6 +1081,8 @@ export default {
             if (this.filterValues.organization && this.filterValues.organization !== "All") count++;
             // Only count Make/Buy filter when viewing PARTS
             if (this.currentDataType === "parts" && this.filterValues.makeBuyFilter && this.filterValues.makeBuyFilter !== "All") count++;
+            // Only count Part Type filter when viewing PARTS
+            if (this.currentDataType === "parts" && this.filterValues.partTypeFilter && this.filterValues.partTypeFilter !== "All") count++;
             return count;
         },
 
@@ -1688,6 +1701,8 @@ export default {
                     this.organizations = ["All"];
                     this.makeBuyOptions = ["All"];
                     this.filterValues.makeBuyFilter = "All";
+                    this.partTypeOptions = ["All"];
+                    this.filterValues.partTypeFilter = "All";
                     this.updateChartFromFiltered();
                     return;
                 }
@@ -1725,10 +1740,15 @@ export default {
                 if (this.currentDataType === "parts") {
                     this.makeBuyOptions = dataTransformationService.extractMakeBuyValues(this.tableData);
                     console.log("✅ Make/Buy options updated from PARTS data:", this.makeBuyOptions);
+                    
+                    this.partTypeOptions = dataTransformationService.extractPartTypeValues(this.tableData);
+                    console.log("✅ Part Type options updated from PARTS data:", this.partTypeOptions);
                 } else {
-                    // Reset Make/Buy options and filter when not viewing PARTS
+                    // Reset Make/Buy and Part Type options and filters when not viewing PARTS
                     this.makeBuyOptions = ["All"];
                     this.filterValues.makeBuyFilter = "All";
+                    this.partTypeOptions = ["All"];
+                    this.filterValues.partTypeFilter = "All";
                 }
 
                 // Update chart data from the filtered table data
@@ -1748,6 +1768,8 @@ export default {
                 this.organizations = ["All"];
                 this.makeBuyOptions = ["All"];
                 this.filterValues.makeBuyFilter = "All";
+                this.partTypeOptions = ["All"];
+                this.filterValues.partTypeFilter = "All";
                 this.updateChartFromFiltered();
             } finally {
                 this.loading = false;

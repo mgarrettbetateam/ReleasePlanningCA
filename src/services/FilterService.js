@@ -24,11 +24,12 @@ export class FilterService {
      * @param {Array} options.phases - Available phases
      * @param {Array} options.organizations - Available organizations
      * @param {Array} options.makeBuyOptions - Available Make/Buy values (PARTS only)
+     * @param {Array} options.partTypeOptions - Available Part Type values (PARTS only)
      * @param {Object} options.filterValues - Current filter values
      * @param {string} options.currentDataType - Current data type (parts, cas, crs)
      * @returns {Array} Filter configuration array
      */
-    createFilterConfig({ programs = [], phases = [], organizations = [], makeBuyOptions = [], filterValues = {}, currentDataType = null }) {
+    createFilterConfig({ programs = [], phases = [], organizations = [], makeBuyOptions = [], partTypeOptions = [], filterValues = {}, currentDataType = null }) {
         const baseConfig = [
             {
                 type: "select",
@@ -77,6 +78,18 @@ export class FilterService {
                 clearable: false,
                 placeholder: "Select Make / Buy",
                 color: "warning"
+            });
+
+            baseConfig.push({
+                type: "select",
+                key: "partTypeFilter",
+                label: "Part Type",
+                icon: "mdi-shape",
+                value: filterValues.partTypeFilter,
+                options: partTypeOptions,
+                clearable: false,
+                placeholder: "Select Part Type",
+                color: "success"
             });
         }
 
@@ -178,6 +191,15 @@ export class FilterService {
                 item.makeBuy === filterValues.makeBuyFilter
             );
             console.log(`  - Make/Buy filter (${filterValues.makeBuyFilter}): ${beforeCount} -> ${filtered.length}`);
+        }
+
+        // Part Type filter - only apply if filter value is set and not "All"
+        if (filterValues.partTypeFilter && filterValues.partTypeFilter !== "All") {
+            const beforeCount = filtered.length;
+            filtered = filtered.filter(item => 
+                item.partType === filterValues.partTypeFilter
+            );
+            console.log(`  - Part Type filter (${filterValues.partTypeFilter}): ${beforeCount} -> ${filtered.length}`);
         }
 
         return filtered;

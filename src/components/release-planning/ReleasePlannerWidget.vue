@@ -560,6 +560,20 @@
                                 @show-message="showSnackbar"
                             />
                         </template>
+
+                        <!-- Custom template for Part Number - make it a hyperlink for PARTS data type -->
+                        <template v-if="currentDataType === 'parts'" #item.partNo="{ item }">
+                            <a 
+                                :href="`https://3dspace-prod.beta.team/3dspace/common/emxTree.jsp?objectId=${item.physId || item.objId}&DefaultCategory=betaProductNavigatorPortalCmd`"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="part-number-link"
+                                :title="`Open ${item.partNo} in 3DSpace`"
+                            >
+                                {{ item.partNo }}
+                                <v-icon x-small class="ml-1" color="primary">mdi-open-in-new</v-icon>
+                            </a>
+                        </template>
                     </v-data-table>
                     
                     <!-- Show no data message when data type is selected but no data is available -->
@@ -857,6 +871,36 @@
     gap: 8px !important;
   }
 }
+
+/* Part Number Link Styles */
+.part-number-link {
+  color: #1976d2 !important;
+  text-decoration: none !important;
+  font-weight: 500 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  transition: all 0.2s ease !important;
+  border-radius: 4px !important;
+  padding: 2px 4px !important;
+}
+
+.part-number-link:hover {
+  color: #1565c0 !important;
+  background-color: rgba(25, 118, 210, 0.08) !important;
+  text-decoration: underline !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 4px rgba(25, 118, 210, 0.2) !important;
+}
+
+.part-number-link:focus {
+  outline: 2px solid rgba(25, 118, 210, 0.5) !important;
+  outline-offset: 2px !important;
+}
+
+.part-number-link:active {
+  transform: translateY(0) !important;
+  box-shadow: 0 1px 2px rgba(25, 118, 210, 0.2) !important;
+}
 </style>
 
 <script>
@@ -935,7 +979,6 @@ export default {
                     { text: "Rev", value: "rev", sortable: true, icon: "mdi-source-branch" },
                     { text: "Description", value: "description", sortable: true, icon: "mdi-text" },
                     { text: "Make / Buy", value: "makeBuy", sortable: true, icon: "mdi-factory" },
-                    { text: "Part Type", value: "partType", sortable: true, icon: "mdi-shape" },
                     { text: "Organization", value: "organization", sortable: true, icon: "mdi-domain" },
                     { text: "Target Release", value: "tgtRelease", sortable: true, icon: "mdi-calendar-clock" },
                     { text: "Actual Release", value: "actualRelease", sortable: true, icon: "mdi-calendar-check" },

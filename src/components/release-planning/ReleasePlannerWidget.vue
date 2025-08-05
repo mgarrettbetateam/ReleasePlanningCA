@@ -524,6 +524,8 @@
                                 v-else-if="header.component === 'StatusCommentDisplay'"
                                 :key="`comment-${header.value}-${index}`"
                                 :value="getStatusCommentValue(header, item)"
+                                :object-id="item.physId || item.objId || item.id"
+                                :item-type="header.componentProps.itemType || 'parts'"
                                 :can-edit="getCanEditValue(header, item)"
                                 @comment-updated="handleCommentUpdate"
                                 @show-message="showSnackbar"
@@ -555,6 +557,8 @@
                                 v-else-if="header.component === 'StatusCommentDisplay'"
                                 :key="`comment-${header.value}-${index}`"
                                 :value="getStatusCommentValue(header, item)"
+                                :object-id="item.physId || item.objId || item.id"
+                                :item-type="header.componentProps.itemType || 'parts'"
                                 :can-edit="getCanEditValue(header, item)"
                                 @comment-updated="handleCommentUpdate"
                                 @show-message="showSnackbar"
@@ -984,7 +988,7 @@ export default {
                     { text: "Actual Release", value: "actualRelease", sortable: true, icon: "mdi-calendar-check" },
                     { text: "State", value: "currentState", sortable: true, icon: "mdi-flag" },
                     { text: "Change Action", value: "caNumber", sortable: false, component: "ChangeActionCell", componentProps: { field: "number" } },
-                    { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text", component: "StatusCommentDisplay", componentProps: { itemType: "parts" } }
+                    { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text", component: "StatusCommentDisplay", componentProps: { itemType: "parts", canEdit: true } }
                 ],
                 cas: [
                     { text: "CA Number", value: "caNumber", sortable: true, required: true, icon: "mdi-file-document", component: "ChangeActionCell", componentProps: { field: "number", itemType: "ca" } },
@@ -994,7 +998,7 @@ export default {
                     { text: "Target Complete Date", value: "targetReleaseDate", sortable: true, icon: "mdi-calendar-clock" },
                     { text: "Actual Approved Date", value: "approvedDate", sortable: true, icon: "mdi-calendar-check" },
                     { text: "Actual Complete Date", value: "actualReleaseDate", sortable: true, icon: "mdi-calendar-check" },
-                    { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text", component: "StatusCommentDisplay", componentProps: { itemType: "cas" } }
+                    { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text", component: "StatusCommentDisplay", componentProps: { itemType: "cas", canEdit: true } }
                 ],
                 crs: [
                     { text: "CR Number", value: "crNumber", sortable: true, required: true, icon: "mdi-file-document-outline", component: "ChangeActionCell", componentProps: { field: "number", itemType: "cr" } },
@@ -1003,7 +1007,7 @@ export default {
                     { text: "Status", value: "currentState", sortable: true, icon: "mdi-flag" },
                     { text: "Target Complete Date", value: "targetReleaseDate", sortable: true, icon: "mdi-calendar-plus" },
                     { text: "Actual Complete Date", value: "actualCompleteDate", sortable: true, icon: "mdi-calendar-check" },
-                    { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text", component: "StatusCommentDisplay", componentProps: { itemType: "crs" } }
+                    { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text", component: "StatusCommentDisplay", componentProps: { itemType: "crs", canEdit: true } }
                 ]
             },
             

@@ -11,7 +11,7 @@
                 {{ hasComments ? 'mdi-comment-text' : 'mdi-comment-outline' }}
             </v-icon>
             <span class="comment-preview">{{ displayText }}</span>
-            <span v-if="commentCount > 0" class="comment-count">{{ commentCount }}</span>
+            <span v-if="commentCount > 0" class="comment-count" :class="{ 'has-blocker': hasBlocker }">{{ commentCount }}</span>
         </div>
     
         <!-- Modal Dialog -->
@@ -77,8 +77,23 @@
                                         <span class="comment-date">{{ formatDate(comment.date) }}</span>
                                     </div>
                                     <div class="comment-message">{{ comment.text }}</div>
-                                    <div v-if="comment.eta" class="comment-eta">
-                                        <v-chip small color="orange" text-color="white">
+                                    <div class="comment-badges">
+                                        <v-chip 
+                                            v-if="comment.isBlocker"
+                                            small 
+                                            color="error" 
+                                            text-color="white"
+                                            class="mr-2"
+                                        >
+                                            <v-icon small left>mdi-alert</v-icon>
+                                            BLOCKER
+                                        </v-chip>
+                                        <v-chip 
+                                            v-if="comment.eta" 
+                                            small 
+                                            color="orange" 
+                                            text-color="white"
+                                        >
                                             <v-icon small left>mdi-clock</v-icon>
                                             ETA: {{ formatDate(comment.eta) }}
                                         </v-chip>
@@ -111,6 +126,14 @@
                                 </v-expansion-panel-header>
                                 <v-expansion-panel-content>
                                     <v-form ref="newCommentForm">
+                                        <v-text-field
+                                            v-model="newUsername"
+                                            label="Username"
+                                            placeholder="Enter username..."
+                                            outlined
+                                            dense
+                                            :rules="[v => !!v || 'Username is required']"
+                                        />
                                         <v-textarea
                                             v-model="newComment"
                                             label="New Comment"
@@ -124,11 +147,18 @@
                                             label="ETA (optional)"
                                             placeholder="YYYY-MM-DD"
                                             outlined
+                                            dense
                                             type="date"
+                                        />
+                                        <v-checkbox
+                                            v-model="isBlocker"
+                                            label="This is a blocker"
+                                            color="error"
+                                            dense
                                         />
                                         <v-btn 
                                             color="primary" 
-                                            :disabled="!newComment.trim()"
+                                            :disabled="!newComment.trim() || !newUsername.trim()"
                                             @click="addNewComment"
                                         >
                                             <v-icon small left>mdi-plus</v-icon>
@@ -201,6 +231,23 @@
   flex-shrink: 0;
 }
 
+.comment-count.has-blocker {
+  background: #f44336;
+  animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-red {
+  0% {
+    box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(244, 67, 54, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(244, 67, 54, 0);
+  }
+}
+
 .read-mode {
   padding: 16px;
   max-height: 500px;
@@ -264,6 +311,13 @@
   margin-top: 6px;
 }
 
+.comment-badges {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .comment-cell {
@@ -284,6 +338,18 @@ export default {
       type: String,
       default: ""
     },
+    statusComment: {
+      type: String,
+      default: ""
+    },
+    objectId: {
+      type: [String, Number],
+      default: null
+    },
+    itemType: {
+      type: String,
+      default: "parts"
+    },
     canEdit: {
       type: Boolean,
       default: false
@@ -294,6 +360,8 @@ export default {
     }
   },
   
+  emits: ["comment-updated", "show-message"],
+  
   data() {
     return {
       dialog: false,
@@ -301,22 +369,26 @@ export default {
       editableComment: "",
       originalComment: "",
       newComment: "",
+      newUsername: "",
       newEta: "",
+      isBlocker: false,
       saving: false,
       currentUser: "currentUser", // TODO: Get from auth service
+      maxCommentLength: 5000,
+      hashMultiplier: 5,
       commentRules: [
-        v => v.length <= 5000 || "Comment must be less than 5000 characters"
+        v => v.length <= this.maxCommentLength || `Comment must be less than ${this.maxCommentLength} characters`
       ]
     };
   },
   
   computed: {
-    statusComment() {
-      return this.value || "";
+    displayStatusComment() {
+      return this.statusComment || this.value || "";
     },
     
     hasComments() {
-      return this.statusComment && this.statusComment.trim().length > 0;
+      return this.displayStatusComment && this.displayStatusComment.trim().length > 0;
     },
     
     displayText() {
@@ -339,23 +411,32 @@ export default {
       return this.parsedComments.length;
     },
     
+    hasBlocker() {
+      return this.parsedComments.some(comment => comment.isBlocker);
+    },
+    
     parsedComments() {
-      if (!this.statusComment) return [];
+      if (!this.displayStatusComment) return [];
       
-      const lines = this.statusComment.split("\n").filter(line => line.trim());
+      const lines = this.displayStatusComment.split("\n").filter(line => line.trim());
       
       return lines.map(line => {
-        // Parse format: [YYYY-MM-DD] username: comment - ETA: YYYY-MM-DD
+        // Parse format: [YYYY-MM-DD] username: comment [BLOCKER] - ETA: YYYY-MM-DD
         const match = line.match(/\[([^\]]+)\]\s*([^:]+):\s*(.+?)(?:\s*-\s*ETA:\s*([^\s]+))?$/);
         
         if (match) {
+          const commentText = match[3].trim();
+          const isBlocker = commentText.includes("[BLOCKER]");
+          const cleanText = commentText.replace("[BLOCKER]", "").trim();
+          
           return {
             date: match[1],
             author: match[2].trim(),
-            text: match[3].trim(),
+            text: cleanText,
             eta: match[4] || null,
+            isBlocker,
             authorInitials: this.getInitials(match[2].trim()),
-            status: this.getStatusFromComment(match[3])
+            status: this.getStatusFromComment(cleanText)
           };
         }
         
@@ -373,40 +454,39 @@ export default {
   },
   
   mounted() {
-    // Debug the received props
-    console.log("🔍 StatusCommentDisplay mounted with props:", {
-      value: this.value,
-      canEdit: this.canEdit,
-      maxPreviewLength: this.maxPreviewLength,
-      hasComments: this.hasComments,
-      displayText: this.displayText
-    });
+    // Initialize component with proper data
+    this.originalComment = this.displayStatusComment;
+    this.editableComment = this.displayStatusComment;
   },
   
   methods: {
     openModal() {
       this.dialog = true;
-      this.originalComment = this.statusComment;
-      this.editableComment = this.statusComment;
+      this.originalComment = this.displayStatusComment;
+      this.editableComment = this.displayStatusComment;
     },
     
     closeModal() {
       this.dialog = false;
       this.editMode = false;
       this.newComment = "";
+      this.newUsername = "";
       this.newEta = "";
+      this.isBlocker = false;
     },
     
     enterEditMode() {
       this.editMode = true;
-      this.editableComment = this.statusComment || "";
+      this.editableComment = this.displayStatusComment || "";
     },
     
     cancelEdit() {
       this.editMode = false;
       this.editableComment = this.originalComment;
       this.newComment = "";
+      this.newUsername = "";
       this.newEta = "";
+      this.isBlocker = false;
     },
     
     async saveChanges() {
@@ -429,7 +509,9 @@ export default {
         this.originalComment = this.editableComment;
         this.editMode = false;
         this.newComment = "";
+        this.newUsername = "";
         this.newEta = "";
+        this.isBlocker = false;
         
         // Show success message
         this.$emit("show-message", {
@@ -449,11 +531,12 @@ export default {
     },
     
     addNewComment() {
-      if (!this.newComment.trim()) return;
+      if (!this.newComment.trim() || !this.newUsername.trim()) return;
       
       const today = new Date().toISOString().split("T")[0];
       const etaText = this.newEta ? ` - ETA: ${this.newEta}` : "";
-      const newEntry = `[${today}] ${this.currentUser}: ${this.newComment.trim()}${etaText}`;
+      const blockerText = this.isBlocker ? " [BLOCKER]" : "";
+      const newEntry = `[${today}] ${this.newUsername.trim()}: ${this.newComment.trim()}${blockerText}${etaText}`;
       
       if (this.editableComment) {
         this.editableComment += "\n" + newEntry;
@@ -462,7 +545,9 @@ export default {
       }
       
       this.newComment = "";
+      this.newUsername = "";
       this.newEta = "";
+      this.isBlocker = false;
     },
     
     getInitials(name) {
@@ -478,7 +563,7 @@ export default {
       let hash = 0;
       for (let i = 0; i < username.length; i++) {
         const char = username.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
+        hash = ((hash << this.hashMultiplier) - hash) + char;
         hash = hash & hash; // Convert to 32-bit integer
       }
       

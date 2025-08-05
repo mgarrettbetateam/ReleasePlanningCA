@@ -2,7 +2,7 @@
 <template>
     <div class="status-comment-display">
         <!-- Table Cell Display -->
-        <div class="comment-cell" @click="openModal">
+        <div class="comment-cell" :class="{ 'loading': saving }" @click="openModal">
             <v-icon 
                 small 
                 :color="hasComments ? 'primary' : 'grey'"
@@ -12,11 +12,34 @@
             </v-icon>
             <span class="comment-preview">{{ displayText }}</span>
             <span v-if="commentCount > 0" class="comment-count" :class="{ 'has-blocker': hasBlocker }">{{ commentCount }}</span>
+            
+            <!-- Mini loading indicator for table cell -->
+            <v-progress-circular
+                v-if="saving"
+                indeterminate
+                size="16"
+                width="2"
+                color="primary"
+                class="ml-2"
+            />
         </div>
     
         <!-- Modal Dialog -->
         <v-dialog v-model="dialog" max-width="700" persistent>
-            <v-card>
+            <v-card :loading="saving">
+                <!-- Loading Overlay for Save Operation -->
+                <v-overlay v-if="saving" absolute>
+                    <div class="text-center">
+                        <v-progress-circular
+                            indeterminate
+                            size="64"
+                            color="primary"
+                        />
+                        <div class="mt-3 text-h6">Saving Comments...</div>
+                        <div class="text-body-2 text--secondary">Please wait while we update your status comments</div>
+                    </div>
+                </v-overlay>
+                
                 <v-card-title class="d-flex align-center">
                     <v-icon class="mr-2">mdi-comment-text</v-icon>
                     <span>Status Comments</span>
@@ -200,6 +223,12 @@
 
 .comment-cell:hover {
   background-color: rgba(0, 0, 0, 0.05);
+}
+
+.comment-cell.loading {
+  opacity: 0.7;
+  background-color: rgba(25, 118, 210, 0.08);
+  border: 1px solid rgba(25, 118, 210, 0.2);
 }
 
 .comment-icon {

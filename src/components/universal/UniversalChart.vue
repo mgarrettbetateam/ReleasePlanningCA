@@ -39,8 +39,25 @@
         </div>
 
         <div v-if="loading" class="chart-loading">
-            <v-progress-circular indeterminate color="primary" />
-            <span>Loading chart data...</span>
+            <v-overlay 
+                absolute
+                color="white" 
+                opacity="0.9"
+                z-index="10"
+            >
+                <div class="text-center">
+                    <v-progress-circular
+                        indeterminate
+                        size="64"
+                        width="4"
+                        color="primary"
+                    />
+                    <div class="mt-4">
+                        <h4 class="text-h6 mb-2">Loading Chart...</h4>
+                        <p class="text-body-2 grey--text">Please wait while we generate your chart visualization</p>
+                    </div>
+                </div>
+            </v-overlay>
         </div>
         <div v-else-if="!hasValidData" class="chart-error">
             <v-icon color="grey" size="48">mdi-chart-line</v-icon>
@@ -56,11 +73,39 @@
 
 <style scoped>
 /* Component-specific styles that can't be consolidated */
+.universal-chart-container {
+    position: relative;
+}
+
+.chart-loading {
+    position: relative;
+    min-height: 300px;
+}
+
 .export-button-container {
     position: absolute;
     top: 10px;
     right: 10px;
-    z-index: 10;
+    z-index: 15;
+}
+
+.export-btn {
+    background-color: rgba(255, 255, 255, 0.9) !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.chart-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    color: #999;
+}
+
+.chart-error span {
+    margin-top: 16px;
+    font-size: 14px;
 }
 </style>
 

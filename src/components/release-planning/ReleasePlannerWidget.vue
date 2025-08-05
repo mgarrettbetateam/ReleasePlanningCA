@@ -467,7 +467,29 @@
                     </v-menu>
                 </v-card-title>
                 
-                <v-card-text class="pa-0">
+                <v-card-text class="pa-0 position-relative">
+                    <!-- Loading Overlay for Better Visibility -->
+                    <v-overlay 
+                        v-if="loading" 
+                        absolute
+                        color="white" 
+                        opacity="0.8"
+                        z-index="10"
+                    >
+                        <div class="text-center">
+                            <v-progress-circular
+                                indeterminate
+                                size="64"
+                                width="4"
+                                color="primary"
+                            />
+                            <div class="mt-4">
+                                <h4 class="text-h6 mb-2">Loading Data...</h4>
+                                <p class="text-body-2 grey--text">Please wait while we fetch your {{ currentDataType || 'release planning' }} data</p>
+                            </div>
+                        </div>
+                    </v-overlay>
+                    
                     <!-- Show getting started message when no data type is selected -->
                     <div v-if="!currentDataType" class="getting-started-message d-flex flex-column align-center justify-center" :style="{ height: `${currentTableHeight}px` }">
                         <v-icon size="64" color="primary" class="mb-4">mdi-format-list-checks</v-icon>
@@ -603,6 +625,11 @@
 </template>
 
 <style scoped>
+/* Position relative for loading overlay */
+.position-relative {
+  position: relative;
+}
+
 /* Filter Flyout Styles - Keep custom glass effect */
 .filter-flyout-trigger-header {
   border-color: rgba(255, 255, 255, 0.5) !important;

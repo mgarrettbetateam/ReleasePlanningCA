@@ -339,6 +339,15 @@
                             <v-icon small left>{{ showActualLine ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
                             Actual
                         </v-chip>
+                        <v-chip 
+                            small 
+                            :color="showCriticalLine ? 'error' : 'grey'"
+                            class="legend-chip"
+                            @click="toggleCriticalLine"
+                        >
+                            <v-icon small left>{{ showCriticalLine ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
+                            Critical
+                        </v-chip>
                     </div>
                 </v-card-title>
                 
@@ -1013,6 +1022,7 @@ export default {
                     { text: "Organization", value: "organization", sortable: true, icon: "mdi-domain" },
                     { text: "Target Release", value: "tgtRelease", sortable: true, icon: "mdi-calendar-clock" },
                     { text: "Actual Release", value: "actualRelease", sortable: true, icon: "mdi-calendar-check" },
+                    { text: "Critical Release", value: "criticalRelease", sortable: true, icon: "mdi-calendar-alert" },
                     { text: "State", value: "currentState", sortable: true, icon: "mdi-flag" },
                     { text: "Change Action", value: "caNumber", sortable: false, component: "ChangeActionCell", componentProps: { field: "number" } },
                     { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text", component: "StatusCommentDisplay", componentProps: { itemType: "parts", canEdit: true } }
@@ -1022,9 +1032,10 @@ export default {
                     { text: "Description", value: "changeDescription", sortable: true, icon: "mdi-text" },
                     { text: "Resp Engr", value: "resEngr", sortable: true, icon: "mdi-account" },
                     { text: "Status", value: "currentState", sortable: true, icon: "mdi-flag" },
-                    { text: "Target Complete Date", value: "targetReleaseDate", sortable: true, icon: "mdi-calendar-clock" },
-                    { text: "Actual Approved Date", value: "approvedDate", sortable: true, icon: "mdi-calendar-check" },
-                    { text: "Actual Complete Date", value: "actualReleaseDate", sortable: true, icon: "mdi-calendar-check" },
+                    { text: "Target Complete", value: "targetReleaseDate", sortable: true, icon: "mdi-calendar-clock" },
+                    { text: "Actual Approved", value: "approvedDate", sortable: true, icon: "mdi-calendar-check" },
+                    { text: "Actual Complete", value: "actualReleaseDate", sortable: true, icon: "mdi-calendar-check" },
+                    { text: "Critical Release", value: "criticalRelease", sortable: true, icon: "mdi-calendar-alert" },
                     { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text", component: "StatusCommentDisplay", componentProps: { itemType: "cas", canEdit: true } }
                 ],
                 crs: [
@@ -1032,8 +1043,9 @@ export default {
                     { text: "Description", value: "changeDescription", sortable: true, icon: "mdi-format-title" },
                     { text: "Resp Engr", value: "owner", sortable: true, icon: "mdi-account" },
                     { text: "Status", value: "currentState", sortable: true, icon: "mdi-flag" },
-                    { text: "Target Complete Date", value: "targetReleaseDate", sortable: true, icon: "mdi-calendar-plus" },
-                    { text: "Actual Complete Date", value: "actualCompleteDate", sortable: true, icon: "mdi-calendar-check" },
+                    { text: "Target Complete", value: "targetReleaseDate", sortable: true, icon: "mdi-calendar-plus" },
+                    { text: "Actual Complete", value: "actualCompleteDate", sortable: true, icon: "mdi-calendar-check" },
+                    { text: "Critical Release", value: "criticalRelease", sortable: true, icon: "mdi-calendar-alert" },
                     { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text", component: "StatusCommentDisplay", componentProps: { itemType: "crs", canEdit: true } }
                 ]
             },
@@ -1055,6 +1067,7 @@ export default {
             // Chart line visibility
             showTargetLine: true,
             showActualLine: true,
+            showCriticalLine: true,
             
             // Release headliner filter
             selectedStatFilter: "all",
@@ -1693,6 +1706,12 @@ export default {
             this.updateChartFromFiltered();
         },
         
+        toggleCriticalLine() {
+            this.showCriticalLine = !this.showCriticalLine;
+            console.log("👁️ Critical line toggled:", this.showCriticalLine);
+            this.updateChartFromFiltered();
+        },
+        
         // Handle filter changes from UniversalFilterControls
         handleFilterChange(filterEvent) {
             console.log("🔄 HANDLE FILTER CHANGE:");
@@ -2037,7 +2056,8 @@ export default {
                 this.currentDataType,
                 {
                     showTargetLine: this.showTargetLine,
-                    showActualLine: this.showActualLine
+                    showActualLine: this.showActualLine,
+                    showCriticalLine: this.showCriticalLine
                 }
             );
 

@@ -22,6 +22,10 @@ export class ChartDataService {
             actual: {
                 border: "#4caf50", 
                 background: "rgba(76, 175, 80, 0.1)"
+            },
+            critical: {
+                border: "#f44336",
+                background: "rgba(244, 67, 54, 0.1)"
             }
         };
 
@@ -97,6 +101,29 @@ export class ChartDataService {
     }
 
     /**
+     * Extract critical release date from item based on data type
+     * @param {Object} item - Data item
+     * @param {string} dataType - Current data type (parts, cas, crs)
+     * @returns {Date|null} Validated critical release date or null
+     */
+    extractCriticalDate(item, dataType = "parts") {
+        let criticalDate = null;
+        
+        // For all data types, use criticalRelease field (which maps from actualReleaseDate in the API)
+        criticalDate = item.criticalRelease;
+        
+        // Debug logging for critical date extraction
+        console.log("🔍 Critical Date Debug:", {
+            itemName: item.partNo || item.caNumber || item.crNumber || item.name,
+            dataType,
+            criticalRelease: item.criticalRelease,
+            resolvedDate: criticalDate
+        });
+        
+        return this.validateDate(criticalDate);
+    }
+
+    /**
      * Validate and parse date string
      * @param {string|Date} dateStr - Date string or Date object to validate
      * @returns {Date|null} Valid date object or null
@@ -126,16 +153,18 @@ export class ChartDataService {
         console.log("  - Input data length:", filteredData?.length || 0);
 
         if (!filteredData || filteredData.length === 0) {
-            return { targetDates: [], actualDates: [] };
+            return { targetDates: [], actualDates: [], criticalDates: [] };
         }
 
         const targetDates = [];
         const actualDates = [];
+        const criticalDates = [];
         
         // Process each item to extract dates
         filteredData.forEach(item => {
             const targetDate = this.extractTargetDate(item, dataType);
             const actualDate = this.extractActualDate(item, dataType);
+            const criticalDate = this.extractCriticalDate(item, dataType);
             
             if (targetDate) {
                 targetDates.push({
@@ -152,25 +181,36 @@ export class ChartDataService {
                     item
                 });
             }
+            
+            if (criticalDate) {
+                criticalDates.push({
+                    date: criticalDate,
+                    dateString: criticalDate.toLocaleDateString(),
+                    item
+                });
+            }
         });
 
         console.log("  - Target dates found:", targetDates.length);
         console.log("  - Actual dates found:", actualDates.length);
+        console.log("  - Critical dates found:", criticalDates.length);
 
-        return { targetDates, actualDates };
+        return { targetDates, actualDates, criticalDates };
     }
 
     /**
      * Create a unified timeline from multiple date arrays
      * @param {Array} targetDates - Array of target date objects
      * @param {Array} actualDates - Array of actual date objects
+     * @param {Array} criticalDates - Array of critical date objects
      * @returns {Array} Sorted array of unique date strings
      */
-    createUnifiedTimeline(targetDates, actualDates) {
+    createUnifiedTimeline(targetDates, actualDates, criticalDates = []) {
         const allDates = new Set();
         
         targetDates.forEach(item => allDates.add(item.dateString));
         actualDates.forEach(item => allDates.add(item.dateString));
+        criticalDates.forEach(item => allDates.add(item.dateString));
         
         const sortedDates = Array.from(allDates).sort((a, b) => new Date(a) - new Date(b));
         
@@ -228,21 +268,25 @@ export class ChartDataService {
         const dataTypeLabels = {
             parts: { 
                 target: "Target Parts Release", 
-                actual: "Actual Parts Released" 
+                actual: "Actual Parts Released",
+                critical: "Critical Parts Release"
             },
             cas: { 
                 target: "Target CAs Release", 
-                actual: "Actual CAs Released" 
+                actual: "Actual CAs Released",
+                critical: "Critical CAs Release"
             },
             crs: { 
                 target: "Target CRs Release", 
-                actual: "Actual CRs Released" 
+                actual: "Actual CRs Released",
+                critical: "Critical CRs Release"
             }
         };
         
         return dataTypeLabels[dataType] || { 
             target: "Target Items", 
-            actual: "Actual Items" 
+            actual: "Actual Items",
+            critical: "Critical Items"
         };
     }
 
@@ -256,12 +300,13 @@ export class ChartDataService {
      * @returns {Object} Complete Chart.js data structure with labels and datasets
      */
     createChartData(filteredData, dataType = "parts", options = {}) {
-        const { showTargetLine = true, showActualLine = true } = options;
+        const { showTargetLine = true, showActualLine = true, showCriticalLine = true } = options;
         
         console.log("🔄 ChartDataService: Creating chart data");
         console.log("  - Data type:", dataType);
         console.log("  - Show target line:", showTargetLine);
         console.log("  - Show actual line:", showActualLine);
+        console.log("  - Show critical line:", showCriticalLine);
         console.log("  - Filtered data length:", filteredData?.length || 0);
         
         if (!filteredData || filteredData.length === 0) {
@@ -270,15 +315,15 @@ export class ChartDataService {
         }
 
         // Build chart data using helper methods
-        const { targetDates, actualDates } = this.buildChartData(filteredData, dataType);
+        const { targetDates, actualDates, criticalDates } = this.buildChartData(filteredData, dataType);
         
-        if (targetDates.length === 0 && actualDates.length === 0) {
+        if (targetDates.length === 0 && actualDates.length === 0 && criticalDates.length === 0) {
             console.log("❌ ChartDataService: No valid release dates found");
             return { labels: [], datasets: [] };
         }
 
         // Create unified timeline and get labels
-        const sortedDates = this.createUnifiedTimeline(targetDates, actualDates);
+        const sortedDates = this.createUnifiedTimeline(targetDates, actualDates, criticalDates);
         const labels = this.getDataTypeLabels(dataType);
 
         // Build datasets based on visibility options
@@ -302,6 +347,16 @@ export class ChartDataService {
                 sortedDates
             );
             datasets.push(actualDataset);
+        }
+        
+        if (criticalDates.length > 0 && showCriticalLine) {
+            const criticalDataset = this.createDataset(
+                criticalDates, 
+                labels.critical, 
+                "critical", 
+                sortedDates
+            );
+            datasets.push(criticalDataset);
         }
 
         const chartData = { labels: sortedDates, datasets };

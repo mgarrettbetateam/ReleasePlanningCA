@@ -289,6 +289,20 @@
             
             <v-spacer />
             
+            <!-- Clear Cache Button with Safety Measures -->
+            <v-btn
+                small
+                text
+                color="grey darken-1"
+                class="mr-4"
+                :loading="clearingCache"
+                :disabled="clearingCache"
+                @click="confirmClearCache"
+            >
+                <v-icon small left>mdi-refresh</v-icon>
+                Clear Cache
+            </v-btn>
+            
             <!-- Discrete Filter Button in Header -->
             <v-btn
                 small
@@ -630,6 +644,50 @@
                 </v-card-text>
             </v-card>
         </div>
+        
+        <!-- Clear Cache Confirmation Dialog -->
+        <v-dialog v-model="showClearCacheDialog" max-width="500" persistent>
+            <v-card>
+                <v-card-title class="headline">
+                    <v-icon left color="warning">mdi-alert-circle</v-icon>
+                    Clear Cache Confirmation
+                </v-card-title>
+                
+                <v-card-text>
+                    <p class="text-body-1 mb-3">
+                        Are you sure you want to clear all cached data? This will:
+                    </p>
+                    <ul class="text-body-2 mb-3">
+                        <li>Clear all API response cache</li>
+                        <li>Clear session storage data</li>
+                        <li>Clear local storage (except user preferences)</li>
+                        <li>Force refresh data from the server</li>
+                    </ul>
+                    <v-alert type="info" dense class="mt-3">
+                        <small>This action cannot be undone and may cause a brief loading delay while data is re-fetched.</small>
+                    </v-alert>
+                </v-card-text>
+                
+                <v-card-actions>
+                    <v-spacer />
+                    <v-btn
+                        text
+                        @click="showClearCacheDialog = false"
+                    >
+                        Cancel
+                    </v-btn>
+                    <v-btn
+                        color="warning"
+                        :loading="clearingCache"
+                        :disabled="clearingCache"
+                        @click="clearCacheAndRefresh"
+                    >
+                        <v-icon left>mdi-refresh</v-icon>
+                        Clear Cache
+                    </v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
     </div>
 </template>
 
@@ -953,6 +1011,8 @@ import filterService from "@/services/FilterService.js";
 import chartDataService from "@/services/ChartDataService.js";
 import dataTransformationService from "@/services/DataTransformationService.js";
 import exportService from "@/services/ExportService.js";
+import ApiService from "@/services/ApiService.js";
+import UniversalDataService from "@/services/UniversalDataService.js";
 import { USE_MOCK_DATA } from "@/config/ApiConfig.js";
 import { getApiBaseUrl, API_CONFIG } from "@/config/ApiConfig.js";
 import { responsiveUtils, ResponsiveMixin } from "@/utils/ResponsiveUtils.js";
@@ -1077,6 +1137,10 @@ export default {
             
             // Change Action refresh key to force CA link updates when filters change
             changeActionRefreshKey: 0,
+            
+            // Cache clearing state
+            clearingCache: false,
+            showClearCacheDialog: false,
             
             // Responsive dimensions
             currentChartHeight: 400,
@@ -1971,6 +2035,73 @@ export default {
                 this.fetchData(this.filterValues.phase);
             } else {
                 console.warn("⚠️  No phase selected for refresh");
+            }
+        },
+
+        /**
+         * Show confirmation dialog before clearing cache
+         */
+        confirmClearCache() {
+            this.showClearCacheDialog = true;
+        },
+
+        /**
+         * Clear all caches and refresh data from API
+         */
+        async clearCacheAndRefresh() {
+            console.log("🗑️ Clearing all caches and refreshing data...");
+            this.clearingCache = true;
+            
+            try {
+                // Clear all cache sources
+                
+                // 1. Clear ApiService cache
+                ApiService.clearCache();
+                console.log("✅ ApiService cache cleared");
+                
+                // 2. Clear UniversalDataService cache
+                UniversalDataService.refreshAll();
+                console.log("✅ UniversalDataService cache cleared");
+                
+                // 3. Clear session storage
+                sessionStorage.clear();
+                console.log("✅ Session storage cleared");
+                
+                // 4. Clear local storage (except user preferences)
+                const keysToKeep = ["widget-dev-config"]; // Keep config settings
+                const allKeys = Object.keys(localStorage);
+                allKeys.forEach(key => {
+                    if (!keysToKeep.includes(key)) {
+                        localStorage.removeItem(key);
+                    }
+                });
+                console.log("✅ Local storage cleared (preserved user preferences)");
+                
+                // 5. Reset component data
+                this.tableData = [];
+                this.chartData = { labels: [], datasets: [] };
+                this.organizations = ["All"];
+                this.makeBuyOptions = ["All"];
+                this.partTypeOptions = ["All"];
+                
+                // 6. Refresh data from API
+                if (this.filterValues.phase && this.currentDataType) {
+                    console.log("🔄 Refreshing data from API...");
+                    await this.fetchData(this.filterValues.phase);
+                    console.log("✅ Data refreshed from API");
+                } else {
+                    console.log("ℹ️ No phase or data type selected, skipping data refresh");
+                }
+                
+                // Show success message
+                this.showSnackbar({ message: "Cache cleared and data refreshed successfully!", type: "success" });
+                
+            } catch (error) {
+                console.error("❌ Error clearing cache:", error);
+                this.showSnackbar({ message: "Error clearing cache: " + error.message, type: "error" });
+            } finally {
+                this.clearingCache = false;
+                this.showClearCacheDialog = false; // Close the dialog
             }
         },
 

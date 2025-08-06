@@ -29,7 +29,7 @@ class DataTransformationService {
                     tgtRelease: ["targetReleaseDate", "tgtRelease"],
                     actualRelease: ["actualReleaseDate", "actualRelease"],
                     actualReleaseDate: ["actualReleaseDate"],
-                    criticalRelease: ["actualReleaseDate"],
+                    criticalRelease: ["criticalReleaseDate", "criticalRelease"],
                     currentState: ["currentState", "state"],
                     physId: ["physId", "id"],
                     makeBuy: ["makeBuy"],
@@ -52,7 +52,7 @@ class DataTransformationService {
                     targetReleaseDate: ["targetReleaseDate", "targetCompleteDate"],
                     approvedDate: ["approvedDate"],
                     actualReleaseDate: ["actualReleaseDate", "actualCompleteDate"],
-                    criticalRelease: ["actualReleaseDate"],
+                    criticalRelease: ["criticalReleaseDate", "criticalRelease"],
                     organization: ["organization"],
                     statusComment: ["statusComment", "caStatusComment"],
                     caStatusComment: ["caStatusComment", "statusComment"],
@@ -73,7 +73,7 @@ class DataTransformationService {
                     targetReleaseDate: ["targetReleaseDate", "dueDate"],
                     actualCompleteDate: ["actualCompleteDate", "actualReleaseDate", "completedDate"],
                     actualReleaseDate: ["actualReleaseDate", "actualCompleteDate", "completedDate"],
-                    criticalRelease: ["actualReleaseDate"],
+                    criticalRelease: ["criticalReleaseDate", "criticalRelease"],
                     statusComment: ["statusComment", "caStatusComment"],
                     caStatusComment: ["caStatusComment", "statusComment"]
                 }

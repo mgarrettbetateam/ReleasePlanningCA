@@ -224,7 +224,29 @@ export class FilterService {
                     
                     const tgt = new Date(targetDate);
                     tgt.setHours(0, 0, 0, 0);
-                    return tgt.getTime() < currentMs && item.currentState !== "RELEASED";
+                    const isTargetOverdue = tgt.getTime() < currentMs && item.currentState !== "RELEASED";
+                    
+                    // Only include if target is overdue but not critically overdue
+                    if (isTargetOverdue) {
+                        const criticalDate = this.extractCriticalDate(item);
+                        if (!criticalDate) return true; // No critical date, so just overdue
+                        
+                        const critical = new Date(criticalDate);
+                        critical.setHours(0, 0, 0, 0);
+                        return critical.getTime() >= currentMs; // Critical date is not overdue
+                    }
+                    
+                    return false;
+                });
+
+            case "criticallyOverdue":
+                return data.filter(item => {
+                    const criticalDate = this.extractCriticalDate(item);
+                    if (!criticalDate) return false;
+                    
+                    const critical = new Date(criticalDate);
+                    critical.setHours(0, 0, 0, 0);
+                    return critical.getTime() < currentMs && item.currentState !== "RELEASED";
                 });
                 
             case "next30Days": {
@@ -259,6 +281,17 @@ export class FilterService {
         return item.tgtRelease || 
                item.targetReleaseDate || 
                item.dueDate || 
+               null;
+    }
+
+    /**
+     * Extract critical date from item
+     * @param {Object} item - Data item
+     * @returns {string|null} Critical date string or null
+     */
+    extractCriticalDate(item) {
+        return item.criticalRelease || 
+               item.criticalReleaseDate || 
                null;
     }
 
@@ -328,6 +361,7 @@ export class FilterService {
                 thisWeekCount: 0,
                 nextWeekCount: 0,
                 overdueCount: 0,
+                criticallyOverdueCount: 0,
                 next30DaysCount: 0,
                 totalCount: 0
             };
@@ -347,6 +381,7 @@ export class FilterService {
             thisWeekCount: 0,
             nextWeekCount: 0,
             overdueCount: 0,
+            criticallyOverdueCount: 0,
             next30DaysCount: 0,
             totalCount: data.length
         };
@@ -373,9 +408,25 @@ export class FilterService {
                     stats.nextWeekCount++;
                 }
 
-                // Overdue count
+                // Check for critically overdue (critical date is past due)
+                const criticalDate = this.extractCriticalDate(item);
+                if (criticalDate) {
+                    const critical = new Date(criticalDate);
+                    critical.setHours(0, 0, 0, 0);
+                    const criticalMs = critical.getTime();
+                    
+                    if (criticalMs < currentMs && item.currentState !== "RELEASED") {
+                        stats.criticallyOverdueCount++;
+                    }
+                }
+
+                // Overdue count (target date is past due, but not critically overdue)
                 if (tgtMs < currentMs && item.currentState !== "RELEASED") {
-                    stats.overdueCount++;
+                    // Only count as overdue if not already critically overdue
+                    const criticalDate = this.extractCriticalDate(item);
+                    if (!criticalDate || new Date(criticalDate).getTime() >= currentMs) {
+                        stats.overdueCount++;
+                    }
                 }
 
                 // Next 30 days count
@@ -401,6 +452,7 @@ export class FilterService {
             thisWeek: "This Week",
             nextWeek: "Next Week",
             overdue: "Overdue",
+            criticallyOverdue: "Critically Overdue",
             next30Days: "Next 30 Days"
         };
         return displayNames[filterType] || "Items";

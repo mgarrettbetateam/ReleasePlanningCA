@@ -217,11 +217,16 @@
                             :class="{ 
                                 'primary--border': selectedStatFilter === stat.key,
                                 'v-card--disabled': stat.count === 0,
-                                'error--border': stat.key === 'overdue'
+                                'error--border': stat.key === 'criticallyOverdue',
+                                'warning--border': stat.key === 'overdue'
                             }"
                             :style="{ 
-                                borderColor: selectedStatFilter === stat.key ? '#1976d2' : stat.key === 'overdue' ? '#d32f2f' : '#e0e0e0',
-                                backgroundColor: selectedStatFilter === stat.key ? 'rgba(25, 118, 210, 0.1)' : stat.key === 'overdue' ? 'rgba(211, 47, 47, 0.05)' : '#fafafa'
+                                borderColor: selectedStatFilter === stat.key ? '#1976d2' : 
+                                    stat.key === 'criticallyOverdue' ? '#d32f2f' : 
+                                    stat.key === 'overdue' ? '#ff9800' : '#e0e0e0',
+                                backgroundColor: selectedStatFilter === stat.key ? 'rgba(25, 118, 210, 0.1)' : 
+                                    stat.key === 'criticallyOverdue' ? 'rgba(211, 47, 47, 0.05)' : 
+                                    stat.key === 'overdue' ? 'rgba(255, 152, 0, 0.05)' : '#fafafa'
                             }"
                             outlined
                             @click="stat.count > 0 ? filterByReleaseStatus(stat.key) : null"
@@ -229,7 +234,10 @@
                             <div class="d-flex align-center" style="gap: 12px;">
                                 <span 
                                     class="text-h5 font-weight-bold primary--text"
-                                    :class="{ 'error--text': stat.key === 'overdue' }"
+                                    :class="{ 
+                                        'error--text': stat.key === 'criticallyOverdue',
+                                        'orange--text': stat.key === 'overdue'
+                                    }"
                                     style="min-width: 40px;"
                                 >
                                     {{ stat.count }}
@@ -695,6 +703,11 @@
 /* Position relative for loading overlay */
 .position-relative {
   position: relative;
+}
+
+/* Custom text colors for Release Stats */
+.orange--text {
+  color: #ff9800 !important;
 }
 
 /* Filter Flyout Styles - Keep custom glass effect */
@@ -1263,6 +1276,7 @@ export default {
                 { key: "released", label: "Released", count: this.releaseStats.releasedCount },
                 { key: "thisWeek", label: "This Week", count: this.releaseStats.thisWeekCount },
                 { key: "nextWeek", label: "Next Week", count: this.releaseStats.nextWeekCount },
+                { key: "criticallyOverdue", label: "Critically Overdue", count: this.releaseStats.criticallyOverdueCount },
                 { key: "overdue", label: "Overdue", count: this.releaseStats.overdueCount },
                 { key: "next30Days", label: "Next 30 Days", count: this.releaseStats.next30DaysCount },
                 { key: "all", label: "Total", count: this.releaseStats.totalCount }

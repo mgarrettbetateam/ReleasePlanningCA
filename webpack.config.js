@@ -4,9 +4,24 @@ const prod = require("@widget-lab/widget-templates-webpack-configs/webpack.confi
 
 const VueLoaderPlugin = require("vue-loader/lib/plugin");
 const { VuetifyLoaderPlugin } = require("vuetify-loader");
+const { WindowsPermissionFixPlugin } = require("./src/utils/WindowsPermissionFix");
 
 const { merge } = require("webpack-merge");
 const path = require("path");
+const fs = require("fs");
+
+// Ensure directories exist before webpack starts
+function ensureDirectories() {
+    const dirs = ["dist", "dist/static", "dist/static/fonts", "dist/static/images"];
+    dirs.forEach(dir => {
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+    });
+}
+
+// Call it immediately
+ensureDirectories();
 
 const vueConf = {
     module: {
@@ -60,7 +75,12 @@ const myConf = {
         alias: {
             "@": path.resolve("src")
         }
-    }
+    },
+    
+    // Add Windows permission fix plugin
+    plugins: [
+        new WindowsPermissionFixPlugin()
+    ]
 };
 
 module.exports = [

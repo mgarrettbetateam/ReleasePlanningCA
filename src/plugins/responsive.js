@@ -10,19 +10,11 @@ export default {
         // Add responsive utilities to Vue prototype
         Vue.prototype.$responsive = responsiveUtils;
         
-        // Add global mixin for responsive capabilities
+        // Add lightweight global properties without auto-updating mixin
+        // Components that need responsive updates should use ResponsiveMixin explicitly
         Vue.mixin({
-            data() {
-                return {
-                    $breakpoint: responsiveUtils.currentBreakpoint,
-                    $windowSize: {
-                        width: window.innerWidth,
-                        height: window.innerHeight
-                    }
-                };
-            },
-            
             computed: {
+                // Read-only responsive state (no auto-updates to prevent performance issues)
                 $isMobile() {
                     return responsiveUtils.isMobile();
                 },
@@ -33,30 +25,17 @@ export default {
                 
                 $isDesktop() {
                     return responsiveUtils.isDesktop();
-                }
-            },
-            
-            mounted() {
-                // Register for resize updates if component doesn't already handle it
-                if (!this._responsiveUpdateHandler && !this.onResponsiveResize) {
-                    this._responsiveUpdateHandler = responsiveUtils.onWindowResize(resizeData => {
-                        this.$breakpoint = resizeData.breakpoint;
-                        this.$windowSize = {
-                            width: resizeData.width,
-                            height: resizeData.height
-                        };
-                        
-                        // Trigger Vue reactivity
-                        this.$forceUpdate();
-                    });
-                }
-            },
-            
-            beforeDestroy() {
-                // Clean up resize listener
-                if (this._responsiveUpdateHandler) {
-                    this._responsiveUpdateHandler();
-                    this._responsiveUpdateHandler = null;
+                },
+                
+                $breakpoint() {
+                    return responsiveUtils.currentBreakpoint;
+                },
+                
+                $windowSize() {
+                    return {
+                        width: window.innerWidth,
+                        height: window.innerHeight
+                    };
                 }
             }
         });

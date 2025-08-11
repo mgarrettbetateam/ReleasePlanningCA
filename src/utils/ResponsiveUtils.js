@@ -3,6 +3,37 @@
  * Provides centralized responsive behavior for all components
  */
 
+// Constants to avoid magic numbers
+const DEFAULT_HEIGHT = 400;
+const DEFAULT_MIN_HEIGHT = 200;
+const DEFAULT_MAX_HEIGHT = 800;
+const DEFAULT_ITEMS_PER_PAGE = 10;
+const MAX_LISTENERS_WARNING_THRESHOLD = 3;
+const RESIZE_DEBOUNCE_TIME = 150;
+const MOBILE_ASPECT_RATIO = 1.5;
+const DESKTOP_ASPECT_RATIO = 2.5;
+const MOBILE_PADDING = 10;
+const DESKTOP_PADDING = 20;
+const MOBILE_LEGEND_BOX_WIDTH = 12;
+const DESKTOP_LEGEND_BOX_WIDTH = 16;
+const SMALL_FONT_SIZE = 10;
+const MEDIUM_FONT_SIZE = 12;
+const MAX_X_ROTATION = 45;
+const MOBILE_MAX_TICKS = 5;
+const DESKTOP_MAX_TICKS = 10;
+const Y_MAX_TICKS = 8;
+const DEFAULT_GRID_COLUMNS = 3;
+const MOBILE_GRID_GAP = 16;
+const DESKTOP_GRID_GAP = 24;
+const MOBILE_MIN_ITEM_WIDTH = 280;
+const DESKTOP_MIN_ITEM_WIDTH = 350;
+const CONTAINER_HEIGHT_RATIO = 0.8;
+const CONTAINER_WIDTH_RATIO = 0.6;
+const MOBILE_MAX_HEIGHT = 300;
+const TABLET_MAX_HEIGHT = 400;
+const ABSOLUTE_MIN_HEIGHT = 200;
+const COMPONENT_UPDATE_DEBOUNCE = 200;
+
 export class ResponsiveUtils {
     constructor() {
         this.resizeObserver = null;
@@ -70,32 +101,39 @@ export class ResponsiveUtils {
 
         return {
             width: config.width || "100%",
-            height: config.height || baseConfig.height || 400,
-            minHeight: config.minHeight || baseConfig.minHeight || 200,
-            maxHeight: config.maxHeight || baseConfig.maxHeight || 800,
+            height: config.height || baseConfig.height || DEFAULT_HEIGHT,
+            minHeight: config.minHeight || baseConfig.minHeight || DEFAULT_MIN_HEIGHT,
+            maxHeight: config.maxHeight || baseConfig.maxHeight || DEFAULT_MAX_HEIGHT,
             flex: config.flex || baseConfig.flex || 1,
-            itemsPerPage: config.itemsPerPage || baseConfig.itemsPerPage || 10
+            itemsPerPage: config.itemsPerPage || baseConfig.itemsPerPage || DEFAULT_ITEMS_PER_PAGE
         };
     }
 
     /**
-     * Setup window resize handler
+     * Setup window resize handler with performance optimizations
      */
     setupWindowResizeHandler() {
         let resizeTimeout;
+        let rafId;
         
         const handleResize = () => {
+            // Cancel previous timeout and animation frame
             clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => {
-                const newBreakpoint = this.getCurrentBreakpoint();
-                const breakpointChanged = newBreakpoint !== this.currentBreakpoint;
-                
-                this.currentBreakpoint = newBreakpoint;
-                
-                // Notify all registered callbacks
-                this.windowResizeCallbacks.forEach(callback => {
-                    try {
-                        callback({
+            if (rafId) {
+                cancelAnimationFrame(rafId);
+            }
+            
+            // Use requestAnimationFrame for better performance
+            rafId = requestAnimationFrame(() => {
+                resizeTimeout = setTimeout(() => {
+                    const newBreakpoint = this.getCurrentBreakpoint();
+                    const breakpointChanged = newBreakpoint !== this.currentBreakpoint;
+                    
+                    // Only notify if breakpoint actually changed or if there are few listeners
+                    if (breakpointChanged || this.windowResizeCallbacks.size <= MAX_LISTENERS_WARNING_THRESHOLD) {
+                        this.currentBreakpoint = newBreakpoint;
+                        
+                        const resizeData = {
                             breakpoint: newBreakpoint,
                             breakpointChanged,
                             width: window.innerWidth,
@@ -103,18 +141,27 @@ export class ResponsiveUtils {
                             isMobile: this.isMobile(),
                             isTablet: this.isTablet(),
                             isDesktop: this.isDesktop()
+                        };
+                        
+                        // Notify callbacks with error handling
+                        this.windowResizeCallbacks.forEach(callback => {
+                            try {
+                                callback(resizeData);
+                            } catch (error) {
+                                console.error("Error in resize callback:", error);
+                                // Remove problematic callback to prevent repeated errors
+                                this.windowResizeCallbacks.delete(callback);
+                            }
                         });
-                    } catch (error) {
-                        console.error("Error in resize callback:", error);
                     }
-                });
-            }, 100); // Debounce resize events
+                }, RESIZE_DEBOUNCE_TIME); // Increased debounce for better performance
+            });
         };
 
-        window.addEventListener("resize", handleResize);
+        window.addEventListener("resize", handleResize, { passive: true });
         
-        // Initial call
-        handleResize();
+        // Initial call with delay to ensure DOM is ready
+        setTimeout(handleResize, 100);
     }
 
     /**
@@ -166,17 +213,17 @@ export class ResponsiveUtils {
         return {
             responsive: true,
             maintainAspectRatio: false,
-            aspectRatio: this.isMobile() ? 1.5 : 2.5,
+            aspectRatio: this.isMobile() ? MOBILE_ASPECT_RATIO : DESKTOP_ASPECT_RATIO,
             layout: {
-                padding: this.isMobile() ? 10 : 20
+                padding: this.isMobile() ? MOBILE_PADDING : DESKTOP_PADDING
             },
             plugins: {
                 legend: {
                     display: !this.isMobile() || baseConfig.showLegendOnMobile !== false,
                     position: this.isMobile() ? "bottom" : "top",
                     labels: {
-                        boxWidth: this.isMobile() ? 12 : 16,
-                        fontSize: this.isMobile() ? 10 : 12
+                        boxWidth: this.isMobile() ? MOBILE_LEGEND_BOX_WIDTH : DESKTOP_LEGEND_BOX_WIDTH,
+                        fontSize: this.isMobile() ? SMALL_FONT_SIZE : MEDIUM_FONT_SIZE
                     }
                 },
                 tooltip: {
@@ -188,15 +235,15 @@ export class ResponsiveUtils {
             scales: {
                 x: {
                     ticks: {
-                        maxRotation: this.isMobile() ? 45 : 0,
-                        maxTicksLimit: this.isMobile() ? 5 : 10,
-                        fontSize: this.isMobile() ? 10 : 12
+                        maxRotation: this.isMobile() ? MAX_X_ROTATION : 0,
+                        maxTicksLimit: this.isMobile() ? MOBILE_MAX_TICKS : DESKTOP_MAX_TICKS,
+                        fontSize: this.isMobile() ? SMALL_FONT_SIZE : MEDIUM_FONT_SIZE
                     }
                 },
                 y: {
                     ticks: {
-                        maxTicksLimit: this.isMobile() ? 5 : 8,
-                        fontSize: this.isMobile() ? 10 : 12
+                        maxTicksLimit: this.isMobile() ? MOBILE_MAX_TICKS : Y_MAX_TICKS,
+                        fontSize: this.isMobile() ? SMALL_FONT_SIZE : MEDIUM_FONT_SIZE
                     }
                 }
             },
@@ -229,12 +276,12 @@ export class ResponsiveUtils {
     getGridConfig(baseConfig = {}) {
         const columns = this.isMobile() ? 1 : 
                        this.isTablet() ? 2 : 
-                       baseConfig.columns || 3;
+                       baseConfig.columns || DEFAULT_GRID_COLUMNS;
         
         return {
             columns,
-            gap: this.isMobile() ? 16 : 24,
-            minItemWidth: this.isMobile() ? 280 : 350,
+            gap: this.isMobile() ? MOBILE_GRID_GAP : DESKTOP_GRID_GAP,
+            minItemWidth: this.isMobile() ? MOBILE_MIN_ITEM_WIDTH : DESKTOP_MIN_ITEM_WIDTH,
             ...baseConfig
         };
     }
@@ -242,24 +289,24 @@ export class ResponsiveUtils {
     /**
      * Calculate optimal chart height based on container and content
      */
-    calculateOptimalHeight(container, content) {
-        if (!container) return 400;
+    calculateOptimalHeight(container, _content) {
+        if (!container) return DEFAULT_HEIGHT;
         
         const containerHeight = container.clientHeight;
         const containerWidth = container.clientWidth;
         
         // Base height calculation
-        let optimalHeight = Math.min(containerHeight * 0.8, containerWidth * 0.6);
+        let optimalHeight = Math.min(containerHeight * CONTAINER_HEIGHT_RATIO, containerWidth * CONTAINER_WIDTH_RATIO);
         
         // Adjust for breakpoints
         if (this.isMobile()) {
-            optimalHeight = Math.min(optimalHeight, 300);
+            optimalHeight = Math.min(optimalHeight, MOBILE_MAX_HEIGHT);
         } else if (this.isTablet()) {
-            optimalHeight = Math.min(optimalHeight, 400);
+            optimalHeight = Math.min(optimalHeight, TABLET_MAX_HEIGHT);
         }
         
         // Minimum height
-        optimalHeight = Math.max(optimalHeight, 200);
+        optimalHeight = Math.max(optimalHeight, ABSOLUTE_MIN_HEIGHT);
         
         return Math.round(optimalHeight);
     }
@@ -278,7 +325,7 @@ export class ResponsiveUtils {
 // Create singleton instance
 export const responsiveUtils = new ResponsiveUtils();
 
-// Vue mixin for easy component integration
+// Vue mixin for easy component integration - PERFORMANCE OPTIMIZED
 export const ResponsiveMixin = {
     data() {
         return {
@@ -286,21 +333,22 @@ export const ResponsiveMixin = {
             windowDimensions: {
                 width: window.innerWidth,
                 height: window.innerHeight
-            }
+            },
+            _responsiveDebounceTimeout: null
         };
     },
     
     computed: {
         isMobile() {
-            return responsiveUtils.isMobile();
+            return this.currentBreakpoint === "xs" || this.currentBreakpoint === "sm";
         },
         
         isTablet() {
-            return responsiveUtils.isTablet();
+            return this.currentBreakpoint === "sm" || this.currentBreakpoint === "md";
         },
         
         isDesktop() {
-            return responsiveUtils.isDesktop();
+            return this.currentBreakpoint === "md" || this.currentBreakpoint === "lg" || this.currentBreakpoint === "xl";
         },
         
         responsiveConfig() {
@@ -309,25 +357,39 @@ export const ResponsiveMixin = {
     },
     
     mounted() {
-        // Register for window resize updates
-        this.unsubscribeResize = responsiveUtils.onWindowResize(resizeData => {
-            this.currentBreakpoint = resizeData.breakpoint;
-            this.windowDimensions = {
-                width: resizeData.width,
-                height: resizeData.height
-            };
-            
-            // Call component-specific resize handler if it exists
-            if (this.onResponsiveResize) {
-                this.onResponsiveResize(resizeData);
-            }
-        });
+        // Only register for resize updates if component has a resize handler
+        if (this.onResponsiveResize && typeof this.onResponsiveResize === "function") {
+            this.unsubscribeResize = responsiveUtils.onWindowResize(resizeData => {
+                // Debounce component-specific resize handling
+                clearTimeout(this._responsiveDebounceTimeout);
+                this._responsiveDebounceTimeout = setTimeout(() => {
+                    // Only update if breakpoint actually changed
+                    if (resizeData.breakpointChanged) {
+                        this.currentBreakpoint = resizeData.breakpoint;
+                        this.windowDimensions = {
+                            width: resizeData.width,
+                            height: resizeData.height
+                        };
+                    }
+                    
+                    // Call component-specific resize handler
+                    try {
+                        this.onResponsiveResize(resizeData);
+                    } catch (error) {
+                        console.error("Error in component resize handler:", error);
+                    }
+                }, COMPONENT_UPDATE_DEBOUNCE); // Debounce component updates
+            });
+        }
     },
     
     beforeDestroy() {
-        // Clean up resize listener
+        // Clean up resize listener and timeout
         if (this.unsubscribeResize) {
             this.unsubscribeResize();
+        }
+        if (this._responsiveDebounceTimeout) {
+            clearTimeout(this._responsiveDebounceTimeout);
         }
     }
 };

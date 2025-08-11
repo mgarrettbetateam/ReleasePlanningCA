@@ -1,4 +1,5 @@
 {
+    // === EXISTING PROJECT SETTINGS ===
     "files.eol": "\n",
 
     "javascript.validate.enable": true,
@@ -41,5 +42,175 @@
     },
     "[html]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
-    }
+    },
+
+    // === PERFORMANCE OPTIMIZATION SETTINGS ===
+    
+    // File Watcher Exclusions - Reduces CPU usage by not monitoring unnecessary files
+    "files.watcherExclude": {
+        "**/node_modules/**": true,
+        "**/dist/**": true,
+        "**/build/**": true,
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/coverage/**": true,
+        "**/.nyc_output/**": true,
+        "**/logs/**": true,
+        "**/.cache/**": true,
+        "**/tmp/**": true,
+        "**/temp/**": true,
+        "**/*.log": true
+    },
+    
+    // Search Exclusions - Faster search results
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/dist": true,
+        "**/build": true,
+        "**/coverage": true,
+        "**/.git": true,
+        "**/.vscode": false,
+        "**/logs": true
+    },
+    
+    // File Explorer Exclusions - Cleaner file tree
+    "files.exclude": {
+        "**/node_modules": true,
+        "**/dist": true,
+        "**/build": true
+    },
+    
+    // TypeScript/JavaScript Performance Optimizations
+    "typescript.preferences.includePackageJsonAutoImports": "off",
+    "typescript.disableAutomaticTypeAcquisition": true,
+    "typescript.suggest.autoImports": false,
+    "javascript.suggest.autoImports": false,
+    "javascript.suggestionActions.enabled": false,
+    
+    // Editor Performance Settings
+    "editor.semanticHighlighting.enabled": false,
+    "editor.suggest.localityBonus": true,
+    "editor.suggest.shareSuggestSelections": false,
+    "editor.parameterHints.enabled": false,
+    "editor.hover.delay": 1000,
+    "editor.quickSuggestions": {
+        "other": true,
+        "comments": false,
+        "strings": false
+    },
+    
+    // Extension Performance Settings
+    "extensions.autoCheckUpdates": false,
+    "extensions.autoUpdate": false,
+    
+    // Git Performance Settings
+    "git.enabled": true,
+    "git.autofetch": false,
+    "git.decorations.enabled": false,
+    
+    // Telemetry and Privacy
+    "telemetry.telemetryLevel": "off",
+    
+    // Vue.js Specific Optimizations (merged with existing vetur settings)
+    "vetur.validation.script": false,
+    "vetur.validation.style": false,
+    
+    // ESLint Performance (updated existing settings)
+    "eslint.run": "onSave",
+    
+    // Auto Save Settings - Reduce frequent saves
+    "files.autoSave": "onFocusChange",
+    "files.autoSaveDelay": 2000,
+    
+    // Memory Management
+    "window.restoreWindows": "none",
+    "workbench.startupEditor": "none",
+    
+    // Project Specific Settings
+    "emmet.includeLanguages": {
+        "vue-html": "html",
+        "vue": "html"
+    },
+    
+    // Chat Performance Optimizations
+    "github.copilot.enable": {
+        "*": true,
+        "yaml": false,
+        "plaintext": false,
+        "markdown": false
+    },
+    
+    // File Associations for Better Performance
+    "files.associations": {
+        "*.vue": "vue",
+        "*.js": "javascript"
+    },
+    
+    // Disable Heavy Features During Development
+    "problems.decorations.enabled": false,
+    "outline.problems.enabled": false,
+    
+    // Terminal Performance
+    "terminal.integrated.rendererType": "canvas",
+    "terminal.integrated.fastScrollSensitivity": 5,
+    
+    // === SHELL INTEGRATION SETTINGS ===
+    
+    // Enable shell integration for improved command detection
+    "terminal.integrated.shellIntegration.enabled": true,
+    
+    // Shell integration decorations (shows command status, timing, etc.)
+    "terminal.integrated.shellIntegration.decorationsEnabled": "both",
+    
+    // Show command decorations (success/error indicators)
+    "terminal.integrated.shellIntegration.showWelcome": false,
+    
+    // Enable command history navigation
+    "terminal.integrated.shellIntegration.history": 1000,
+    
+    // PowerShell specific shell integration
+    "terminal.integrated.shellIntegration.suggestEnabled": true,
+    
+    // Terminal command detection and suggestions
+    "terminal.integrated.commandsToSkipShell": [
+        "workbench.action.terminal.focusFind"
+    ],
+    
+    // Enhanced terminal features
+    "terminal.integrated.enableMultiLinePasteWarning": "never",
+    "terminal.integrated.rightClickBehavior": "default",
+    "terminal.integrated.copyOnSelection": false,
+    "terminal.integrated.cursorBlinking": true,
+    "terminal.integrated.cursorStyle": "line",
+    
+    // Terminal tabs and naming
+    "terminal.integrated.tabs.enabled": true,
+    "terminal.integrated.tabs.showActions": "singleTerminal",
+    "terminal.integrated.tabs.showActiveTerminal": "singleTerminalOrNarrow",
+    
+    // PowerShell profile integration
+    "terminal.integrated.profiles.windows": {
+        "PowerShell": {
+            "source": "PowerShell",
+            "icon": "terminal-powershell",
+            "args": ["-NoLogo", "-ExecutionPolicy", "Bypass", "-File", ".vscode/profile.ps1"]
+        },
+        "PowerShell (Default)": {
+            "source": "PowerShell",
+            "icon": "terminal-powershell",
+            "args": ["-NoLogo"]
+        },
+        "Command Prompt": {
+            "path": ["${env:windir}\\Sysnative\\cmd.exe", "${env:windir}\\System32\\cmd.exe"],
+            "args": [],
+            "icon": "terminal-cmd"
+        },
+        "Git Bash": {
+            "source": "Git Bash",
+            "icon": "terminal-bash"
+        }
+    },
+    
+    // Set enhanced PowerShell as default terminal
+    "terminal.integrated.defaultProfile.windows": "PowerShell"
 }

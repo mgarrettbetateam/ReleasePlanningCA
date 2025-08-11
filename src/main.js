@@ -1,3 +1,6 @@
+// PERFORMANCE: Disable console logging in production immediately
+import "./utils/ConsoleOverride.js";
+
 // import 3ddashboard utils before imports requiring static ressources (such as vuetify webfonts)
 import { widget, disableDefaultCSS, requirejs, onVisibilityChange } from "@widget-lab/3ddashboard-utils";
 import Vue from "vue";

@@ -360,6 +360,8 @@
 </style>
 
 <script>
+import ApiService from "@/services/ApiService";
+
 export default {
   name: "StatusCommentDisplay",
   props: {
@@ -522,19 +524,28 @@ export default {
       this.saving = true;
       
       try {
-        // TODO: Future API call to save the comment
-        // const response = await ApiService.updateStatusComment(
-        //   this.objectId,
-        //   this.editableComment,
-        //   this.itemType
-        // );
-        
-        // Emit the updated data back to parent
+        // Call the API to update the status comment
+        const response = await ApiService.updateStatusComment(
+          this.objectId,
+          this.editableComment,
+          this.itemType
+        );
+
+        // Emit the update event to parent component
         this.$emit("comment-updated", {
           objectId: this.objectId,
-          statusComment: this.editableComment
+          statusComment: this.editableComment,
+          itemType: this.itemType,
+          apiResponse: response
         });
-        
+
+        // Show success message
+        this.$emit("show-message", {
+          type: "success",
+          message: `Status comment updated successfully for ${this.itemType.toUpperCase()}`
+        });
+
+        // Update local state
         this.originalComment = this.editableComment;
         this.editMode = false;
         this.newComment = "";
@@ -542,41 +553,81 @@ export default {
         this.newEta = "";
         this.isBlocker = false;
         
-        // Show success message
-        this.$emit("show-message", {
-          type: "success",
-          message: "Status comment updated successfully"
-        });
-        
       } catch (error) {
-        console.error("Error saving status comment:", error);
+        // Revert to original comment on error
+        this.editableComment = this.originalComment;
+        
+        // Show error message to user
         this.$emit("show-message", {
           type: "error",
-          message: "Failed to save status comment"
+          message: `Failed to save comment: ${error.message}`
         });
       } finally {
         this.saving = false;
       }
     },
     
-    addNewComment() {
+    async addNewComment() {
       if (!this.newComment.trim() || !this.newUsername.trim()) return;
-      
-      const today = new Date().toISOString().split("T")[0];
-      const etaText = this.newEta ? ` - ETA: ${this.newEta}` : "";
-      const blockerText = this.isBlocker ? " [BLOCKER]" : "";
-      const newEntry = `[${today}] ${this.newUsername.trim()}: ${this.newComment.trim()}${blockerText}${etaText}`;
-      
-      if (this.editableComment) {
-        this.editableComment += "\n" + newEntry;
-      } else {
-        this.editableComment = newEntry;
+
+      this.saving = true;
+
+      try {
+        // Format new comment with timestamp and user info
+        const timestamp = new Date().toISOString().split("T")[0];
+        const username = this.newUsername.trim();
+        const comment = this.newComment.trim();
+        const etaText = this.newEta ? ` - ETA: ${this.newEta}` : "";
+        const blockerText = this.isBlocker ? " [BLOCKER]" : "";
+        
+        const newCommentLine = `[${timestamp}] ${username}: ${comment}${blockerText}${etaText}`;
+        
+        // Append to existing comments
+        const updatedComment = this.editableComment 
+          ? `${this.editableComment}\n${newCommentLine}`
+          : newCommentLine;
+
+        // Call the API to update with the new comment
+        const response = await ApiService.updateStatusComment(
+          this.objectId,
+          updatedComment,
+          this.itemType
+        );
+
+        // Update local state
+        this.editableComment = updatedComment;
+        this.originalComment = updatedComment;
+
+        // Emit the update event to parent component
+        this.$emit("comment-updated", {
+          objectId: this.objectId,
+          statusComment: updatedComment,
+          itemType: this.itemType,
+          apiResponse: response
+        });
+
+        // Show success message
+        this.$emit("show-message", {
+          type: "success",
+          message: `New comment added successfully for ${this.itemType.toUpperCase()}`
+        });
+
+        // Reset new comment form
+        this.newComment = "";
+        this.newUsername = "";
+        this.newEta = "";
+        this.isBlocker = false;
+
+      } catch (error) {
+        // Show error message
+        this.$emit("show-message", {
+          type: "error",
+          message: `Failed to add comment: ${error.message}`
+        });
+        
+      } finally {
+        this.saving = false;
       }
-      
-      this.newComment = "";
-      this.newUsername = "";
-      this.newEta = "";
-      this.isBlocker = false;
     },
     
     getInitials(name) {

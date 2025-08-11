@@ -2285,16 +2285,35 @@ export default {
          * Handle comment updated event from StatusCommentDisplay component
          */
         handleCommentUpdate(updateData) {
-            console.log("💬 Comment updated:", updateData);
+            console.log("💬 Comment updated with API response:", updateData);
+            
             // Find the corresponding row and update the comment data
             const rowIndex = this.tableData.findIndex(row => 
                 row.physId === updateData.objectId || 
+                row.objId === updateData.objectId ||
                 row.caNumber === updateData.objectId || 
                 row.crNumber === updateData.objectId
             );
+            
             if (rowIndex !== -1) {
+                // Update the local table data
                 this.$set(this.tableData[rowIndex], "statusComment", updateData.statusComment);
                 this.$set(this.tableData[rowIndex], "caStatusComment", updateData.statusComment);
+                
+                // Log successful local update
+                console.log("✅ Local table data updated for row:", rowIndex, {
+                    objectId: updateData.objectId,
+                    itemType: updateData.itemType,
+                    commentLength: updateData.statusComment.length
+                });
+
+                // Optional: Update last modified timestamp if provided by API
+                if (updateData.apiResponse && updateData.apiResponse.data) {
+                    this.$set(this.tableData[rowIndex], "lastModified", updateData.apiResponse.data.updatedAt);
+                    this.$set(this.tableData[rowIndex], "modifiedBy", updateData.apiResponse.data.updatedBy);
+                }
+            } else {
+                console.warn("⚠️ Could not find row to update for objectId:", updateData.objectId);
             }
         },
 

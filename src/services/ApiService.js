@@ -438,6 +438,130 @@ class ApiService {
     return this.fetchData(cacheKey, apiCall, {}, rowIndex);
   }
 
+  /**
+   * Update status comment for any item type (parts, cas, crs)
+   * @param {string} objectId - The object ID (physId/objId)
+   * @param {string} statusComment - The updated comment text
+   * @param {string} itemType - Type of item ("parts", "cas", "crs")
+   * @returns {Promise<Object>} API response
+   */
+  async updateStatusComment(objectId, statusComment, itemType) {
+    console.log("🔄 ApiService.updateStatusComment called:", {
+      objectId,
+      statusComment: statusComment.substring(0, 100) + "...",
+      itemType
+    });
+
+    // Validate inputs
+    if (!objectId || !itemType) {
+      throw new Error("ObjectId and itemType are required for status comment update");
+    }
+
+    // Route to appropriate endpoint based on item type
+    switch (itemType.toLowerCase()) {
+      case "parts":
+        return this.updatePartsStatusComment(objectId, statusComment);
+      case "cas":
+      case "ca":
+        return this.updateCasStatusComment(objectId, statusComment);
+      case "crs":
+      case "cr":
+        return this.updateCrsStatusComment(objectId, statusComment);
+      default:
+        throw new Error(`Unsupported item type for status comment update: ${itemType}`);
+    }
+  }
+
+  /**
+   * Update status comment for Parts
+   * @param {string} objectId - Part's physId/objId
+   * @param {string} statusComment - Updated comment
+   * @returns {Promise<Object>} API response
+   */
+  async updatePartsStatusComment(objectId, statusComment) {
+    console.log("🔄 Updating PARTS status comment:", { objectId, statusComment });
+
+    // TODO: Replace with actual API endpoint
+    // const url = `${this.getApiBaseUrl()}/api/parts/${objectId}/status-comment`;
+    
+    // STUB: Simulate API call
+    return this.simulateStatusCommentUpdate(objectId, statusComment, "parts");
+  }
+
+  /**
+   * Update status comment for Change Actions (CAs)
+   * @param {string} objectId - CA's physId/objId  
+   * @param {string} statusComment - Updated comment
+   * @returns {Promise<Object>} API response
+   */
+  async updateCasStatusComment(objectId, statusComment) {
+    console.log("🔄 Updating CAS status comment:", { objectId, statusComment });
+
+    // TODO: Replace with actual API endpoint
+    // const url = `${this.getApiBaseUrl()}/api/cas/${objectId}/status-comment`;
+    
+    // STUB: Simulate API call
+    return this.simulateStatusCommentUpdate(objectId, statusComment, "cas");
+  }
+
+  /**
+   * Update status comment for Change Requests (CRs)
+   * @param {string} objectId - CR's physId/objId
+   * @param {string} statusComment - Updated comment
+   * @returns {Promise<Object>} API response
+   */
+  async updateCrsStatusComment(objectId, statusComment) {
+    console.log("🔄 Updating CRS status comment:", { objectId, statusComment });
+
+    // TODO: Replace with actual API endpoint  
+    // const url = `${this.getApiBaseUrl()}/api/crs/${objectId}/status-comment`;
+    
+    // STUB: Simulate API call
+    return this.simulateStatusCommentUpdate(objectId, statusComment, "crs");
+  }
+
+  /**
+   * STUB: Simulate status comment update API call
+   * @param {string} objectId - Object ID
+   * @param {string} statusComment - Comment text
+   * @param {string} itemType - Item type
+   * @returns {Promise<Object>} Simulated response
+   */
+  async simulateStatusCommentUpdate(objectId, statusComment, itemType) {
+    console.log("🎭 STUB: Simulating status comment update API call:", {
+      objectId,
+      itemType,
+      commentLength: statusComment.length,
+      timestamp: new Date().toISOString()
+    });
+
+    // Simulate network delay
+    const DELAY_BASE_MS = 1000;
+    const DELAY_RANDOM_MS = 1000;
+    await new Promise(resolve => setTimeout(resolve, DELAY_BASE_MS + Math.random() * DELAY_RANDOM_MS));
+
+    // Simulate random success/failure for testing
+    const SUCCESS_RATE = 0.9; // 90% success rate
+    const shouldSucceed = Math.random() > (1 - SUCCESS_RATE);
+
+    if (!shouldSucceed) {
+      throw new Error(`STUB: Simulated API failure for ${itemType} status comment update`);
+    }
+
+    // Return simulated successful response
+    return {
+      success: true,
+      message: `Status comment updated successfully for ${itemType}`,
+      data: {
+        objectId,
+        itemType,
+        statusComment,
+        updatedAt: new Date().toISOString(),
+        updatedBy: "current_user" // TODO: Get from authentication
+      }
+    };
+  }
+
   // Note: Specific data fetching methods (fetchParts, fetchPrograms, etc.) 
   // are implemented in DataServiceBase.js with actual production endpoints
 }

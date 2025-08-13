@@ -101,20 +101,25 @@ export class ChartDataService {
     }
 
     /**
-     * Extract critical release date from item based on data type
+     * Extract critical release date from item - ONLY FOR PARTS
      * @param {Object} item - Data item
      * @param {string} dataType - Current data type (parts, cas, crs)
      * @returns {Date|null} Validated critical release date or null
      */
     extractCriticalDate(item, dataType = "parts") {
+        // Only process critical dates for Parts
+        if (dataType !== "parts") {
+            return null;
+        }
+        
         let criticalDate = null;
         
-        // For all data types, use criticalRelease field (which maps from actualReleaseDate in the API)
+        // For parts data type, use criticalRelease field
         criticalDate = item.criticalRelease;
         
         // Debug logging for critical date extraction
         console.log("🔍 Critical Date Debug:", {
-            itemName: item.partNo || item.caNumber || item.crNumber || item.name,
+            itemName: item.partNo || item.name,
             dataType,
             criticalRelease: item.criticalRelease,
             resolvedDate: criticalDate

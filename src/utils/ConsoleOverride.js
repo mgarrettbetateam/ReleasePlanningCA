@@ -7,10 +7,10 @@
 // This file intentionally manipulates console methods for performance optimization
 
 // Master control flags - change these to control console output
-const ENABLE_CONSOLE_LOGGING = false; // Set to true to enable all console logging
-const ENABLE_DEBUG_LOGGING = false;   // Set to true to enable debug/info logging
-const ENABLE_CHART_LOGGING = false;   // Set to true to enable chart-specific logging
-const ENABLE_TABLE_LOGGING = false;   // Set to true to enable table-specific logging
+const ENABLE_CONSOLE_LOGGING = true; // Set to true to enable all console logging
+const ENABLE_DEBUG_LOGGING = true;   // Set to true to enable debug/info logging
+const ENABLE_CHART_LOGGING = true;   // Set to true to enable chart-specific logging
+const ENABLE_TABLE_LOGGING = true;   // Set to true to enable table-specific logging
 
 // Store original console methods
 const originalConsole = {

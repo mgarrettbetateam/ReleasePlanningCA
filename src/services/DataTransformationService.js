@@ -52,7 +52,6 @@ class DataTransformationService {
                     targetReleaseDate: ["targetReleaseDate", "targetCompleteDate"],
                     approvedDate: ["approvedDate"],
                     actualReleaseDate: ["actualReleaseDate", "actualCompleteDate"],
-                    criticalRelease: ["criticalReleaseDate", "criticalRelease"],
                     organization: ["organization"],
                     statusComment: ["statusComment", "caStatusComment"],
                     caStatusComment: ["caStatusComment", "statusComment"],
@@ -73,7 +72,6 @@ class DataTransformationService {
                     targetReleaseDate: ["targetReleaseDate", "dueDate"],
                     actualCompleteDate: ["actualCompleteDate", "actualReleaseDate", "completedDate"],
                     actualReleaseDate: ["actualReleaseDate", "actualCompleteDate", "completedDate"],
-                    criticalRelease: ["criticalReleaseDate", "criticalRelease"],
                     statusComment: ["statusComment", "caStatusComment"],
                     caStatusComment: ["caStatusComment", "statusComment"]
                 }

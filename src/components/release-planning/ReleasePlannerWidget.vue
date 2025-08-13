@@ -362,6 +362,7 @@
                             Actual
                         </v-chip>
                         <v-chip 
+                            v-if="showCriticalControls"
                             small 
                             :color="showCriticalLine ? 'error' : 'grey'"
                             class="legend-chip"
@@ -1108,7 +1109,6 @@ export default {
                     { text: "Target Complete", value: "targetReleaseDate", sortable: true, icon: "mdi-calendar-clock" },
                     { text: "Actual Approved", value: "approvedDate", sortable: true, icon: "mdi-calendar-check" },
                     { text: "Actual Complete", value: "actualReleaseDate", sortable: true, icon: "mdi-calendar-check" },
-                    { text: "Critical Release", value: "criticalRelease", sortable: true, icon: "mdi-calendar-alert" },
                     { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text", component: "StatusCommentDisplay", componentProps: { itemType: "cas", canEdit: true } }
                 ],
                 crs: [
@@ -1118,7 +1118,6 @@ export default {
                     { text: "Status", value: "currentState", sortable: true, icon: "mdi-flag" },
                     { text: "Target Complete", value: "targetReleaseDate", sortable: true, icon: "mdi-calendar-plus" },
                     { text: "Actual Complete", value: "actualCompleteDate", sortable: true, icon: "mdi-calendar-check" },
-                    { text: "Critical Release", value: "criticalRelease", sortable: true, icon: "mdi-calendar-alert" },
                     { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text", component: "StatusCommentDisplay", componentProps: { itemType: "crs", canEdit: true } }
                 ]
             },
@@ -1360,6 +1359,11 @@ export default {
                 color: isProduction ? "success" : "error",
                 icon: isOverride ? "mdi-code-tags" : "mdi-cloud"
             };
+        },
+
+        // Show critical release controls only for Parts data type
+        showCriticalControls() {
+            return this.currentDataType === "parts";
         }
     },
     
@@ -2202,7 +2206,7 @@ export default {
                 {
                     showTargetLine: this.showTargetLine,
                     showActualLine: this.showActualLine,
-                    showCriticalLine: this.showCriticalLine
+                    showCriticalLine: this.showCriticalLine && this.showCriticalControls
                 }
             );
 

@@ -72,11 +72,25 @@ function setupWebpackDirs() {
     const dirs = [
         "dist",
         "dist/static",
-        "dist/static/fonts",
+        "dist/static/fonts", 
         "dist/static/images"
     ];
     
-    dirs.forEach(ensureDir);
+    dirs.forEach(dir => {
+        ensureDir(dir);
+        // Set proper permissions on Windows
+        try {
+            if (fs.existsSync(dir)) {
+                fs.chmodSync(dir, READABLE_WRITABLE_EXECUTABLE);
+            }
+        } catch (error) {
+            // Ignore permission errors but log them
+            console.warn(`⚠️ Could not set permissions on ${dir}:`, error.message);
+        }
+    });
+    
+    // Add some delay to ensure filesystem operations complete
+    return new Promise(resolve => setTimeout(resolve, 100));
 }
 
 /**
@@ -84,12 +98,41 @@ function setupWebpackDirs() {
  */
 class WindowsPermissionFixPlugin {
     apply(compiler) {
-        compiler.hooks.beforeRun.tap("WindowsPermissionFix", () => {
-            setupWebpackDirs();
+        // Run before any compilation starts
+        compiler.hooks.beforeRun.tapAsync("WindowsPermissionFix", (compilation, callback) => {
+            // eslint-disable-next-line no-console
+            console.log("🔧 Setting up directories and permissions...");
+            setupWebpackDirs().then(() => {
+                callback();
+            }).catch(error => {
+                console.warn("⚠️ Directory setup warning:", error.message);
+                callback(); // Continue anyway
+            });
         });
         
-        compiler.hooks.watchRun.tap("WindowsPermissionFix", () => {
-            setupWebpackDirs();
+        // Also run before watch mode starts
+        compiler.hooks.watchRun.tapAsync("WindowsPermissionFix", (compilation, callback) => {
+            setupWebpackDirs().then(() => {
+                callback();
+            }).catch(error => {
+                console.warn("⚠️ Directory setup warning:", error.message);
+                callback(); // Continue anyway
+            });
+        });
+        
+        // Handle any CleanWebpackPlugin issues
+        compiler.hooks.beforeCompile.tap("WindowsPermissionFix", () => {
+            try {
+                // Re-ensure directories exist right before compile
+                const dirs = ["dist", "dist/static", "dist/static/fonts", "dist/static/images"];
+                dirs.forEach(dir => {
+                    if (!fs.existsSync(dir)) {
+                        fs.mkdirSync(dir, { recursive: true });
+                    }
+                });
+            } catch (error) {
+                console.warn("⚠️ Pre-compile directory check warning:", error.message);
+            }
         });
     }
 }

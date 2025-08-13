@@ -23,6 +23,21 @@ function ensureDirectories() {
 // Call it immediately
 ensureDirectories();
 
+// Utility: remove CleanWebpackPlugin from a config (helps avoid EPERM on Windows during dev)
+function stripCleanPlugin(mergedConfig) {
+    try {
+        if (Array.isArray(mergedConfig.plugins)) {
+            mergedConfig.plugins = mergedConfig.plugins.filter(
+                p => !(p && p.constructor && p.constructor.name === "CleanWebpackPlugin")
+            );
+        }
+    } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn("Could not strip CleanWebpackPlugin:", e && e.message);
+    }
+    return mergedConfig;
+}
+
 const vueConf = {
     module: {
         rules: [{ test: /\.vue$/, loader: "vue-loader" }]
@@ -83,8 +98,17 @@ const myConf = {
     ]
 };
 
+// Build merged configs
+let mergedDev = merge(devConf, vueConf, vuetifyConf, myConf);
+let mergedDevS3 = merge(devS3Conf, vueConf, vuetifyConf, myConf);
+let mergedProd = merge(prod, vueConf, vuetifyConf, myConf);
+
+// Remove CleanWebpackPlugin only for dev variants to avoid EPERM on Windows
+mergedDev = stripCleanPlugin(mergedDev);
+mergedDevS3 = stripCleanPlugin(mergedDevS3);
+
 module.exports = [
-    { name: "dev", ...merge(devConf, vueConf, vuetifyConf, myConf) },
-    { name: "devS3", ...merge(devS3Conf, vueConf, vuetifyConf, myConf) },
-    { name: "prod", ...merge(prod, vueConf, vuetifyConf, myConf) }
+    { name: "dev", ...mergedDev },
+    { name: "devS3", ...mergedDevS3 },
+    { name: "prod", ...mergedProd }
 ];

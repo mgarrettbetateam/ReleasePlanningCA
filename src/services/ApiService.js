@@ -482,11 +482,7 @@ class ApiService {
   async updateCasStatusComment(objectId, statusComment) {
     console.log("🔄 Updating CAS status comment:", { objectId, statusComment });
 
-    // TODO: Replace with actual API endpoint
-    // const url = `${this.getApiBaseUrl()}/api/cas/${objectId}/status-comment`;
-    
-    // STUB: Simulate API call
-    return this.simulateStatusCommentUpdate(objectId, statusComment, "cas");
+    return this.updateStatusCommentAPI(objectId, statusComment, "CA");
   }
 
   /**
@@ -498,53 +494,72 @@ class ApiService {
   async updateCrsStatusComment(objectId, statusComment) {
     console.log("🔄 Updating CRS status comment:", { objectId, statusComment });
 
-    // TODO: Replace with actual API endpoint  
-    // const url = `${this.getApiBaseUrl()}/api/crs/${objectId}/status-comment`;
-    
-    // STUB: Simulate API call
-    return this.simulateStatusCommentUpdate(objectId, statusComment, "crs");
+    return this.updateStatusCommentAPI(objectId, statusComment, "CR");
   }
 
   /**
-   * STUB: Simulate status comment update API call
-   * @param {string} objectId - Object ID
-   * @param {string} statusComment - Comment text
-   * @param {string} itemType - Item type
-   * @returns {Promise<Object>} Simulated response
+   * Update status comment via 3DSpace API
+   * @param {string} physId - Object physical ID
+   * @param {string} comment - Comment text
+   * @param {string} type - Object type ("CA" or "CR")
+   * @returns {Promise<Object>} API response
    */
-  async simulateStatusCommentUpdate(objectId, statusComment, itemType) {
-    console.log("🎭 STUB: Simulating status comment update API call:", {
-      objectId,
-      itemType,
-      commentLength: statusComment.length,
-      timestamp: new Date().toISOString()
+  async updateStatusCommentAPI(physId, comment, type) {
+    const url = "https://3dspace-prod.beta.team/internal/resources/AttributeValQuery/updateStatusComment";
+    
+    const requestBody = {
+      type,
+      comment,
+      physId
+    };
+
+    console.log("🔄 Calling 3DSpace status comment API:", {
+      url,
+      requestBody: {
+        type: requestBody.type,
+        physId: requestBody.physId,
+        commentLength: requestBody.comment.length
+      }
     });
 
-    // Simulate network delay
-    const DELAY_BASE_MS = 1000;
-    const DELAY_RANDOM_MS = 1000;
-    await new Promise(resolve => setTimeout(resolve, DELAY_BASE_MS + Math.random() * DELAY_RANDOM_MS));
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify(requestBody)
+      });
 
-    // Simulate random success/failure for testing
-    const SUCCESS_RATE = 0.9; // 90% success rate
-    const shouldSucceed = Math.random() > (1 - SUCCESS_RATE);
+      console.log("📡 3DSpace API Response Status:", response.status);
 
-    if (!shouldSucceed) {
-      throw new Error(`STUB: Simulated API failure for ${itemType} status comment update`);
-    }
-
-    // Return simulated successful response
-    return {
-      success: true,
-      message: `Status comment updated successfully for ${itemType}`,
-      data: {
-        objectId,
-        itemType,
-        statusComment,
-        updatedAt: new Date().toISOString(),
-        updatedBy: "current_user" // TODO: Get from authentication
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("❌ 3DSpace API Error:", {
+          status: response.status,
+          statusText: response.statusText,
+          errorText
+        });
+        throw new Error(`API request failed: ${response.status} ${response.statusText}\n${errorText}`);
       }
-    };
+
+      const responseData = await response.json();
+      console.log("✅ 3DSpace API Success:", responseData);
+
+      return {
+        success: true,
+        message: "Status comment updated successfully",
+        data: responseData,
+        timestamp: new Date().toISOString()
+      };
+
+    } catch (error) {
+      console.error("❌ 3DSpace API Error:", error);
+      
+      // Re-throw with more context
+      throw new Error(`Failed to update status comment: ${error.message}`);
+    }
   }
 
   // Note: Specific data fetching methods (fetchParts, fetchPrograms, etc.) 

@@ -1098,8 +1098,7 @@ export default {
                     { text: "Actual Release", value: "actualRelease", sortable: true, icon: "mdi-calendar-check" },
                     { text: "Critical Release", value: "criticalRelease", sortable: true, icon: "mdi-calendar-alert" },
                     { text: "State", value: "currentState", sortable: true, icon: "mdi-flag" },
-                    { text: "Change Action", value: "caNumber", sortable: false, component: "ChangeActionCell", componentProps: { field: "number" } },
-                    { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text", component: "StatusCommentDisplay", componentProps: { itemType: "parts", canEdit: true } }
+                    { text: "Change Action", value: "caNumber", sortable: false, component: "ChangeActionCell", componentProps: { field: "number" } }
                 ],
                 cas: [
                     { text: "CA Number", value: "caNumber", sortable: true, required: true, icon: "mdi-file-document", component: "ChangeActionCell", componentProps: { field: "number", itemType: "ca" } },

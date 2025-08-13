@@ -460,7 +460,8 @@ class ApiService {
     // Route to appropriate endpoint based on item type
     switch (itemType.toLowerCase()) {
       case "parts":
-        return this.updatePartsStatusComment(objectId, statusComment);
+        // Status comments not supported for parts
+        throw new Error("Status comment updates are not supported for parts");
       case "cas":
       case "ca":
         return this.updateCasStatusComment(objectId, statusComment);
@@ -470,22 +471,6 @@ class ApiService {
       default:
         throw new Error(`Unsupported item type for status comment update: ${itemType}`);
     }
-  }
-
-  /**
-   * Update status comment for Parts
-   * @param {string} objectId - Part's physId/objId
-   * @param {string} statusComment - Updated comment
-   * @returns {Promise<Object>} API response
-   */
-  async updatePartsStatusComment(objectId, statusComment) {
-    console.log("🔄 Updating PARTS status comment:", { objectId, statusComment });
-
-    // TODO: Replace with actual API endpoint
-    // const url = `${this.getApiBaseUrl()}/api/parts/${objectId}/status-comment`;
-    
-    // STUB: Simulate API call
-    return this.simulateStatusCommentUpdate(objectId, statusComment, "parts");
   }
 
   /**

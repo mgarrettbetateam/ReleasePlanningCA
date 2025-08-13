@@ -379,7 +379,7 @@ export default {
     },
     itemType: {
       type: String,
-      default: "parts"
+      default: "cas"  // Changed from "parts" since parts no longer support status comments
     },
     canEdit: {
       type: Boolean,
@@ -485,6 +485,12 @@ export default {
   },
   
   mounted() {
+    // Validate that parts itemType is not used
+    if (this.itemType === "parts") {
+      console.error("❌ StatusCommentDisplay: Parts itemType is no longer supported");
+      return;
+    }
+    
     // Initialize component with proper data
     this.originalComment = this.displayStatusComment;
     this.editableComment = this.displayStatusComment;
@@ -521,6 +527,16 @@ export default {
     },
     
     async saveChanges() {
+      // Validate that parts itemType is not used
+      if (this.itemType === "parts") {
+        console.error("❌ StatusCommentDisplay: Cannot save status comments for parts");
+        this.$emit("show-message", {
+          message: "Status comments are not supported for parts",
+          type: "error"
+        });
+        return;
+      }
+      
       this.saving = true;
       
       try {

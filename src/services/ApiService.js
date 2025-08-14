@@ -460,8 +460,9 @@ class ApiService {
     // Route to appropriate endpoint based on item type
     switch (itemType.toLowerCase()) {
       case "parts":
-        // Status comments not supported for parts
-        throw new Error("Status comment updates are not supported for parts");
+        // Parts should be handled by StatusCommentDisplay component, but if it reaches here,
+        // treat it as a CA update (this is a fallback for backwards compatibility)
+        return this.updateCasStatusComment(objectId, statusComment);
       case "cas":
       case "ca":
         return this.updateCasStatusComment(objectId, statusComment);
@@ -510,14 +511,14 @@ class ApiService {
     const requestBody = {
       type,
       comment,
-      physId
+      objectId: physId
     };
 
     console.log("🔄 Calling 3DSpace status comment API:", {
       url,
       requestBody: {
         type: requestBody.type,
-        physId: requestBody.physId,
+        objectId: requestBody.objectId,
         commentLength: requestBody.comment.length
       }
     });

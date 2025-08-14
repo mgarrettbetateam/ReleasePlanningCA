@@ -581,6 +581,9 @@
                                 :object-id="item.physId || item.objId || item.id"
                                 :item-type="header.componentProps.itemType || 'parts'"
                                 :can-edit="getCanEditValue(header, item)"
+                                :ca-number="header.componentProps.itemType === 'parts' ? (item.caNumber || '') : ''"
+                                :ca-phys-id="header.componentProps.itemType === 'parts' ? (item.caPhysId || '') : ''"
+                                :ca-link="header.componentProps.itemType === 'parts' ? (item.caLink || '') : ''"
                                 @comment-updated="handleCommentUpdate"
                                 @show-message="showSnackbar"
                             />
@@ -614,6 +617,9 @@
                                 :object-id="item.physId || item.objId || item.id"
                                 :item-type="header.componentProps.itemType || 'parts'"
                                 :can-edit="getCanEditValue(header, item)"
+                                :ca-number="header.componentProps.itemType === 'parts' ? (item.caNumber || '') : ''"
+                                :ca-phys-id="header.componentProps.itemType === 'parts' ? (item.caPhysId || '') : ''"
+                                :ca-link="header.componentProps.itemType === 'parts' ? (item.caLink || '') : ''"
                                 @comment-updated="handleCommentUpdate"
                                 @show-message="showSnackbar"
                             />
@@ -1098,7 +1104,8 @@ export default {
                     { text: "Actual Release", value: "actualRelease", sortable: true, icon: "mdi-calendar-check" },
                     { text: "Critical Release", value: "criticalRelease", sortable: true, icon: "mdi-calendar-alert" },
                     { text: "State", value: "currentState", sortable: true, icon: "mdi-flag" },
-                    { text: "Change Action", value: "caNumber", sortable: false, component: "ChangeActionCell", componentProps: { field: "number" } }
+                    { text: "Change Action", value: "caNumber", sortable: false, component: "ChangeActionCell", componentProps: { field: "number" } },
+                    { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text", component: "StatusCommentDisplay", componentProps: { itemType: "parts", canEdit: true } }
                 ],
                 cas: [
                     { text: "CA Number", value: "caNumber", sortable: true, required: true, icon: "mdi-file-document", component: "ChangeActionCell", componentProps: { field: "number", itemType: "ca" } },

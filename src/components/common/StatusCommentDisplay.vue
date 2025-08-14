@@ -379,7 +379,7 @@ export default {
     },
     itemType: {
       type: String,
-      default: "cas"  // Changed from "parts" since parts no longer support status comments
+      default: "cas"
     },
     canEdit: {
       type: Boolean,
@@ -388,6 +388,18 @@ export default {
     maxPreviewLength: {
       type: Number,
       default: 50
+    },
+    caNumber: {
+      type: String,
+      default: ""
+    },
+    caPhysId: {
+      type: String,
+      default: ""
+    },
+    caLink: {
+      type: String,
+      default: ""
     }
   },
   
@@ -526,25 +538,160 @@ export default {
       this.isBlocker = false;
     },
     
-    async saveChanges() {
-      // Validate that parts itemType is not used
-      if (this.itemType === "parts") {
-        console.error("❌ StatusCommentDisplay: Cannot save status comments for parts");
-        this.$emit("show-message", {
-          message: "Status comments are not supported for parts",
-          type: "error"
-        });
-        return;
+    /**
+     * Extract objectId from CA link URL
+     * @param {string} caLink - The CA link URL
+     * @returns {string|null} - The extracted objectId or null if not found
+     */
+    extractObjectIdFromLink(caLink) {
+      if (!caLink || typeof caLink !== "string") {
+        return null;
       }
       
+      try {
+        // CA links typically look like: https://domain/enovia/common/emxTree.jsp?objectId=63643.64643.643643.64363
+        // or similar patterns with objectId parameter
+        const url = new URL(caLink);
+        const objectId = url.searchParams.get("objectId");
+        
+        if (objectId) {
+          // eslint-disable-next-line no-console
+          console.log("✅ Extracted objectId from CA link:", {
+            caLink,
+            objectId
+          });
+          return objectId;
+        }
+        
+        // Fallback: try to extract from the URL path or hash if objectId param not found
+        // Look for patterns like /objectId/value or #objectId=value
+        const pathMatch = caLink.match(/(?:\/|[?&]|#)objectId[=/]([^&/\s#]+)/i);
+        if (pathMatch && pathMatch[1]) {
+          // eslint-disable-next-line no-console
+          console.log("✅ Extracted objectId from CA link path:", {
+            caLink,
+            objectId: pathMatch[1]
+          });
+          return pathMatch[1];
+        }
+        
+        // eslint-disable-next-line no-console
+        console.warn("⚠️ Could not extract objectId from CA link:", caLink);
+        return null;
+        
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error("❌ Error extracting objectId from CA link:", {
+          caLink,
+          error: error.message
+        });
+        return null;
+      }
+    },
+    
+    async saveChanges() {
       this.saving = true;
       
       try {
+        let apiObjectId = this.objectId;
+        let apiItemType = this.itemType;
+        
+        // Special handling for parts - extract objectId from CA link
+        if (this.itemType === "parts") {
+          const caNumber = this.caNumber;
+          const caLink = this.caLink;
+          
+          if (!caNumber || caNumber.trim() === "") {
+            this.$emit("show-message", {
+              message: "Cannot save status comment: No Change Action number available for this part",
+              type: "error"
+            });
+            this.saving = false;
+            return;
+          }
+          
+          let caObjectId = null;
+          
+          // First, try to extract objectId from the CA link if available
+          if (caLink && caLink.trim() !== "") {
+            caObjectId = this.extractObjectIdFromLink(caLink);
+            
+            if (caObjectId) {
+              // eslint-disable-next-line no-console
+              console.log("✅ Using objectId from CA link:", {
+                caNumber,
+                caLink,
+                caObjectId
+              });
+            }
+          }
+          
+          // If we couldn't get objectId from link, fall back to the previous physId approach
+          if (!caObjectId) {
+            // eslint-disable-next-line no-console
+            console.log("⚠️ No objectId from CA link, falling back to physId approach");
+            
+            // Check if we have caPhysId from props first
+            let caPhysId = this.caPhysId;
+            
+            if (!caPhysId || caPhysId.trim() === "" || caPhysId === caNumber) {
+              // If caPhysId not available in props, fetch it from the API
+              try {
+                const caData = await ApiService.fetchChangeAction(caNumber);
+                
+                if (!caData) {
+                  this.$emit("show-message", {
+                    message: "Cannot save status comment: Unable to retrieve Change Action data",
+                    type: "error"
+                  });
+                  this.saving = false;
+                  return;
+                }
+                
+                // Extract the physId (long hash string) from CA data response
+                caPhysId = caData.caPhysId || 
+                          caData.physId || 
+                          caData.id || 
+                          caData.objectId ||
+                          caData.caObjectId ||
+                          caData.changeActionId ||
+                          caData.physicalId ||
+                          caData.data?.physId ||
+                          caData.data?.id;
+                
+              } catch (error) {
+                this.$emit("show-message", {
+                  message: `Cannot save status comment: Failed to fetch CA data - ${error.message}`,
+                  type: "error"
+                });
+                this.saving = false;
+                return;
+              }
+            }
+            
+            // Validate we have a proper physId (not the CA number)
+            if (!caPhysId || caPhysId.trim() === "" || caPhysId === caNumber) {
+              this.$emit("show-message", {
+                message: "Cannot save status comment: CA objectId/physId not found. CA data may not be fully loaded.",
+                type: "error"
+              });
+              this.saving = false;
+              return;
+            }
+            
+            caObjectId = caPhysId;
+          }
+          
+          // Use the extracted CA objectId and set type to "CA"
+          apiObjectId = caObjectId;
+          apiItemType = "ca";
+        }
+        
         // Call the API to update the status comment
         const response = await ApiService.updateStatusComment(
-          this.objectId,
+          apiObjectId,
           this.editableComment,
-          this.itemType
+          apiItemType
         );
 
         // Emit the update event to parent component
@@ -583,67 +730,28 @@ export default {
       }
     },
     
-    async addNewComment() {
+    addNewComment() {
       if (!this.newComment.trim() || !this.newUsername.trim()) return;
 
-      this.saving = true;
+      // Format new comment with timestamp and user info
+      const timestamp = new Date().toISOString().split("T")[0];
+      const username = this.newUsername.trim();
+      const comment = this.newComment.trim();
+      const etaText = this.newEta ? ` - ETA: ${this.newEta}` : "";
+      const blockerText = this.isBlocker ? " [BLOCKER]" : "";
+      
+      const newCommentLine = `[${timestamp}] ${username}: ${comment}${blockerText}${etaText}`;
+      
+      // Append to existing comments in the textarea (no API call)
+      this.editableComment = this.editableComment 
+        ? `${this.editableComment}\n${newCommentLine}`
+        : newCommentLine;
 
-      try {
-        // Format new comment with timestamp and user info
-        const timestamp = new Date().toISOString().split("T")[0];
-        const username = this.newUsername.trim();
-        const comment = this.newComment.trim();
-        const etaText = this.newEta ? ` - ETA: ${this.newEta}` : "";
-        const blockerText = this.isBlocker ? " [BLOCKER]" : "";
-        
-        const newCommentLine = `[${timestamp}] ${username}: ${comment}${blockerText}${etaText}`;
-        
-        // Append to existing comments
-        const updatedComment = this.editableComment 
-          ? `${this.editableComment}\n${newCommentLine}`
-          : newCommentLine;
-
-        // Call the API to update with the new comment
-        const response = await ApiService.updateStatusComment(
-          this.objectId,
-          updatedComment,
-          this.itemType
-        );
-
-        // Update local state
-        this.editableComment = updatedComment;
-        this.originalComment = updatedComment;
-
-        // Emit the update event to parent component
-        this.$emit("comment-updated", {
-          objectId: this.objectId,
-          statusComment: updatedComment,
-          itemType: this.itemType,
-          apiResponse: response
-        });
-
-        // Show success message
-        this.$emit("show-message", {
-          type: "success",
-          message: `New comment added successfully for ${this.itemType.toUpperCase()}`
-        });
-
-        // Reset new comment form
-        this.newComment = "";
-        this.newUsername = "";
-        this.newEta = "";
-        this.isBlocker = false;
-
-      } catch (error) {
-        // Show error message
-        this.$emit("show-message", {
-          type: "error",
-          message: `Failed to add comment: ${error.message}`
-        });
-        
-      } finally {
-        this.saving = false;
-      }
+      // Reset new comment form
+      this.newComment = "";
+      this.newUsername = "";
+      this.newEta = "";
+      this.isBlocker = false;
     },
     
     getInitials(name) {

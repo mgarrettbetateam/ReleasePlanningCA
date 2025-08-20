@@ -115,6 +115,38 @@
 
                 <v-divider class="my-4" />
 
+                <!-- Filter Controls Grid -->
+                <div class="mb-6">
+                    <div class="text-subtitle-2 font-weight-bold primary--text text-uppercase mb-3 d-flex align-center">
+                        <v-icon small color="primary" class="mr-2">mdi-tune</v-icon>
+                        Data Filters
+                    </div>
+                    
+                    <div 
+                        v-for="filter in filterConfig"
+                        :key="filter.key"
+                        class="mb-4"
+                    >
+                        <label class="caption font-weight-bold grey--text text--darken-2 mb-2 d-flex align-center text-uppercase">
+                            <v-icon small class="mr-1">{{ filter.icon }}</v-icon>
+                            {{ filter.label }}
+                        </label>
+                        <v-select
+                            :value="filterValues[filter.key]"
+                            :items="filter.options"
+                            :placeholder="filter.placeholder"
+                            dense
+                            outlined
+                            hide-details
+                            clearable
+                            class="mb-3"
+                            @change="handleFilterChange({ key: filter.key, value: $event, allFilters: { ...filterValues, [filter.key]: $event } })"
+                        />
+                    </div>
+                </div>
+
+                <v-divider class="my-4" />
+
                 <!-- PARTS-Specific Filters - Only shown for PARTS data type -->
                 <div v-if="currentDataType === 'parts'" class="mb-6">
                     <div class="text-subtitle-2 font-weight-bold warning--text text-uppercase mb-3 d-flex align-center">
@@ -169,38 +201,6 @@
                 </div>
 
                 <v-divider v-if="currentDataType === 'parts'" class="my-4" />
-
-                <!-- Filter Controls Grid -->
-                <div class="mb-6">
-                    <div class="text-subtitle-2 font-weight-bold primary--text text-uppercase mb-3 d-flex align-center">
-                        <v-icon small color="primary" class="mr-2">mdi-tune</v-icon>
-                        Data Filters
-                    </div>
-                    
-                    <div 
-                        v-for="filter in filterConfig"
-                        :key="filter.key"
-                        class="mb-4"
-                    >
-                        <label class="caption font-weight-bold grey--text text--darken-2 mb-2 d-flex align-center text-uppercase">
-                            <v-icon small class="mr-1">{{ filter.icon }}</v-icon>
-                            {{ filter.label }}
-                        </label>
-                        <v-select
-                            :value="filterValues[filter.key]"
-                            :items="filter.options"
-                            :placeholder="filter.placeholder"
-                            dense
-                            outlined
-                            hide-details
-                            clearable
-                            class="mb-3"
-                            @change="handleFilterChange({ key: filter.key, value: $event, allFilters: { ...filterValues, [filter.key]: $event } })"
-                        />
-                    </div>
-                </div>
-
-                <v-divider class="my-4" />
 
                 <!-- Release Stats -->
                 <div v-if="releaseStats" class="mb-6">

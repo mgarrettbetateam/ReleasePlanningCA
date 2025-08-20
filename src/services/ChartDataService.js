@@ -489,8 +489,9 @@ export class ChartDataService {
                     title(tooltipItem) {
                         return "Release Date: " + tooltipItem[0].xLabel;
                     },
-                    label(tooltipItem) {
-                        return `Total Released: ${tooltipItem.yLabel} ${config.tooltipLabel}`;
+                    label(tooltipItem, data) {
+                        const datasetLabel = data.datasets[tooltipItem.datasetIndex].label;
+                        return `${datasetLabel}: ${tooltipItem.yLabel} ${config.tooltipLabel}`;
                     }
                 }
             },

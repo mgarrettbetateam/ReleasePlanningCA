@@ -177,7 +177,9 @@
                             outlined
                             hide-details
                             class="mb-3"
-                            @change="changeActionRefreshKey++"
+                            :loading="loading && currentDataType === 'parts'"
+                            :disabled="loading && currentDataType === 'parts' && makeBuyOptions.length <= 1"
+                            @change="handlePartsFilterChange"
                         />
                     </div>
 
@@ -195,7 +197,9 @@
                             outlined
                             hide-details
                             class="mb-3"
-                            @change="changeActionRefreshKey++"
+                            :loading="loading && currentDataType === 'parts'"
+                            :disabled="loading && currentDataType === 'parts' && partTypeOptions.length <= 1"
+                            @change="handlePartsFilterChange"
                         />
                     </div>
                 </div>
@@ -1064,6 +1068,10 @@ export default {
             // Filter flyout state
             showFilterFlyout: false,
             
+            // Debouncing for filter changes
+            filterChangeTimeout: null,
+            filterDebounceDelay: 2000, // 2000ms delay before triggering API calls
+            
             // Filter values - consolidated object for UniversalFilterControls
             filterValues: {
                 program: "",
@@ -1524,6 +1532,13 @@ export default {
         this.setupEnvironmentChangeListener();
     },
     
+    beforeDestroy() {
+        // Clean up any pending filter change timeouts to prevent memory leaks
+        if (this.filterChangeTimeout) {
+            clearTimeout(this.filterChangeTimeout);
+        }
+    },
+    
     methods: {
         /**
          * Get drag attributes for a table row
@@ -1800,17 +1815,33 @@ export default {
             this.updateChartFromFiltered();
         },
         
-        // Handle filter changes from UniversalFilterControls
+        // Handle filter changes from UniversalFilterControls with debouncing
         handleFilterChange(filterEvent) {
-            console.log("🔄 HANDLE FILTER CHANGE:");
+            console.log("🔄 HANDLE FILTER CHANGE (with debouncing):");
             console.log("  - Filter key:", filterEvent.key);
             console.log("  - Filter value:", filterEvent.value);
             console.log("  - All filters:", filterEvent.allFilters);
             console.log("  - Previous filterValues:", JSON.stringify(this.filterValues));
             
+            // Update filter values immediately for UI responsiveness
             this.filterValues = { ...filterEvent.allFilters };
             
             console.log("  - New filterValues:", JSON.stringify(this.filterValues));
+            
+            // Clear existing timeout
+            if (this.filterChangeTimeout) {
+                clearTimeout(this.filterChangeTimeout);
+            }
+            
+            // Set up debounced execution
+            this.filterChangeTimeout = setTimeout(() => {
+                this.executeFilterChange(filterEvent);
+            }, this.filterDebounceDelay);
+        },
+        
+        // Execute the actual filter change logic (after debounce delay)
+        executeFilterChange(filterEvent) {
+            console.log("⏰ Executing debounced filter change for:", filterEvent.key);
             
             // Handle specific filter logic
             if (filterEvent.key === "program") {
@@ -1824,6 +1855,22 @@ export default {
                 this.updateChartFromFiltered();
                 this.lastUpdated = new Date().toLocaleTimeString();
             }
+        },
+        
+        // Handle parts-specific filter changes with debouncing
+        handlePartsFilterChange() {
+            console.log("🔄 Parts filter changed (with debouncing)");
+            
+            // Clear existing timeout
+            if (this.filterChangeTimeout) {
+                clearTimeout(this.filterChangeTimeout);
+            }
+            
+            // Set up debounced execution
+            this.filterChangeTimeout = setTimeout(() => {
+                console.log("⏰ Executing debounced parts filter change");
+                this.changeActionRefreshKey++;
+            }, this.filterDebounceDelay);
         },
         
         /**
@@ -1932,10 +1979,11 @@ export default {
                     console.log("⚠️  No data type selected, skipping data fetch");
                     this.tableData = [];
                     this.organizations = ["All"];
-                    this.makeBuyOptions = ["All"];
-                    this.filterValues.makeBuyFilter = "All";
-                    this.partTypeOptions = ["All"];
-                    this.filterValues.partTypeFilter = "All";
+                    // Don't immediately reset parts options - let them persist until parts is selected again
+                    // this.makeBuyOptions = ["All"];
+                    // this.filterValues.makeBuyFilter = "All";
+                    // this.partTypeOptions = ["All"];
+                    // this.filterValues.partTypeFilter = "All";
                     this.updateChartFromFiltered();
                     return;
                 }
@@ -1971,11 +2019,15 @@ export default {
 
                 // Update Make/Buy options - only for PARTS data type
                 if (this.currentDataType === "parts") {
-                    this.makeBuyOptions = dataTransformationService.extractMakeBuyValues(this.tableData);
-                    console.log("✅ Make/Buy options updated from PARTS data:", this.makeBuyOptions);
-                    
-                    this.partTypeOptions = dataTransformationService.extractPartTypeValues(this.tableData);
-                    console.log("✅ Part Type options updated from PARTS data:", this.partTypeOptions);
+                    // Only update options if we have actual data
+                    if (this.tableData && this.tableData.length > 0) {
+                        this.makeBuyOptions = dataTransformationService.extractMakeBuyValues(this.tableData);
+                        console.log("✅ Make/Buy options updated from PARTS data:", this.makeBuyOptions);
+                        
+                        this.partTypeOptions = dataTransformationService.extractPartTypeValues(this.tableData);
+                        console.log("✅ Part Type options updated from PARTS data:", this.partTypeOptions);
+                    }
+                    // If no data, preserve existing options instead of resetting
                 } else {
                     // Reset Make/Buy and Part Type options and filters when not viewing PARTS
                     this.makeBuyOptions = ["All"];
@@ -1999,10 +2051,18 @@ export default {
                 console.log("Clearing data due to API failure");
                 this.tableData = [];
                 this.organizations = ["All"];
-                this.makeBuyOptions = ["All"];
-                this.filterValues.makeBuyFilter = "All";
-                this.partTypeOptions = ["All"];
-                this.filterValues.partTypeFilter = "All";
+                
+                // Only reset parts-specific options if we're currently viewing parts
+                // Otherwise preserve existing options to prevent dropdown flickering
+                if (this.currentDataType === "parts") {
+                    // Keep existing options during temporary failures to prevent UI disruption
+                    // this.makeBuyOptions = ["All"];
+                    // this.filterValues.makeBuyFilter = "All";
+                    // this.partTypeOptions = ["All"];
+                    // this.filterValues.partTypeFilter = "All";
+                    console.log("⚠️ Preserving parts filter options during API failure");
+                }
+                
                 this.updateChartFromFiltered();
             } finally {
                 this.loading = false;

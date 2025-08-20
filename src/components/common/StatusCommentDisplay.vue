@@ -682,9 +682,20 @@ export default {
             caObjectId = caPhysId;
           }
           
-          // Use the extracted CA objectId and set type to "CA"
+          // Extract first two letters from CA number for dynamic item type
+          const caPrefix = caNumber.substring(0, 2).toLowerCase(); // "CA-00005943" → "ca", "CX-12345" → "cx"
+          
+          // Use the extracted CA objectId and set type to CA prefix
           apiObjectId = caObjectId;
-          apiItemType = "ca";
+          apiItemType = caPrefix;
+          
+          // eslint-disable-next-line no-console
+          console.log("✅ Using dynamic CA type for parts status comment:", {
+            caNumber,
+            caPrefix,
+            apiItemType,
+            caObjectId
+          });
         }
         
         // Call the API to update the status comment

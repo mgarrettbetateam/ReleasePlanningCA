@@ -469,6 +469,8 @@ class ApiService {
       case "crs":
       case "cr":
         return this.updateCrsStatusComment(objectId, statusComment);
+      case "cx":
+        return this.updateCxsStatusComment(objectId, statusComment);
       default:
         throw new Error(`Unsupported item type for status comment update: ${itemType}`);
     }
@@ -485,6 +487,19 @@ class ApiService {
 
     return this.updateStatusCommentAPI(objectId, statusComment, "CA");
   }
+
+  /**
+   * Update status comment for Change X (CXs)
+   * @param {string} objectId - CX's physId/objId  
+   * @param {string} statusComment - Updated comment
+   * @returns {Promise<Object>} API response
+   */
+  async updateCxsStatusComment(objectId, statusComment) {
+    console.log("🔄 Updating CXS status comment:", { objectId, statusComment });
+
+    return this.updateStatusCommentAPI(objectId, statusComment, "CX");
+  }
+
 
   /**
    * Update status comment for Change Requests (CRs)

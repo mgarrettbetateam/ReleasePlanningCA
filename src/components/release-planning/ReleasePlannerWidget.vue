@@ -337,74 +337,150 @@
             </v-chip>
         </v-card-title>
 
-        <!-- Full Width Vertical Layout: Chart Above Table -->
+        <!-- Layout: Chart and Stats Side by Side -->
         <div class="pa-4 d-flex flex-column" style="gap: 16px;">
-            <!-- Chart - Full Width Above -->
-            <v-card class="chart-card mb-4" elevation="4">
-                <v-card-title class="chart-header pa-3">
-                    <v-icon left color="primary">mdi-chart-line</v-icon>
-                    <span class="text-h6">Release Timeline</span>
-                    <v-spacer />
-                    <!-- Legend inline in header -->
-                    <div class="d-flex align-center legend-chip-container" style="gap: 8px;">
-                        <v-chip 
-                            small 
-                            :color="showTargetLine ? 'primary' : 'grey'"
-                            class="mr-1 legend-chip"
-                            @click="toggleTargetLine"
-                        >
-                            <v-icon small left>{{ showTargetLine ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
-                            Target
-                        </v-chip>
-                        <v-chip 
-                            small 
-                            :color="showActualLine ? 'success' : 'grey'"
-                            class="legend-chip"
-                            @click="toggleActualLine"
-                        >
-                            <v-icon small left>{{ showActualLine ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
-                            Actual
-                        </v-chip>
-                        <v-chip 
-                            v-if="showCriticalControls"
-                            small 
-                            :color="showCriticalLine ? 'error' : 'grey'"
-                            class="legend-chip"
-                            @click="toggleCriticalLine"
-                        >
-                            <v-icon small left>{{ showCriticalLine ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
-                            Critical
-                        </v-chip>
-                    </div>
-                </v-card-title>
-                
-                <v-card-text class="pa-2">
-                    <div :style="{ height: `${currentChartHeight}px`, width: '100%' }">
-                        <ReleaseChart
-                            v-if="chartData.labels?.length > 0"
-                            ref="lineChart"
-                            :chart-data="chartData"
-                            :chart-options="dynamicChartOptions"
-                            style="height: 100%; width: 100%;"
-                        />
-                        <div v-else class="no-chart-data d-flex flex-column align-center justify-center" style="height: 100%;">
-                            <v-icon size="64" color="grey lighten-2">mdi-chart-line-variant</v-icon>
-                            <h4 class="mt-4">No Chart Data</h4>
-                            <p class="text-center mt-2">Use the filter panel to select data</p>
-                            <v-btn
-                                color="primary"
-                                outlined
-                                small
-                                class="mt-3"
-                                @click="showFilterFlyout = true"
+            <!-- Chart and Stats Row - Horizontal Layout -->
+            <div class="d-flex" style="gap: 8px;">
+                <!-- Chart Container - Expanded to Fill Available Space -->
+                <v-card class="chart-container-large" elevation="4" style="flex: 1; max-width: calc(100% - 416px);">
+                    <v-card-title class="chart-header pa-3">
+                        <v-icon left color="primary">mdi-chart-line</v-icon>
+                        <span class="text-h6">Release Timeline</span>
+                        <v-spacer />
+                        <!-- Legend inline in header -->
+                        <div class="d-flex align-center legend-chip-container" style="gap: 8px;">
+                            <v-chip 
+                                small 
+                                :color="showTargetLine ? 'primary' : 'grey'"
+                                class="legend-chip"
+                                @click="toggleTargetLine"
                             >
-                                <v-icon small left>mdi-filter-variant</v-icon>
-                                Open Filters
+                                <v-icon small left>{{ showTargetLine ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
+                                Target
+                            </v-chip>
+                            <v-chip 
+                                small 
+                                :color="showActualLine ? 'success' : 'grey'"
+                                class="legend-chip"
+                                @click="toggleActualLine"
+                            >
+                                <v-icon small left>{{ showActualLine ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
+                                Actual
+                            </v-chip>
+                            <v-chip 
+                                v-if="showCriticalControls"
+                                small 
+                                :color="showCriticalLine ? 'error' : 'grey'"
+                                class="legend-chip"
+                                @click="toggleCriticalLine"
+                            >
+                                <v-icon small left>{{ showCriticalLine ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
+                                Critical
+                            </v-chip>
+                        </div>
+                    </v-card-title>
+                    
+                    <v-card-text class="pa-4">
+                        <div style="height: 600px; width: 100%;">
+                            <ReleaseChart
+                                v-if="chartData.labels?.length > 0"
+                                ref="lineChart"
+                                :chart-data="chartData"
+                                :chart-options="dynamicChartOptions"
+                                style="height: 100%; width: 100%;"
+                            />
+                            <div v-else class="no-chart-data d-flex flex-column align-center justify-center" style="height: 100%;">
+                                <v-icon size="64" color="grey lighten-2">mdi-chart-line-variant</v-icon>
+                                <h4 class="mt-4">No Chart Data</h4>
+                                <p class="text-center mt-2">Use the filter panel to select data</p>
+                                <v-btn
+                                    color="primary"
+                                    outlined
+                                    small
+                                    class="mt-3"
+                                    @click="showFilterFlyout = true"
+                                >
+                                    <v-icon small left>mdi-filter-variant</v-icon>
+                                    Open Filters
+                                </v-btn>
+                            </div>
+                        </div>
+                    </v-card-text>
+                </v-card>
+                
+                <!-- Release Stats Container - Right Aligned -->
+                <v-card class="stats-container" elevation="4" style="width: 400px; max-width: 400px; flex-shrink: 0;">
+                    <v-card-title class="stats-header pa-3">
+                        <v-icon left color="primary">mdi-chart-bar</v-icon>
+                        <span class="text-h6">Release Stats</span>
+                    </v-card-title>
+                    
+                    <v-card-text class="pa-2" style="height: 600px; overflow-y: auto;">
+                        <div v-if="releaseStats" class="d-flex flex-column" style="gap: 4px;">
+                            <v-card
+                                v-for="stat in releaseStatsArray"
+                                :key="stat.key"
+                                class="stat-item-compact pa-1 d-flex align-center justify-space-between"
+                                :class="{ 
+                                    'primary--border': selectedStatFilter === stat.key,
+                                    'v-card--disabled': stat.count === 0,
+                                    'error--border': stat.key === 'criticallyOverdue',
+                                    'warning--border': stat.key === 'overdue'
+                                }"
+                                :style="{ 
+                                    borderColor: selectedStatFilter === stat.key ? '#1976d2' : 
+                                        stat.key === 'criticallyOverdue' ? '#d32f2f' : 
+                                        stat.key === 'overdue' ? '#ff9800' : '#e0e0e0',
+                                    backgroundColor: selectedStatFilter === stat.key ? 'rgba(25, 118, 210, 0.1)' : 
+                                        stat.key === 'criticallyOverdue' ? 'rgba(211, 47, 47, 0.05)' : 
+                                        stat.key === 'overdue' ? 'rgba(255, 152, 0, 0.05)' : '#fafafa'
+                                }"
+                                outlined
+                                @click="stat.count > 0 ? filterByReleaseStatus(stat.key) : null"
+                            >
+                                <div class="d-flex flex-column" style="gap: 2px; flex: 1;">
+                                    <span 
+                                        class="text-subtitle-1 font-weight-bold primary--text"
+                                        :class="{ 
+                                            'error--text': stat.key === 'criticallyOverdue',
+                                            'orange--text': stat.key === 'overdue'
+                                        }"
+                                    >
+                                        {{ stat.displayText || stat.count }}
+                                    </span>
+                                    <span class="text-caption font-weight-medium">{{ stat.label }}</span>
+                                </div>
+                                <v-icon 
+                                    v-if="selectedStatFilter === stat.key"
+                                    small 
+                                    color="primary"
+                                    class="opacity-80"
+                                >
+                                    mdi-check
+                                </v-icon>
+                            </v-card>
+                            
+                            <!-- Clear filter -->
+                            <v-btn
+                                v-if="selectedStatFilter !== 'all'"
+                                outlined
+                                x-small
+                                color="primary"
+                                block
+                                class="mt-2"
+                                @click="filterByReleaseStatus('all')"
+                            >
+                                <v-icon x-small left>mdi-filter-off</v-icon>
+                                Clear Filter
                             </v-btn>
                         </div>
-                    </div>
-                </v-card-text>
-            </v-card>
+                        <div v-else class="d-flex flex-column align-center justify-center" style="height: 100%;">
+                            <v-icon size="48" color="grey lighten-2">mdi-chart-bar</v-icon>
+                            <p class="text-center mt-2 caption">No stats available</p>
+                        </div>
+                    </v-card-text>
+                </v-card>
+            </div>
             
             <!-- Simple Filter Summary Bar -->
             <v-card v-if="currentDataType || hasActiveFilters" class="filter-summary-card mb-3" flat outlined>
@@ -781,6 +857,41 @@
 
 .legend-chip:hover {
   transform: scale(1.05);
+}
+
+/* Large Chart Container Styles */
+.chart-container-large {
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+.chart-container-large .chart-header {
+  background-color: rgba(25, 118, 210, 0.05);
+  border-bottom: 1px solid #e0e0e0;
+}
+
+/* Stats Container Styles */
+.stats-container {
+  background-color: #fafafa;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+.stats-container .stats-header {
+  background-color: rgba(25, 118, 210, 0.05);
+  border-bottom: 1px solid #e0e0e0;
+}
+
+/* Stats card styling within sidebar */
+.stats-container .stat-item-compact {
+  margin-bottom: 4px !important;
+  transition: all 0.2s ease !important;
+  min-height: 44px !important;
+}
+
+.stats-container .stat-item-compact:hover {
+  transform: translateX(2px) !important;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.1) !important;
 }
 
 /* Data Type Selection Enhancements */

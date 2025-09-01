@@ -299,6 +299,44 @@
                 {{ currentDataType.toUpperCase() }}
             </v-chip>
             
+            <!-- Filter Summary in Header -->
+            <div v-if="currentDataType || hasActiveFilters" class="ml-4 d-flex align-center flex-wrap" style="gap: 8px;">
+                <!-- Program -->
+                <div v-if="filterValues.program && filterValues.program !== ''" class="d-flex align-center" style="gap: 4px;">
+                    <v-icon x-small color="white">mdi-folder</v-icon>
+                    <span class="filter-label-header">Program:</span>
+                    <span class="filter-value-header">{{ filterValues.program }}</span>
+                </div>
+
+                <!-- Phase -->
+                <div v-if="filterValues.phase && filterValues.phase !== ''" class="d-flex align-center" style="gap: 4px;">
+                    <v-icon x-small color="white">mdi-timeline</v-icon>
+                    <span class="filter-label-header">Phase:</span>
+                    <span class="filter-value-header">{{ filterValues.phase }}</span>
+                </div>
+
+                <!-- Organization -->
+                <div v-if="filterValues.organization && filterValues.organization !== 'All'" class="d-flex align-center" style="gap: 4px;">
+                    <v-icon x-small color="white">mdi-domain</v-icon>
+                    <span class="filter-label-header">Organization:</span>
+                    <span class="filter-value-header">{{ filterValues.organization }}</span>
+                </div>
+
+                <!-- Make/Buy Filter - Only for PARTS -->
+                <div v-if="currentDataType === 'parts' && filterValues.makeBuyFilter && filterValues.makeBuyFilter !== 'All'" class="d-flex align-center" style="gap: 4px;">
+                    <v-icon x-small color="white">mdi-factory</v-icon>
+                    <span class="filter-label-header">Make/Buy:</span>
+                    <span class="filter-value-header">{{ filterValues.makeBuyFilter }}</span>
+                </div>
+
+                <!-- Part Type Filter - Only for PARTS -->
+                <div v-if="currentDataType === 'parts' && filterValues.partTypeFilter && filterValues.partTypeFilter !== 'All'" class="d-flex align-center" style="gap: 4px;">
+                    <v-icon x-small color="white">mdi-cog</v-icon>
+                    <span class="filter-label-header">Part Type:</span>
+                    <span class="filter-value-header">{{ filterValues.partTypeFilter }}</span>
+                </div>
+            </div>
+            
             <v-spacer />
             
             <!-- Clear Cache Button with Safety Measures -->
@@ -481,62 +519,6 @@
                     </v-card-text>
                 </v-card>
             </div>
-            
-            <!-- Simple Filter Summary Bar -->
-            <v-card v-if="currentDataType || hasActiveFilters" class="filter-summary-card mb-3" flat outlined>
-                <v-card-text class="py-2 px-3">
-                    <div class="d-flex align-center flex-wrap" style="gap: 12px;">
-                        <!-- Data Type -->
-                        <div v-if="currentDataType" class="d-flex align-center" style="gap: 6px;">
-                            <v-icon small color="primary">mdi-table</v-icon>
-                            <span class="filter-label">Data Type:</span>
-                            <span class="filter-value">{{ currentDataType.toUpperCase() }}</span>
-                        </div>
-
-                        <!-- Program -->
-                        <div v-if="filterValues.program && filterValues.program !== ''" class="d-flex align-center" style="gap: 6px;">
-                            <v-icon small color="info">mdi-folder</v-icon>
-                            <span class="filter-label">Program:</span>
-                            <span class="filter-value">{{ filterValues.program }}</span>
-                        </div>
-
-                        <!-- Phase -->
-                        <div v-if="filterValues.phase && filterValues.phase !== ''" class="d-flex align-center" style="gap: 6px;">
-                            <v-icon small color="info">mdi-timeline</v-icon>
-                            <span class="filter-label">Phase:</span>
-                            <span class="filter-value">{{ filterValues.phase }}</span>
-                        </div>
-
-                        <!-- Organization -->
-                        <div v-if="filterValues.organization && filterValues.organization !== 'All'" class="d-flex align-center" style="gap: 6px;">
-                            <v-icon small color="info">mdi-domain</v-icon>
-                            <span class="filter-label">Organization:</span>
-                            <span class="filter-value">{{ filterValues.organization }}</span>
-                        </div>
-
-                        <!-- Make/Buy Filter - Only for PARTS -->
-                        <div v-if="currentDataType === 'parts' && filterValues.makeBuyFilter && filterValues.makeBuyFilter !== 'All'" class="d-flex align-center" style="gap: 6px;">
-                            <v-icon small color="info">mdi-factory</v-icon>
-                            <span class="filter-label">Make / Buy:</span>
-                            <span class="filter-value">{{ filterValues.makeBuyFilter }}</span>
-                        </div>
-
-                        <!-- Part Type Filter - Only for PARTS -->
-                        <div v-if="currentDataType === 'parts' && filterValues.partTypeFilter && filterValues.partTypeFilter !== 'All'" class="d-flex align-center" style="gap: 6px;">
-                            <v-icon small color="info">mdi-shape</v-icon>
-                            <span class="filter-label">Part Type:</span>
-                            <span class="filter-value">{{ filterValues.partTypeFilter }}</span>
-                        </div>
-
-                        <!-- Results Count -->
-                        <v-spacer />
-                        <div v-if="currentDataType && filteredTableData.length > 0" class="d-flex align-center" style="gap: 6px;">
-                            <v-icon small color="success">mdi-check-circle</v-icon>
-                            <span class="results-count">{{ filteredTableData.length }} items</span>
-                        </div>
-                    </div>
-                </v-card-text>
-            </v-card>
             
             <!-- Table - Full Width Below -->
             <v-card class="table-card">
@@ -1088,6 +1070,23 @@
   font-size: 13px;
   font-weight: 600;
   color: rgba(0, 0, 0, 0.87);
+}
+
+/* Header filter styles for blue header bar */
+.filter-label-header {
+  font-size: 11px;
+  font-weight: 500;
+  color: #E3F2FD;
+}
+
+.filter-value-header {
+  font-size: 11px;
+  font-weight: 600;
+  color: #FFF9C4;
+  background-color: rgba(255, 193, 7, 0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 193, 7, 0.3);
 }
 
 .results-count {

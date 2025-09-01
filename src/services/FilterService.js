@@ -352,20 +352,27 @@ export class FilterService {
     /**
      * Compute statistics for filtered data
      * @param {Array} data - Filtered data array
-     * @returns {Object} Statistics object with counts for each filter type
+     * @param {Array} allData - Complete unfiltered data array for totals
+     * @returns {Object} Statistics object with counts and totals for each filter type
      */
-    computeStatistics(data) {
+    computeStatistics(data, allData = null) {
         if (!data || data.length === 0) {
             return {
                 releasedCount: 0,
                 thisWeekCount: 0,
+                thisWeekTotal: 0,
                 nextWeekCount: 0,
+                nextWeekTotal: 0,
                 overdueCount: 0,
                 criticallyOverdueCount: 0,
                 next30DaysCount: 0,
+                next30DaysTotal: 0,
                 totalCount: 0
             };
         }
+
+        // Use allData for totals if provided, otherwise use filtered data
+        const totalData = allData || data;
 
         const currentMs = this.currentDate.getTime();
         const [startOfWeek, endOfWeek] = this.getCurrentWeekRange(this.currentDate);
@@ -379,13 +386,17 @@ export class FilterService {
         const stats = {
             releasedCount: 0,
             thisWeekCount: 0,
+            thisWeekTotal: 0,
             nextWeekCount: 0,
+            nextWeekTotal: 0,
             overdueCount: 0,
             criticallyOverdueCount: 0,
             next30DaysCount: 0,
+            next30DaysTotal: 0,
             totalCount: data.length
         };
 
+        // Calculate filtered counts
         data.forEach(item => {
             // Released count
             if (item.currentState === "RELEASED") {
@@ -398,13 +409,13 @@ export class FilterService {
                 tgt.setHours(0, 0, 0, 0);
                 const tgtMs = tgt.getTime();
 
-                // This week count
-                if (tgtMs >= startOfWeek && tgtMs <= endOfWeek) {
+                // This week count (filtered) - count released items in this timeframe
+                if (tgtMs >= startOfWeek && tgtMs <= endOfWeek && item.currentState === "RELEASED") {
                     stats.thisWeekCount++;
                 }
 
-                // Next week count
-                if (tgtMs >= startNextWeek && tgtMs <= endNextWeek) {
+                // Next week count (filtered) - count released items in this timeframe
+                if (tgtMs >= startNextWeek && tgtMs <= endNextWeek && item.currentState === "RELEASED") {
                     stats.nextWeekCount++;
                 }
 
@@ -429,14 +440,45 @@ export class FilterService {
                     }
                 }
 
-                // Next 30 days count
-                if (tgtMs >= currentMs && tgtMs <= next30Ms) {
+                // Next 30 days count (filtered) - count released items in this timeframe
+                if (tgtMs >= currentMs && tgtMs <= next30Ms && item.currentState === "RELEASED") {
                     stats.next30DaysCount++;
                 }
             }
         });
 
-        console.log("📊 FilterService: Statistics computed:", stats);
+        // Calculate total counts from all data
+        totalData.forEach(item => {
+            const targetDate = this.extractTargetDate(item);
+            if (targetDate) {
+                const tgt = new Date(targetDate);
+                tgt.setHours(0, 0, 0, 0);
+                const tgtMs = tgt.getTime();
+
+                // This week total - count all items (released and unreleased) in timeframe
+                if (tgtMs >= startOfWeek && tgtMs <= endOfWeek) {
+                    stats.thisWeekTotal++;
+                }
+
+                // Next week total - count all items (released and unreleased) in timeframe
+                if (tgtMs >= startNextWeek && tgtMs <= endNextWeek) {
+                    stats.nextWeekTotal++;
+                }
+
+                // Next 30 days total - count all items (released and unreleased) in timeframe
+                if (tgtMs >= currentMs && tgtMs <= next30Ms) {
+                    stats.next30DaysTotal++;
+                }
+            }
+        });
+
+        console.log("📊 FilterService: Statistics computed:", {
+            ...stats,
+            thisWeekRatio: `${stats.thisWeekCount} released of ${stats.thisWeekTotal} total`,
+            nextWeekRatio: `${stats.nextWeekCount} released of ${stats.nextWeekTotal} total`,
+            next30DaysRatio: `${stats.next30DaysCount} released of ${stats.next30DaysTotal} total`
+        });
+
         return stats;
     }
 

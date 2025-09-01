@@ -244,7 +244,7 @@
                                     }"
                                     style="min-width: 40px;"
                                 >
-                                    {{ stat.count }}
+                                    {{ stat.displayText || stat.count }}
                                 </span>
                                 <span class="text-body-2 font-weight-medium">{{ stat.label }}</span>
                             </div>
@@ -1287,11 +1287,29 @@ export default {
             
             return [
                 { key: "released", label: "Released", count: this.releaseStats.releasedCount },
-                { key: "thisWeek", label: "This Week", count: this.releaseStats.thisWeekCount },
-                { key: "nextWeek", label: "Next Week", count: this.releaseStats.nextWeekCount },
+                { 
+                    key: "thisWeek", 
+                    label: "This Week", 
+                    count: this.releaseStats.thisWeekCount,
+                    total: this.releaseStats.thisWeekTotal,
+                    displayText: `${this.releaseStats.thisWeekCount} of ${this.releaseStats.thisWeekTotal}`
+                },
+                { 
+                    key: "nextWeek", 
+                    label: "Next Week", 
+                    count: this.releaseStats.nextWeekCount,
+                    total: this.releaseStats.nextWeekTotal,
+                    displayText: `${this.releaseStats.nextWeekCount} of ${this.releaseStats.nextWeekTotal}`
+                },
                 { key: "criticallyOverdue", label: "Critically Overdue", count: this.releaseStats.criticallyOverdueCount },
                 { key: "overdue", label: "Overdue", count: this.releaseStats.overdueCount },
-                { key: "next30Days", label: "Next 30 Days", count: this.releaseStats.next30DaysCount },
+                { 
+                    key: "next30Days", 
+                    label: "Next 30 Days", 
+                    count: this.releaseStats.next30DaysCount,
+                    total: this.releaseStats.next30DaysTotal,
+                    displayText: `${this.releaseStats.next30DaysCount} of ${this.releaseStats.next30DaysTotal}`
+                },
                 { key: "all", label: "Total", count: this.releaseStats.totalCount }
             ];
         },
@@ -1350,7 +1368,7 @@ export default {
 
         // Release statistics using FilterService
         releaseStats() {
-            return filterService.computeStatistics(this.filteredTableData);
+            return filterService.computeStatistics(this.filteredTableData, this.tableData);
         },
 
         // Dynamic chart legend label using ChartDataService

@@ -2,6 +2,18 @@
  
 <template>
     <div class="enhanced-parts-planner">
+        <!-- Left-side Filter Tab - Slides away when filters open -->
+        <div 
+            class="global-filter-tab" 
+            :class="{ 'active': showFilterFlyout, 'has-filters': activeFilterCount > 0, 'hidden': showFilterFlyout }" 
+            style="position: fixed; left: 0; top: 40px; background: #1976d2; color: white; padding: 8px 4px; cursor: pointer; border-radius: 0 6px 6px 0; z-index: 99999; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 28px; box-shadow: 2px 0 8px rgba(0,0,0,0.2); transition: transform 0.3s ease;"
+            @click="showFilterFlyout = !showFilterFlyout; console.log('Filter tab clicked!', showFilterFlyout)"
+        >
+            <v-icon color="white" size="16">mdi-filter-variant</v-icon>
+            <div style="writing-mode: vertical-rl; font-size: 8px; font-weight: 600;">FILTERS</div>
+            <div v-if="activeFilterCount > 0" style="position: absolute; top: 4px; right: -2px; width: 8px; height: 8px; background: orange; border-radius: 50%;"></div>
+        </div>
+
         <!-- Filter Flyout Panel -->
         <v-navigation-drawer
             v-model="showFilterFlyout"
@@ -331,18 +343,6 @@
                 Clear Cache
             </v-btn>
             
-            <!-- Discrete Filter Button in Header -->
-            <v-btn
-                small
-                outlined
-                color="white"
-                class="filter-flyout-trigger-header mr-3"
-                @click="showFilterFlyout = !showFilterFlyout"
-            >
-                <v-icon small left>{{ showFilterFlyout ? 'mdi-close' : 'mdi-filter-variant' }}</v-icon>
-                {{ showFilterFlyout ? 'Close' : 'Filters' }}
-            </v-btn>
-            
             <v-chip 
                 :color="apiEnvironmentChip.color" 
                 small
@@ -354,11 +354,11 @@
         </v-card-title>
 
         <!-- Layout: Chart and Stats Side by Side -->
-        <div class="pa-4 d-flex flex-column" style="gap: 16px;">
+        <div class="pa-4 d-flex flex-column" style="gap: 16px; margin: 24px; padding: 20px;">
             <!-- Chart and Stats Row - Horizontal Layout -->
-            <div class="d-flex" style="gap: 8px;">
+            <div class="d-flex" style="gap: 12px;">
                 <!-- Chart Container - Expanded to Fill Available Space -->
-                <v-card class="chart-container-large" elevation="4" style="flex: 1; max-width: calc(100% - 416px);">
+                <v-card class="chart-container-large" elevation="4" style="flex: 1; max-width: calc(100% - 420px); margin: 8px;">
                     <v-card-title class="chart-header pa-3">
                         <v-icon left color="primary">mdi-chart-line</v-icon>
                         <span class="text-h6">Release Timeline</span>
@@ -776,21 +776,68 @@
   color: #ff9800 !important;
 }
 
+/* Left-side Filter Tab - More visible for testing */
+.filter-tab-subtle {
+  position: fixed;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  color: white;
+  padding: 8px 4px;
+  cursor: pointer;
+  border-radius: 0 6px 6px 0;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  z-index: 9999 !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 28px;
+  opacity: 1;
+}
+
+.filter-tab-subtle:hover {
+  transform: translateY(-50%) translateX(4px);
+  background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
+  box-shadow: 3px 0 12px rgba(0, 0, 0, 0.3);
+}
+
+.filter-tab-subtle.active {
+  background: linear-gradient(135deg, #0d47a1 0%, #01579b 100%);
+  transform: translateY(-50%) translateX(6px);
+}
+
+.filter-tab-subtle.has-filters {
+  border-right: 2px solid #ff9800;
+}
+
+.filter-tab-subtle .tab-text-vertical {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+.filter-tab-subtle .filter-badge-subtle {
+  position: absolute;
+  top: 4px;
+  right: -2px;
+}
+
+/* Global Filter Tab Animations */
+.global-filter-tab {
+  transform: translateX(0);
+}
+
+.global-filter-tab.hidden {
+  transform: translateX(-40px);
+}
+
 /* Filter Flyout Styles - Keep custom glass effect */
-.filter-flyout-trigger-header {
-  border-color: rgba(255, 255, 255, 0.5) !important;
-  color: white !important;
-  backdrop-filter: blur(4px);
-  background-color: rgba(255, 255, 255, 0.1) !important;
-  transition: all 0.2s ease;
-}
-
-.filter-flyout-trigger-header:hover {
-  background-color: rgba(255, 255, 255, 0.2) !important;
-  border-color: rgba(255, 255, 255, 0.8) !important;
-  transform: translateY(-1px);
-}
-
 /* Custom scrollbar styling for flyout */
 .flyout-content-scrollable::-webkit-scrollbar {
   width: 6px;
@@ -842,11 +889,15 @@
 .chart-container-large {
   border-radius: 8px !important;
   overflow: hidden !important;
+  margin: 8px;
+  padding: 12px;
 }
 
 .chart-container-large .chart-header {
   background-color: rgba(25, 118, 210, 0.05);
   border-bottom: 1px solid #e0e0e0;
+  margin: -12px -12px 12px -12px;
+  padding: 16px;
 }
 
 /* Stats Container Styles */
@@ -931,16 +982,6 @@
 }
 
 /* Responsive font adjustments not available in Vuetify */
-@media (max-width: 960px) {
-  .filter-flyout-trigger-header {
-    font-size: 12px !important;
-  }
-  
-  .filter-flyout-trigger-header .v-btn__content {
-    font-size: 12px !important;
-  }
-}
-
 @media (max-width: 600px) {
   .legend-chip-container {
     flex-direction: column !important;
@@ -951,13 +992,9 @@
     align-self: flex-start !important;
   }
   
-  .filter-flyout-trigger-header {
-    font-size: 11px !important;
-    padding: 4px 8px !important;
-  }
-  
-  .filter-flyout-trigger-header .v-btn__content {
-    font-size: 11px !important;
+  /* Hide filter tab on mobile to avoid interference */
+  .filter-tab {
+    display: none;
   }
 }
 

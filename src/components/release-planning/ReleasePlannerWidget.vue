@@ -120,7 +120,43 @@
                     <div class="text-subtitle-2 font-weight-bold primary--text text-uppercase mb-3 d-flex align-center">
                         <v-icon small color="primary" class="mr-2">mdi-tune</v-icon>
                         Data Filters
+                        <v-spacer />
+                        <v-chip 
+                            v-if="!currentDataType"
+                            x-small
+                            color="grey"
+                            outlined
+                            class="ml-2"
+                        >
+                            Disabled
+                        </v-chip>
                     </div>
+                    
+                    <!-- Show helper message when no data type is selected -->
+                    <v-alert
+                        v-if="!currentDataType"
+                        type="warning"
+                        dense
+                        text
+                        class="mb-3"
+                        style="font-size: 12px;"
+                    >
+                        <v-icon small left>mdi-alert-circle</v-icon>
+                        Select a data type above to enable data filters
+                    </v-alert>
+                    
+                    <!-- Show helper message about phase dependency -->
+                    <v-alert
+                        v-if="currentDataType && (!filterValues.program || filterValues.program === '' || filterValues.program === 'All')"
+                        type="info"
+                        dense
+                        text
+                        class="mb-3"
+                        style="font-size: 12px;"
+                    >
+                        <v-icon small left>mdi-information</v-icon>
+                        Select a program to enable phase filtering
+                    </v-alert>
                     
                     <div 
                         v-for="filter in filterConfig"
@@ -130,6 +166,15 @@
                         <label class="caption font-weight-bold grey--text text--darken-2 mb-2 d-flex align-center text-uppercase">
                             <v-icon small class="mr-1">{{ filter.icon }}</v-icon>
                             {{ filter.label }}
+                            <v-chip 
+                                v-if="filter.key === 'phase' && getFilterDisabledState('phase')"
+                                x-small
+                                color="grey"
+                                outlined
+                                class="ml-2"
+                            >
+                                Requires Program
+                            </v-chip>
                         </label>
                         <v-select
                             :value="filterValues[filter.key]"
@@ -139,6 +184,7 @@
                             outlined
                             hide-details
                             clearable
+                            :disabled="getFilterDisabledState(filter.key)"
                             class="mb-3"
                             @change="handleFilterChange({ key: filter.key, value: $event, allFilters: { ...filterValues, [filter.key]: $event } })"
                         />
@@ -636,19 +682,37 @@
                     
                     <!-- Show no data message when data type is selected but no data is available -->
                     <div v-else-if="currentDataType" class="no-data-message d-flex flex-column align-center justify-center" :style="{ height: `${currentTableHeight}px` }">
-                        <v-icon size="48" color="grey">mdi-table-off</v-icon>
-                        <p class="mt-4 text-h6">No {{ currentDataType.toUpperCase() }} data available</p>
-                        <p class="caption">Try adjusting your filters or check if data exists for this phase</p>
-                        <v-btn
-                            color="primary"
-                            outlined
-                            small
-                            class="mt-3"
-                            @click="showFilterFlyout = true"
-                        >
-                            <v-icon left small>mdi-filter-variant</v-icon>
-                            Adjust Filters
-                        </v-btn>
+                        <!-- Different messages based on whether phase is selected -->
+                        <template v-if="!filterValues.phase || filterValues.phase === ''">
+                            <v-icon size="48" color="info">mdi-map-marker-question</v-icon>
+                            <p class="mt-4 text-h6">Select a Phase to View Data</p>
+                            <p class="caption">Choose a program and phase from the filters to load {{ currentDataType.toUpperCase() }} data</p>
+                            <v-btn
+                                color="primary"
+                                outlined
+                                small
+                                class="mt-3"
+                                @click="showFilterFlyout = true"
+                            >
+                                <v-icon left small>mdi-filter-variant</v-icon>
+                                Open Filters
+                            </v-btn>
+                        </template>
+                        <template v-else>
+                            <v-icon size="48" color="grey">mdi-table-off</v-icon>
+                            <p class="mt-4 text-h6">No {{ currentDataType.toUpperCase() }} data available</p>
+                            <p class="caption">No data found for the selected phase "{{ filterValues.phase }}"</p>
+                            <v-btn
+                                color="primary"
+                                outlined
+                                small
+                                class="mt-3"
+                                @click="showFilterFlyout = true"
+                            >
+                                <v-icon left small>mdi-filter-variant</v-icon>
+                                Try Different Phase
+                            </v-btn>
+                        </template>
                     </div>
                 </v-card-text>
             </v-card>
@@ -1065,6 +1129,21 @@
   transform: translateY(0) !important;
   box-shadow: 0 1px 2px rgba(25, 118, 210, 0.2) !important;
 }
+
+/* Disabled Filter Styling */
+.v-select.v-input--is-disabled .v-input__slot {
+  background-color: rgba(0, 0, 0, 0.02) !important;
+  opacity: 0.6 !important;
+}
+
+.v-select.v-input--is-disabled .v-input__slot::before {
+  border-style: dashed !important;
+  border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+.v-select.v-input--is-disabled .v-select__selection {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
 </style>
 
 <script>
@@ -1112,7 +1191,7 @@ export default {
             
             // Debouncing for filter changes
             filterChangeTimeout: null,
-            filterDebounceDelay: 2000, // 2000ms delay before triggering API calls
+            filterDebounceDelay: 1000, // 1000ms delay before triggering API calls
             
             // Filter values - consolidated object for UniversalFilterControls
             filterValues: {
@@ -1601,6 +1680,33 @@ export default {
     
     methods: {
         /**
+         * Determine if a filter should be disabled based on dependencies
+         * @param {string} filterKey - The key of the filter to check
+         * @returns {boolean} Whether the filter should be disabled
+         */
+        getFilterDisabledState(filterKey) {
+            // Always require a data type to be selected first
+            if (!this.currentDataType) {
+                return true;
+            }
+            
+            // Phase filter requires program to be selected
+            if (filterKey === 'phase') {
+                const programValue = this.filterValues.program;
+                const isDisabled = !programValue || 
+                       programValue === '' || 
+                       programValue === 'All' || 
+                       programValue === null || 
+                       programValue === undefined;
+                
+                return isDisabled;
+            }
+            
+            // All other filters only require data type
+            return false;
+        },
+
+        /**
          * Get drag attributes for a table row
          * @param {Object} item - Table row item
          * @returns {Object} Drag attributes for v-bind
@@ -1883,19 +1989,37 @@ export default {
             console.log("  - All filters:", filterEvent.allFilters);
             console.log("  - Previous filterValues:", JSON.stringify(this.filterValues));
             
+            // Clear dependent filters when parent filter changes
+            let updatedFilters = { ...filterEvent.allFilters };
+            if (filterEvent.key === 'program') {
+                // Clear phase when program changes or is cleared
+                if (!filterEvent.value || filterEvent.value === '' || filterEvent.value === 'All') {
+                    updatedFilters.phase = '';
+                    console.log("  - Cleared phase filter due to program change");
+                }
+            }
+            
             // Update filter values immediately for UI responsiveness
-            this.filterValues = { ...filterEvent.allFilters };
+            this.filterValues = updatedFilters;
             
             console.log("  - New filterValues:", JSON.stringify(this.filterValues));
             
+            // Handle program changes immediately (no debounce needed for phase population)
+            if (filterEvent.key === 'program') {
+                console.log("🚀 Executing program change immediately (no debounce)");
+                this.executeFilterChange({ ...filterEvent, allFilters: updatedFilters });
+                return; // Exit early, no debounce needed
+            }
+            
+            // For all other filters, use debounce
             // Clear existing timeout
             if (this.filterChangeTimeout) {
                 clearTimeout(this.filterChangeTimeout);
             }
             
-            // Set up debounced execution
+            // Set up debounced execution with updated filters
             this.filterChangeTimeout = setTimeout(() => {
-                this.executeFilterChange(filterEvent);
+                this.executeFilterChange({ ...filterEvent, allFilters: updatedFilters });
             }, this.filterDebounceDelay);
         },
         
@@ -1972,19 +2096,22 @@ export default {
                 this.programs = programs || [];
                 console.log("✅ Programs loaded:", this.programs.length);
 
-                if (this.programs.includes("CX300 Pre-Production Builds")) {
-                    this.filterValues.program = "CX300 Pre-Production Builds";
-                } else if (this.programs.length > 0) {
-                    this.filterValues.program = this.programs[0];
-                }
-
-                if (this.filterValues.program) {
-                    await this.fetchPhases();
-                }
+                // Do NOT automatically select a program - wait for user selection
+                console.log("📋 Programs available for user selection:", this.programs);
+                
+                // Clear any existing selections to force user choice
+                this.filterValues.program = "";
+                this.filterValues.phase = "";
+                this.phases = [];
+                this.tableData = [];
+                
             } catch (err) {
                 console.error("Failed to fetch programs:", err.message);
                 this.programs = [];
                 this.filterValues.program = "";
+                this.filterValues.phase = "";
+                this.phases = [];
+                this.tableData = [];
             }
         },
 
@@ -2001,19 +2128,26 @@ export default {
                 this.phases = phases || [];
                 console.log("✅ Phases loaded:", this.phases.length);
 
+                // Do NOT automatically select first phase or fetch data
+                // Wait for user to explicitly select a phase
                 if (this.phases.length > 0) {
-                    this.filterValues.phase = this.phases[0];
-                    await this.fetchData(this.filterValues.phase);
+                    console.log("📋 Phases available for user selection:", this.phases);
+                    // Clear any existing phase selection to force user choice
+                    this.filterValues.phase = "";
                 } else {
                     console.warn("No phases returned from API");
                     this.phases = [];
                     this.filterValues.phase = "";
-                    this.updateChartFromFiltered();
                 }
+                
+                // Clear any existing table data since no phase is selected
+                this.tableData = [];
+                this.updateChartFromFiltered();
             } catch (error) {
                 console.error("Failed to fetch phases:", error.message);
                 this.phases = [];
                 this.filterValues.phase = "";
+                this.tableData = [];
                 this.updateChartFromFiltered();
             } finally {
                 this.loading = false;
@@ -2021,7 +2155,15 @@ export default {
         },
 
         async handlePhaseChange() {
-            if (!this.filterValues.phase) return;
+            // Only fetch data if a valid phase is selected (not empty, not "All")
+            if (!this.filterValues.phase || this.filterValues.phase === '' || this.filterValues.phase === 'All') {
+                console.log("🚫 No valid phase selected, skipping data fetch");
+                this.tableData = [];
+                this.updateChartFromFiltered();
+                return;
+            }
+            
+            console.log("🎯 Phase selected by user:", this.filterValues.phase, "- fetching data...");
             this.loading = true;
             await this.fetchData(this.filterValues.phase);
             this.loading = false;
@@ -2134,7 +2276,21 @@ export default {
         setDataType(dataType) {
             const validation = dataTransformationService.validateDataType(dataType);
             if (validation.isValid) {
+                const previousDataType = this.currentDataType;
                 this.currentDataType = dataType;
+                
+                // Reset filters when changing data types to ensure clean state
+                if (previousDataType && previousDataType !== dataType) {
+                    this.filterValues = {
+                        program: "",
+                        phase: "",
+                        organization: "All",
+                        makeBuyFilter: "All",
+                        partTypeFilter: "All"
+                    };
+                    console.log(`🔄 Filters reset due to data type change: ${previousDataType} → ${dataType}`);
+                }
+                
                 console.log(`✅ Data type set to: ${dataType}`);
                 console.log(`✅ Widget title will automatically update to: ${this.widgetTitle}`);
             } else {
@@ -2152,6 +2308,16 @@ export default {
                 
                 // Clear existing data to show the change
                 this.tableData = [];
+                
+                // Reset filter values when switching data types to ensure clean state
+                this.filterValues = {
+                    program: "",
+                    phase: "",
+                    organization: "All",
+                    makeBuyFilter: "All",
+                    partTypeFilter: "All"
+                };
+                console.log("🔄 DEBUG: Reset filter values for new data type");
                 
                 // Re-fetch data with the new type
                 if (this.filterValues.phase) {

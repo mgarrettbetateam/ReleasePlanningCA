@@ -2425,6 +2425,51 @@ export default {
             
             this.selectedStatFilter = statusFilter;
             
+            // Automatically adjust chart line visibility based on the selected filter
+            switch (statusFilter) {
+                case 'criticallyOverdue':
+                    // Show only critical line for critically overdue items
+                    this.showTargetLine = false;
+                    this.showActualLine = false;
+                    this.showCriticalLine = true;
+                    console.log("👁️ Chart lines adjusted for critically overdue: Target=OFF, Actual=OFF, Critical=ON");
+                    break;
+                    
+                case 'overdue':
+                    // Show target and critical lines for overdue items
+                    this.showTargetLine = true;
+                    this.showActualLine = false;
+                    this.showCriticalLine = true;
+                    console.log("👁️ Chart lines adjusted for overdue: Target=ON, Actual=OFF, Critical=ON");
+                    break;
+                    
+                case 'released':
+                    // Show actual line for released items
+                    this.showTargetLine = true;
+                    this.showActualLine = true;
+                    this.showCriticalLine = false;
+                    console.log("👁️ Chart lines adjusted for released: Target=ON, Actual=ON, Critical=OFF");
+                    break;
+                    
+                case 'thisWeek':
+                case 'nextWeek':
+                    // Show target line for upcoming items
+                    this.showTargetLine = true;
+                    this.showActualLine = false;
+                    this.showCriticalLine = true;
+                    console.log("👁️ Chart lines adjusted for time-based filter: Target=ON, Actual=OFF, Critical=ON");
+                    break;
+                    
+                case 'all':
+                default:
+                    // Show all lines for complete view
+                    this.showTargetLine = true;
+                    this.showActualLine = true;
+                    this.showCriticalLine = true;
+                    console.log("👁️ Chart lines adjusted for all data: Target=ON, Actual=ON, Critical=ON");
+                    break;
+            }
+            
             // The filteredTableData computed property will automatically update
             // based on the selectedStatFilter value
             

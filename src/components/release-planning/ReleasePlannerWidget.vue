@@ -592,6 +592,7 @@
                         :items-per-page="currentItemsPerPage"
                         :hide-default-footer="isMobile"
                         :mobile-breakpoint="600"
+                        :item-class="getRowClass"
                         item-value="partNo"
                         class="pa-0 draggable-table"
                         @click:row="handleRowClick"
@@ -1048,6 +1049,23 @@
 /* Drag handle icon styling */
 .draggable-table-row[draggable="true"]:hover .drag-handle {
   opacity: 1;
+}
+
+/* Row highlighting for overdue items */
+.draggable-table >>> .critically-overdue-row {
+    background-color: rgba(211, 47, 47, 0.05) !important;
+}
+
+.draggable-table >>> .overdue-row {
+    background-color: rgba(255, 152, 0, 0.05) !important;
+}
+
+.draggable-table >>> .critically-overdue-row td {
+    background-color: rgba(211, 47, 47, 0.05) !important;
+}
+
+.draggable-table >>> .overdue-row td {
+    background-color: rgba(255, 152, 0, 0.05) !important;
 }
 
 /* Simple Filter Summary Styling */
@@ -1704,6 +1722,55 @@ export default {
             
             // All other filters only require data type
             return false;
+        },
+
+        /**
+         * Get CSS class for table row based on overdue status
+         * Uses the same logic as Release Stats to ensure consistency
+         * @param {Object} item - Table row item
+         * @returns {string} CSS class name
+         */
+        getRowClass(item) {
+            // Only apply overdue styling for parts data type
+            if (this.currentDataType !== "parts") {
+                return "";
+            }
+
+            // Don't highlight released items - they are good to go
+            const itemState = item.currentState || item.state || item.status || item.itemState;
+            if (itemState === "RELEASED") {
+                return "";
+            }
+
+            // Use the same logic as FilterService for consistency with Release Stats
+            const currentDate = new Date();
+            currentDate.setHours(0, 0, 0, 0);
+            const currentMs = currentDate.getTime();
+
+            // Check for critically overdue (critical date is past due)
+            const criticalDate = item.criticalRelease || item.criticalReleaseDate;
+            if (criticalDate) {
+                const critical = new Date(criticalDate);
+                critical.setHours(0, 0, 0, 0);
+                if (critical.getTime() < currentMs) {
+                    return "critically-overdue-row";
+                }
+            }
+
+            // Check for overdue (target date is past due, but not critically overdue)
+            const targetDate = this.extractTargetDate(item);
+            if (targetDate) {
+                const target = new Date(targetDate);
+                target.setHours(0, 0, 0, 0);
+                if (target.getTime() < currentMs) {
+                    // Only mark as overdue if not already critically overdue
+                    if (!criticalDate || new Date(criticalDate).getTime() >= currentMs) {
+                        return "overdue-row";
+                    }
+                }
+            }
+
+            return "";
         },
 
         /**

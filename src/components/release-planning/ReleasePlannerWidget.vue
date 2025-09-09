@@ -437,6 +437,19 @@
                     <v-card-title class="pa-2" style="border-bottom: 1px solid #e0e0e0;">
                         <v-icon left color="primary" size="20">mdi-chart-bar</v-icon>
                         <span class="text-subtitle-1 font-weight-medium">Release Stats</span>
+                        <v-spacer />
+                        <!-- Sleek Clear Filter Icon -->
+                        <v-btn
+                            v-if="selectedStatFilter !== 'all'"
+                            icon
+                            x-small
+                            color="primary"
+                            class="clear-filter-icon"
+                            @click="filterByReleaseStatus('all')"
+                            title="Clear Filter"
+                        >
+                            <v-icon size="18">mdi-filter-off</v-icon>
+                        </v-btn>
                     </v-card-title>
                     
                     <v-card-text class="pa-1" style="height: 320px; overflow-y: auto;">
@@ -485,21 +498,6 @@
                                     mdi-check
                                 </v-icon>
                             </v-card>
-                            
-                            <!-- Compact Clear filter button -->
-                            <v-btn
-                                v-if="selectedStatFilter !== 'all'"
-                                outlined
-                                x-small
-                                color="primary"
-                                block
-                                class="mt-1"
-                                style="height: 28px;"
-                                @click="filterByReleaseStatus('all')"
-                            >
-                                <v-icon x-small left>mdi-filter-off</v-icon>
-                                Clear Filter
-                            </v-btn>
                         </div>
                         <div v-else class="d-flex flex-column align-center justify-center" style="height: 100%;">
                             <v-icon size="48" color="grey lighten-2">mdi-chart-bar</v-icon>
@@ -1258,6 +1256,18 @@
 .stat-item-compact:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Clear Filter Icon Styles */
+.clear-filter-icon {
+  opacity: 0.7;
+  transition: all 0.2s ease;
+}
+
+.clear-filter-icon:hover {
+  opacity: 1;
+  transform: scale(1.1);
+  background-color: rgba(25, 118, 210, 0.1) !important;
 }
 </style>
 

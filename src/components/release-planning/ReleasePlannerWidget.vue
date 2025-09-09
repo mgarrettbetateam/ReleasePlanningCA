@@ -2,16 +2,24 @@
  
 <template>
     <div class="enhanced-parts-planner">
-        <!-- Left-side Filter Tab - Slides away when filters open -->
+        <!-- Professional Filter Tab -->
         <div 
             class="global-filter-tab" 
             :class="{ 'active': showFilterFlyout, 'has-filters': activeFilterCount > 0, 'hidden': showFilterFlyout }" 
-            style="position: fixed; left: 0; top: 40px; background: #1976d2; color: white; padding: 8px 4px; cursor: pointer; border-radius: 0 6px 6px 0; z-index: 99999; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 28px; box-shadow: 2px 0 8px rgba(0,0,0,0.2); transition: transform 0.3s ease;"
+            style="position: fixed; left: 0; top: 50%; transform: translateY(-50%); background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%); color: white; padding: 16px 12px; cursor: pointer; border-radius: 0 12px 12px 0; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 48px; box-shadow: 2px 4px 12px rgba(0,0,0,0.25); transition: transform 0.3s ease;"
             @click="showFilterFlyout = !showFilterFlyout; console.log('Filter tab clicked!', showFilterFlyout)"
         >
-            <v-icon color="white" size="16">mdi-filter-variant</v-icon>
-            <div style="writing-mode: vertical-rl; font-size: 8px; font-weight: 600;">FILTERS</div>
-            <div v-if="activeFilterCount > 0" style="position: absolute; top: 4px; right: -2px; width: 8px; height: 8px; background: orange; border-radius: 50%;"></div>
+            <v-icon color="white" size="20" style="margin-bottom: 8px;">mdi-tune-variant</v-icon>
+            <div style="writing-mode: vertical-rl; text-orientation: mixed; font-size: 12px; font-weight: 500; letter-spacing: 0.5px; line-height: 1.2;">
+                FILTERS
+            </div>
+            <v-badge
+                v-if="activeFilterCount > 0"
+                :content="activeFilterCount"
+                color="orange"
+                style="position: absolute; top: 8px; right: 8px;"
+                inline
+            />
         </div>
 
         <!-- Filter Flyout Panel -->
@@ -354,17 +362,17 @@
         </v-card-title>
 
         <!-- Layout: Chart and Stats Side by Side -->
-        <div class="pa-4 d-flex flex-column" style="gap: 16px; margin: 24px; padding: 20px;">
-            <!-- Chart and Stats Row - Horizontal Layout -->
-            <div class="d-flex" style="gap: 12px;">
-                <!-- Chart Container - Expanded to Fill Available Space -->
-                <v-card class="chart-container-large" elevation="4" style="flex: 1; max-width: calc(100% - 420px); margin: 8px;">
-                    <v-card-title class="chart-header pa-3">
-                        <v-icon left color="primary">mdi-chart-line</v-icon>
-                        <span class="text-h6">Release Timeline</span>
+        <div class="pa-2" style="margin: 16px; padding: 12px;">
+            <!-- Chart and Stats Row - Clean Horizontal Layout -->
+            <div class="d-flex" style="gap: 16px; margin-bottom: 12px; margin-left: 24px;">
+                <!-- Chart Container - Takes most of the space -->
+                <v-card class="flex-grow-1" elevation="2" style="border-radius: 8px;">
+                    <v-card-title class="pa-2" style="border-bottom: 1px solid #e0e0e0;">
+                        <v-icon left color="primary" size="20">mdi-chart-line</v-icon>
+                        <span class="text-subtitle-1 font-weight-medium">Release Timeline</span>
                         <v-spacer />
                         <!-- Legend inline in header -->
-                        <div class="d-flex align-center legend-chip-container" style="gap: 8px;">
+                        <div class="d-flex align-center" style="gap: 8px;">
                             <v-chip 
                                 small 
                                 :color="showTargetLine ? 'primary' : 'grey'"
@@ -396,8 +404,8 @@
                         </div>
                     </v-card-title>
                     
-                    <v-card-text class="pa-4">
-                        <div style="height: 600px; width: 100%;">
+                    <v-card-text class="pa-2">
+                        <div style="height: 280px; width: 100%;">
                             <ReleaseChart
                                 v-if="chartData.labels?.length > 0"
                                 ref="lineChart"
@@ -424,19 +432,19 @@
                     </v-card-text>
                 </v-card>
                 
-                <!-- Release Stats Container - Right Aligned -->
-                <v-card class="stats-container" elevation="4" style="width: 400px; max-width: 400px; flex-shrink: 0;">
-                    <v-card-title class="stats-header pa-3">
-                        <v-icon left color="primary">mdi-chart-bar</v-icon>
-                        <span class="text-h6">Release Stats</span>
+                <!-- Release Stats Container - Compact Width -->
+                <v-card style="width: 260px; flex-shrink: 0;" elevation="2" class="rounded-lg">
+                    <v-card-title class="pa-2" style="border-bottom: 1px solid #e0e0e0;">
+                        <v-icon left color="primary" size="20">mdi-chart-bar</v-icon>
+                        <span class="text-subtitle-1 font-weight-medium">Release Stats</span>
                     </v-card-title>
                     
-                    <v-card-text class="pa-2" style="height: 600px; overflow-y: auto;">
-                        <div v-if="releaseStats" class="d-flex flex-column" style="gap: 4px;">
+                    <v-card-text class="pa-1" style="height: 320px; overflow-y: auto;">
+                        <div v-if="releaseStats" class="d-flex flex-column" style="gap: 2px; padding: 4px;">
                             <v-card
                                 v-for="stat in releaseStatsArray"
                                 :key="stat.key"
-                                class="stat-item-compact pa-1 d-flex align-center justify-space-between"
+                                class="stat-item-compact py-1 px-2 d-flex align-center justify-space-between"
                                 :class="{ 
                                     'primary--border': selectedStatFilter === stat.key,
                                     'v-card--disabled': stat.count === 0,
@@ -449,22 +457,24 @@
                                         stat.key === 'overdue' ? '#ff9800' : '#e0e0e0',
                                     backgroundColor: selectedStatFilter === stat.key ? 'rgba(25, 118, 210, 0.1)' : 
                                         stat.key === 'criticallyOverdue' ? 'rgba(211, 47, 47, 0.05)' : 
-                                        stat.key === 'overdue' ? 'rgba(255, 152, 0, 0.05)' : '#fafafa'
+                                        stat.key === 'overdue' ? 'rgba(255, 152, 0, 0.05)' : '#fafafa',
+                                    minHeight: '48px'
                                 }"
                                 outlined
                                 @click="stat.count > 0 ? filterByReleaseStatus(stat.key) : null"
                             >
-                                <div class="d-flex flex-column" style="gap: 2px; flex: 1;">
+                                <div class="d-flex flex-column justify-center" style="flex: 1;">
                                     <span 
-                                        class="text-subtitle-1 font-weight-bold primary--text"
+                                        class="text-body-2 font-weight-bold primary--text"
                                         :class="{ 
                                             'error--text': stat.key === 'criticallyOverdue',
                                             'orange--text': stat.key === 'overdue'
                                         }"
+                                        style="line-height: 1.2;"
                                     >
                                         {{ stat.displayText || stat.count }}
                                     </span>
-                                    <span class="text-caption font-weight-medium">{{ stat.label }}</span>
+                                    <span class="text-caption font-weight-medium" style="line-height: 1.1; margin-top: 2px;">{{ stat.label }}</span>
                                 </div>
                                 <v-icon 
                                     v-if="selectedStatFilter === stat.key"
@@ -476,14 +486,15 @@
                                 </v-icon>
                             </v-card>
                             
-                            <!-- Clear filter -->
+                            <!-- Compact Clear filter button -->
                             <v-btn
                                 v-if="selectedStatFilter !== 'all'"
                                 outlined
                                 x-small
                                 color="primary"
                                 block
-                                class="mt-2"
+                                class="mt-1"
+                                style="height: 28px;"
                                 @click="filterByReleaseStatus('all')"
                             >
                                 <v-icon x-small left>mdi-filter-off</v-icon>
@@ -498,11 +509,11 @@
                 </v-card>
             </div>
             
-            <!-- Table - Full Width Below -->
-            <v-card class="table-card">
-                <v-card-title class="table-header pa-3">
-                    <v-icon left>mdi-table</v-icon>
-                    <span class="text-h6">{{ currentDataType ? currentDataType.toUpperCase() + ' Data' : 'Data Table' }}</span>
+            <!-- Table - Maximized Space Usage -->
+            <v-card class="table-card data-table-container" style="margin-left: 24px;">
+                <v-card-title class="table-header pa-2">
+                    <v-icon left size="20">mdi-table</v-icon>
+                    <span class="text-subtitle-1 font-weight-medium">{{ currentDataType ? currentDataType.toUpperCase() + ' Data' : 'Data Table' }}</span>
                     
                     <!-- Enhanced data type indicator in table header -->
                     <v-chip 
@@ -1199,6 +1210,55 @@
 .v-select.v-input--is-disabled .v-select__selection {
   color: rgba(0, 0, 0, 0.4) !important;
 }
+
+/* Professional UI Improvements */
+.enhanced-parts-planner {
+  font-family: 'Roboto', sans-serif;
+}
+
+/* Simple, clean card styling */
+.v-card {
+  border-radius: 8px !important;
+}
+
+/* Better filter tab hover and slide animations */
+.global-filter-tab {
+  cursor: pointer;
+  transform: translateY(-50%) translateX(0);
+}
+
+.global-filter-tab:hover:not(.hidden) {
+  transform: translateY(-50%) translateX(6px);
+  box-shadow: 3px 6px 16px rgba(0,0,0,0.35) !important;
+}
+
+.global-filter-tab.active {
+  background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%) !important;
+}
+
+.global-filter-tab.hidden {
+  transform: translateY(-50%) translateX(-60px) !important;
+}
+
+.global-filter-tab.has-filters:not(.hidden) {
+  border-right: 3px solid #ff9800;
+}
+
+/* Clean table styling */
+.data-table-container {
+  margin-top: 20px;
+  border-radius: 8px;
+}
+
+/* Stats hover effect */
+.stat-item-compact {
+  transition: all 0.2s ease;
+}
+
+.stat-item-compact:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
 </style>
 
 <script>
@@ -1359,12 +1419,12 @@ export default {
                     }
                 },
                 table: {
-                    height: 500,
-                    itemsPerPage: 15,
+                    height: 600,
+                    itemsPerPage: 20,
                     breakpoints: {
-                        mobile: { height: 300, itemsPerPage: 5 },
-                        tablet: { height: 400, itemsPerPage: 10 },
-                        desktop: { height: 500, itemsPerPage: 15 }
+                        mobile: { height: 350, itemsPerPage: 8 },
+                        tablet: { height: 500, itemsPerPage: 15 },
+                        desktop: { height: 600, itemsPerPage: 20 }
                     }
                 }
             }
@@ -1461,71 +1521,77 @@ export default {
         releaseStatsArray() {
             if (!this.releaseStats) return [];
             
+            // Only return the new array (see below)
             return [
-                { key: "released", label: "Released", count: this.releaseStats.releasedCount },
-                { 
-                    key: "thisWeek", 
-                    label: "This Week", 
+                {
+                    key: "released",
+                    label: "Total Released",
+                    count: this.releaseStats.releasedCount,
+                    total: this.releaseStats.totalCount,
+                    displayText: `${this.releaseStats.releasedCount} of ${this.releaseStats.totalCount}`,
+                    icon: "mdi-check-circle",
+                    class: "success",
+                    color: "#4caf50",
+                    border: "2px solid rgba(76, 175, 80, 0.3)",
+                    background: "rgba(76, 175, 80, 0.05)"
+                },
+                {
+                    key: "thisWeek",
+                    label: "This Week",
                     count: this.releaseStats.thisWeekCount,
                     total: this.releaseStats.thisWeekTotal,
-                    displayText: `${this.releaseStats.thisWeekCount} of ${this.releaseStats.thisWeekTotal}`
+                    displayText: `${this.releaseStats.thisWeekCount} of ${this.releaseStats.thisWeekTotal}`,
+                    icon: "mdi-calendar-week",
+                    class: "primary",
+                    color: "#2196f3",
+                    border: "2px solid rgba(33, 150, 243, 0.3)",
+                    background: "rgba(33, 150, 243, 0.05)"
                 },
-                { 
-                    key: "nextWeek", 
-                    label: "Next Week", 
+                {
+                    key: "nextWeek",
+                    label: "Next Week",
                     count: this.releaseStats.nextWeekCount,
                     total: this.releaseStats.nextWeekTotal,
-                    displayText: `${this.releaseStats.nextWeekCount} of ${this.releaseStats.nextWeekTotal}`
+                    displayText: `${this.releaseStats.nextWeekCount} of ${this.releaseStats.nextWeekTotal}`,
+                    icon: "mdi-calendar-arrow-right",
+                    class: "info",
+                    color: "#00bcd4",
+                    border: "2px solid rgba(0, 188, 212, 0.3)",
+                    background: "rgba(0, 188, 212, 0.05)"
                 },
-                { key: "criticallyOverdue", label: "Critically Overdue", count: this.releaseStats.criticallyOverdueCount },
-                { key: "overdue", label: "Overdue", count: this.releaseStats.overdueCount },
-                { 
-                    key: "next30Days", 
-                    label: "Next 30 Days", 
+                {
+                    key: "next30Days",
+                    label: "Next 30 Days",
                     count: this.releaseStats.next30DaysCount,
                     total: this.releaseStats.next30DaysTotal,
-                    displayText: `${this.releaseStats.next30DaysCount} of ${this.releaseStats.next30DaysTotal}`
+                    displayText: `${this.releaseStats.next30DaysCount} of ${this.releaseStats.next30DaysTotal}`,
+                    icon: "mdi-calendar-month",
+                    class: "secondary",
+                    color: "#9c27b0",
+                    border: "2px solid rgba(156, 39, 176, 0.3)",
+                    background: "rgba(156, 39, 176, 0.05)"
                 },
-                { key: "all", label: "Total", count: this.releaseStats.totalCount }
+                {
+                    key: "criticallyOverdue",
+                    label: "Critically Overdue",
+                    count: this.releaseStats.criticallyOverdueCount,
+                    icon: "mdi-alert-circle",
+                    class: "error",
+                    color: "#d32f2f",
+                    border: "2px solid rgba(211, 47, 47, 0.3)",
+                    background: "rgba(211, 47, 47, 0.05)"
+                },
+                {
+                    key: "overdue",
+                    label: "Overdue",
+                    count: this.releaseStats.overdueCount,
+                    icon: "mdi-clock-alert-outline",
+                    class: "warning",
+                    color: "#ff9800",
+                    border: "2px solid rgba(255, 152, 0, 0.3)",
+                    background: "rgba(255, 152, 0, 0.05)"
+                }
             ];
-        },
-        
-        hasActiveFilters() {
-            return (this.filterValues.program && this.filterValues.program !== "") ||
-                   (this.filterValues.phase && this.filterValues.phase !== "") ||
-                   (this.filterValues.organization && this.filterValues.organization !== "All") ||
-                   (this.currentDataType === "parts" && this.filterValues.makeBuyFilter && this.filterValues.makeBuyFilter !== "All") ||
-                   (this.currentDataType === "parts" && this.filterValues.partTypeFilter && this.filterValues.partTypeFilter !== "All");
-        },
-        
-        activeFilterCount() {
-            let count = 0;
-            if (this.filterValues.program && this.filterValues.program !== "") count++;
-            if (this.filterValues.phase && this.filterValues.phase !== "") count++;
-            if (this.filterValues.organization && this.filterValues.organization !== "All") count++;
-            // Only count Make/Buy filter when viewing PARTS
-            if (this.currentDataType === "parts" && this.filterValues.makeBuyFilter && this.filterValues.makeBuyFilter !== "All") count++;
-            // Only count Part Type filter when viewing PARTS
-            if (this.currentDataType === "parts" && this.filterValues.partTypeFilter && this.filterValues.partTypeFilter !== "All") count++;
-            return count;
-        },
-
-        // Dynamic chart options using ChartDataService
-        dynamicChartOptions() {
-            // Return default options if no data type is selected
-            if (!this.currentDataType) {
-                return {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    }
-                };
-            }
-            
-            return chartDataService.createChartOptions(this.currentDataType);
         },
 
         // Filter table data using FilterService
@@ -1746,11 +1812,11 @@ export default {
             }
             
             // Phase filter requires program to be selected
-            if (filterKey === 'phase') {
+            if (filterKey === "phase") {
                 const programValue = this.filterValues.program;
                 const isDisabled = !programValue || 
-                       programValue === '' || 
-                       programValue === 'All' || 
+                       programValue === "" ||
+                       programValue === "All" ||
                        programValue === null || 
                        programValue === undefined;
                 
@@ -2095,10 +2161,10 @@ export default {
             
             // Clear dependent filters when parent filter changes
             let updatedFilters = { ...filterEvent.allFilters };
-            if (filterEvent.key === 'program') {
+            if (filterEvent.key === "program") {
                 // Clear phase when program changes or is cleared
-                if (!filterEvent.value || filterEvent.value === '' || filterEvent.value === 'All') {
-                    updatedFilters.phase = '';
+                if (!filterEvent.value || filterEvent.value === "" || filterEvent.value === "All") {
+                    updatedFilters.phase = "";
                     console.log("  - Cleared phase filter due to program change");
                 }
             }
@@ -2109,7 +2175,7 @@ export default {
             console.log("  - New filterValues:", JSON.stringify(this.filterValues));
             
             // Handle program changes immediately (no debounce needed for phase population)
-            if (filterEvent.key === 'program') {
+            if (filterEvent.key === "program") {
                 console.log("🚀 Executing program change immediately (no debounce)");
                 this.executeFilterChange({ ...filterEvent, allFilters: updatedFilters });
                 return; // Exit early, no debounce needed
@@ -2260,7 +2326,7 @@ export default {
 
         async handlePhaseChange() {
             // Only fetch data if a valid phase is selected (not empty, not "All")
-            if (!this.filterValues.phase || this.filterValues.phase === '' || this.filterValues.phase === 'All') {
+            if (!this.filterValues.phase || this.filterValues.phase === "" || this.filterValues.phase === "All") {
                 console.log("🚫 No valid phase selected, skipping data fetch");
                 this.tableData = [];
                 this.updateChartFromFiltered();
@@ -2531,7 +2597,7 @@ export default {
             
             // Automatically adjust chart line visibility based on the selected filter
             switch (statusFilter) {
-                case 'criticallyOverdue':
+                case "criticallyOverdue":
                     // Show only critical line for critically overdue items
                     this.showTargetLine = false;
                     this.showActualLine = false;
@@ -2539,7 +2605,7 @@ export default {
                     console.log("👁️ Chart lines adjusted for critically overdue: Target=OFF, Actual=OFF, Critical=ON");
                     break;
                     
-                case 'overdue':
+                case "overdue":
                     // Show target and critical lines for overdue items
                     this.showTargetLine = true;
                     this.showActualLine = false;
@@ -2547,7 +2613,7 @@ export default {
                     console.log("👁️ Chart lines adjusted for overdue: Target=ON, Actual=OFF, Critical=ON");
                     break;
                     
-                case 'released':
+                case "released":
                     // Show actual line for released items
                     this.showTargetLine = true;
                     this.showActualLine = true;
@@ -2555,8 +2621,8 @@ export default {
                     console.log("👁️ Chart lines adjusted for released: Target=ON, Actual=ON, Critical=OFF");
                     break;
                     
-                case 'thisWeek':
-                case 'nextWeek':
+                case "thisWeek":
+                case "nextWeek":
                     // Show target line for upcoming items
                     this.showTargetLine = true;
                     this.showActualLine = false;
@@ -2564,7 +2630,7 @@ export default {
                     console.log("👁️ Chart lines adjusted for time-based filter: Target=ON, Actual=OFF, Critical=ON");
                     break;
                     
-                case 'all':
+                case "all":
                 default:
                     // Show all lines for complete view
                     this.showTargetLine = true;

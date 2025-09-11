@@ -411,6 +411,7 @@
                                 ref="lineChart"
                                 :chart-data="chartData"
                                 :chart-options="dynamicChartOptions"
+                                :extra-plugins="todayLinePlugins"
                                 style="height: 100%; width: 100%;"
                             />
                             <div v-else class="no-chart-data d-flex flex-column align-center justify-center" style="height: 100%;">
@@ -445,8 +446,8 @@
                             x-small
                             color="primary"
                             class="clear-filter-icon"
-                            @click="filterByReleaseStatus('all')"
                             title="Clear Filter"
+                            @click="filterByReleaseStatus('all')"
                         >
                             <v-icon size="18">mdi-filter-off</v-icon>
                         </v-btn>
@@ -1527,6 +1528,26 @@ export default {
             return config;
         },
 
+        // Count of active filters for display
+        activeFilterCount() {
+            let count = 0;
+            
+            // Check each filter value to see if it's active (not empty, not "All", not default)
+            if (this.filterValues.program && this.filterValues.program !== "" && this.filterValues.program !== "All") count++;
+            if (this.filterValues.phase && this.filterValues.phase !== "" && this.filterValues.phase !== "All") count++;
+            if (this.filterValues.organization && this.filterValues.organization !== "All") count++;
+            if (this.currentDataType === "parts" && this.filterValues.makeBuyFilter && this.filterValues.makeBuyFilter !== "All") count++;
+            if (this.currentDataType === "parts" && this.filterValues.partTypeFilter && this.filterValues.partTypeFilter !== "All") count++;
+            if (this.selectedStatFilter && this.selectedStatFilter !== "all") count++;
+            
+            return count;
+        },
+
+        // Boolean flag for whether any filters are active
+        hasActiveFilters() {
+            return this.activeFilterCount > 0;
+        },
+
         // Release stats as array for vertical layout
         releaseStatsArray() {
             if (!this.releaseStats) return [];
@@ -1648,6 +1669,145 @@ export default {
         // Show critical release controls only for Parts data type
         showCriticalControls() {
             return this.currentDataType === "parts";
+        },
+
+        // Dynamic chart options with current date line
+        dynamicChartOptions() {
+            // Get base chart options from ChartDataService (Chart.js v2 config)
+            return chartDataService.createChartOptions(this.currentDataType);
+        }
+        ,
+        // Provide Chart.js v2 plugin(s) to draw a vertical dashed line at today's date
+        todayLinePlugins() {
+            // Compute today's common label formats to match our labels array
+            const today = new Date();
+            const DASH_LEN = 6;
+            const GAP_LEN = 4;
+            const LABEL_PADDING = 20;
+            const LABEL_TOP_OFFSET = 16;
+            const HOVER_THRESHOLD = 8;
+            const TOOLTIP_Y_OFFSET = 26; // distance above chart area top
+            const todayAlternatives = [
+                today.toLocaleDateString(),
+                today.toLocaleDateString("en-US"),
+                today.toLocaleDateString("en-US", { month: "numeric", day: "numeric", year: "numeric" }),
+                `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`
+            ];
+
+            const plugin = {
+                id: "todayLineV2",
+                afterDraw(chart) {
+                    const ctx = chart.ctx || (chart.chart && chart.chart.ctx);
+                    const chartArea = chart.chartArea || (chart.chart && chart.chart.chartArea);
+                    const xScale = chart.scales && (chart.scales["x-axis-0"] || chart.scales.x || chart.scales["xAxis0"]);
+                    if (!ctx || !chartArea || !xScale) return;
+
+                    const labels = (chart.config && chart.config.data && chart.config.data.labels) || chart.data?.labels || [];
+                    if (!labels || labels.length === 0) return;
+
+                    let todayIndex = -1;
+                    for (const f of todayAlternatives) {
+                        const idx = labels.indexOf(f);
+                        if (idx >= 0) { todayIndex = idx; break; }
+                    }
+                    if (todayIndex < 0) {
+                        // Try parsing labels as dates and find the closest
+                        const todayMs = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+                        let closest = { idx: -1, diff: Infinity };
+                        labels.forEach((lbl, i) => {
+                            const d = new Date(lbl);
+                            if (!isNaN(d)) {
+                                const dm = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+                                const diff = Math.abs(dm - todayMs);
+                                if (diff < closest.diff) closest = { idx: i, diff };
+                            }
+                        });
+                        if (closest.idx >= 0) todayIndex = closest.idx;
+                    }
+                    if (todayIndex < 0) return;
+
+                    const x = (typeof xScale.getPixelForTick === "function")
+                        ? xScale.getPixelForTick(todayIndex)
+                        : (typeof xScale.getPixelForValue === "function")
+                            ? xScale.getPixelForValue(null, todayIndex)
+                            : null;
+                    if (x === null || x === undefined) return;
+
+                    // Store for hover logic
+                    chart._todayX = x;
+                    chart._todayDateText = new Date().toLocaleDateString();
+
+                    ctx.save();
+                    ctx.setLineDash([DASH_LEN, GAP_LEN]);
+                    ctx.strokeStyle = "rgba(25, 118, 210, 0.9)";
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(x, chartArea.top);
+                    ctx.lineTo(x, chartArea.bottom);
+                    ctx.stroke();
+
+                    // Label above the line
+                    ctx.setLineDash([]);
+                    ctx.fillStyle = "rgba(25, 118, 210, 0.9)";
+                    ctx.font = "bold 12px sans-serif";
+                    ctx.textAlign = "center";
+                    const labelX = Math.min(Math.max(x, chartArea.left + LABEL_PADDING), chartArea.right - LABEL_PADDING);
+                    const labelY = chartArea.top + LABEL_TOP_OFFSET;
+                    ctx.fillText("Today", labelX, labelY);
+                    ctx.restore();
+                },
+                afterEvent(chart, evt) {
+                    const canvas = (chart.chart && chart.chart.canvas) || chart.canvas;
+                    const parent = canvas && canvas.parentNode;
+                    const chartArea = chart.chartArea || (chart.chart && chart.chart.chartArea);
+                    const x = chart._todayX;
+                    if (!canvas || !parent || !chartArea || x === undefined) return;
+
+                    // Ensure tooltip element
+                    let tip = chart._todayTipEl;
+                    if (!tip) {
+                        tip = document.createElement("div");
+                        tip.style.position = "absolute";
+                        tip.style.pointerEvents = "none";
+                        tip.style.background = "rgba(33, 33, 33, 0.9)";
+                        tip.style.color = "#fff";
+                        tip.style.padding = "4px 8px";
+                        tip.style.borderRadius = "4px";
+                        tip.style.font = "12px sans-serif";
+                        tip.style.whiteSpace = "nowrap";
+                        tip.style.zIndex = "10";
+                        tip.style.display = "none";
+                        parent.appendChild(tip);
+                        chart._todayTipEl = tip;
+                    }
+
+                    const type = evt && evt.type;
+                    const ex = evt && (evt.x != null ? evt.x : (evt.native && evt.native.layerX));
+                    const ey = evt && (evt.y != null ? evt.y : (evt.native && evt.native.layerY));
+
+                    const hide = () => { if (tip) tip.style.display = "none"; };
+
+                    if (type === "mouseout") { hide(); return; }
+                    if (ex == null || ey == null) { hide(); return; }
+
+                    const withinX = Math.abs(ex - x) <= HOVER_THRESHOLD;
+                    const withinY = ey >= chartArea.top && ey <= chartArea.bottom;
+                    if (!(withinX && withinY)) { hide(); return; }
+
+                    // Position tooltip above the chart area at the line x
+                    const canvasRect = canvas.getBoundingClientRect();
+                    const parentRect = parent.getBoundingClientRect();
+                    const left = x + (canvasRect.left - parentRect.left);
+                    const top = chartArea.top + (canvasRect.top - parentRect.top) - TOOLTIP_Y_OFFSET;
+
+                    tip.textContent = `Today: ${chart._todayDateText || new Date().toLocaleDateString()}`;
+                    tip.style.left = `${Math.round(left)}px`;
+                    tip.style.top = `${Math.round(top)}px`;
+                    tip.style.display = "block";
+                }
+            };
+
+            return [plugin];
         }
     },
     

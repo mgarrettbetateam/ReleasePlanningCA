@@ -1687,6 +1687,7 @@ export default {
             const LABEL_TOP_OFFSET = 16;
             const HOVER_THRESHOLD = 8;
             const TOOLTIP_Y_OFFSET = 26; // distance above chart area top
+            const TEXT_X_OFFSET = 8; // horizontal offset to the right of the line
             const todayAlternatives = [
                 today.toLocaleDateString(),
                 today.toLocaleDateString("en-US"),
@@ -1746,12 +1747,12 @@ export default {
                     ctx.lineTo(x, chartArea.bottom);
                     ctx.stroke();
 
-                    // Label above the line
+                    // Label to the right of the line (inside chart area)
                     ctx.setLineDash([]);
                     ctx.fillStyle = "rgba(25, 118, 210, 0.9)";
                     ctx.font = "bold 12px sans-serif";
-                    ctx.textAlign = "center";
-                    const labelX = Math.min(Math.max(x, chartArea.left + LABEL_PADDING), chartArea.right - LABEL_PADDING);
+                    ctx.textAlign = "left";
+                    const labelX = Math.min(Math.max(x + TEXT_X_OFFSET, chartArea.left + LABEL_PADDING), chartArea.right - LABEL_PADDING);
                     const labelY = chartArea.top + LABEL_TOP_OFFSET;
                     ctx.fillText("Today", labelX, labelY);
                     ctx.restore();
@@ -1782,13 +1783,13 @@ export default {
                     }
 
                     const type = evt && evt.type;
-                    const ex = evt && (evt.x != null ? evt.x : (evt.native && evt.native.layerX));
-                    const ey = evt && (evt.y != null ? evt.y : (evt.native && evt.native.layerY));
+                    const ex = evt && (evt.x !== null && evt.x !== undefined ? evt.x : (evt.native && evt.native.layerX));
+                    const ey = evt && (evt.y !== null && evt.y !== undefined ? evt.y : (evt.native && evt.native.layerY));
 
                     const hide = () => { if (tip) tip.style.display = "none"; };
 
                     if (type === "mouseout") { hide(); return; }
-                    if (ex == null || ey == null) { hide(); return; }
+                    if (ex === null || ex === undefined || ey === null || ey === undefined) { hide(); return; }
 
                     const withinX = Math.abs(ex - x) <= HOVER_THRESHOLD;
                     const withinY = ey >= chartArea.top && ey <= chartArea.bottom;

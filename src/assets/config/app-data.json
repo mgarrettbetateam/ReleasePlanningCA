@@ -9,6 +9,8 @@
       "program": "CX300 Pre-Production Builds",
       "phase": "Phase 1",
       "organization": "Engineering",
+  "ataChapterGroup": "Powerplant",
+  "engSystemGroup": "Propulsion",
       "tgtRelease": "2025-01-15",
       "actualRelease": "2025-01-18",
       "currentState": "RELEASED",
@@ -25,6 +27,8 @@
       "program": "CX300 Pre-Production Builds",
       "phase": "Phase 2",
       "organization": "Manufacturing",
+  "ataChapterGroup": "Drive Systems",
+  "engSystemGroup": "Transmission",
       "tgtRelease": "2025-01-20",
       "actualRelease": "N/A",
       "currentState": "IN_WORK",
@@ -41,6 +45,8 @@
       "program": "Demo Program 1",
       "phase": "Phase 1",
       "organization": "Quality",
+  "ataChapterGroup": "Brakes",
+  "engSystemGroup": "Landing Gear",
       "tgtRelease": "2025-01-25",
       "actualRelease": "2025-01-22",
       "currentState": "RELEASED",
@@ -57,6 +63,8 @@
       "program": "Demo Program 2",
       "phase": "Phase 2",
       "organization": "Engineering",
+  "ataChapterGroup": "Structures",
+  "engSystemGroup": "Chassis",
       "tgtRelease": "2025-02-01",
       "actualRelease": "N/A",
       "currentState": "PLANNING",
@@ -73,6 +81,8 @@
       "program": "CX300 Pre-Production Builds",
       "phase": "Phase 3",
       "organization": "Procurement",
+  "ataChapterGroup": "Avionics",
+  "engSystemGroup": "Electrical",
       "tgtRelease": "2025-02-10",
       "actualRelease": "N/A",
       "currentState": "ON_HOLD",
@@ -96,6 +106,8 @@
       "program": "CX300 Pre-Production Builds",
       "phase": "Phase 1",
       "statusComment": "Review completed successfully",
+  "ataChapterGroup": "Powerplant",
+  "engSystemGroup": "Propulsion",
       "physId": "CA5B1B136F000137E867E59E86000028E2"
     },
     {
@@ -112,6 +124,8 @@
       "program": "CX300 Pre-Production Builds", 
       "phase": "Phase 2",
       "statusComment": "Waiting for final approval",
+  "ataChapterGroup": "Drive Systems",
+  "engSystemGroup": "Transmission",
       "physId": "CA7B1B136F000137E867E59E86000028F3"
     },
     {
@@ -128,6 +142,8 @@
       "program": "Demo Program 1",
       "phase": "Phase 1",
       "statusComment": "Implementation in progress",
+  "ataChapterGroup": "Brakes",
+  "engSystemGroup": "Landing Gear",
       "physId": "CA8B1B136F000137E867E59E86000028G4"
     }
   ],
@@ -143,6 +159,8 @@
       "program": "CX300 Pre-Production Builds",
       "phase": "Phase 1", 
       "statusComment": "Successfully implemented",
+  "ataChapterGroup": "Safety",
+  "engSystemGroup": "Propulsion",
       "physId": "CR7049.44432.28745.26563"
     },
     {
@@ -156,6 +174,8 @@
       "program": "CX300 Pre-Production Builds",
       "phase": "Phase 2",
       "statusComment": "Under review",
+  "ataChapterGroup": "Performance",
+  "engSystemGroup": "Transmission",
       "physId": "CR8049.44432.28745.26564"
     },
     {
@@ -169,6 +189,8 @@
       "program": "Demo Program 1",
       "phase": "Phase 1",
       "statusComment": "Testing new materials",
+  "ataChapterGroup": "Materials",
+  "engSystemGroup": "Structures",
       "physId": "CR9049.44432.28745.26565"
     }
   ],

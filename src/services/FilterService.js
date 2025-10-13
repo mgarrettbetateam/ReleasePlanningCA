@@ -22,11 +22,12 @@ export class FilterService {
      * @param {Object} options - Filter configuration options
      * @param {Array} options.programs - Available programs
      * @param {Array} options.phases - Available phases
-     * @param {Array} options.organizations - Available organizations
+     * @param {Array} options.ataChapterGroups - Available ATA Chapter groups
+     * @param {Array} options.engSystemGroups - Available Engineering System groups
      * @param {Object} options.filterValues - Current filter values
      * @returns {Array} Filter configuration array
      */
-    createFilterConfig({ programs = [], phases = [], organizations = [], filterValues = {} }) {
+    createFilterConfig({ programs = [], phases = [], ataChapterGroups = [], engSystemGroups = [], filterValues = {} }) {
         const baseConfig = [
             {
                 type: "select",
@@ -52,14 +53,25 @@ export class FilterService {
             },
             {
                 type: "select",
-                key: "organization", 
-                label: "Organization",
-                icon: "mdi-domain",
-                value: filterValues.organization,
-                options: organizations,
+                key: "ataChapterGroup",
+                label: "ATA Chapter",
+                icon: "mdi-book-open-page-variant",
+                value: filterValues.ataChapterGroup,
+                options: ataChapterGroups,
                 clearable: false,
-                placeholder: "Select Organization",
-                color: "info"
+                placeholder: "Select ATA Chapter",
+                color: "deep-orange"
+            },
+            {
+                type: "select",
+                key: "engSystemGroup",
+                label: "Engineering System",
+                icon: "mdi-cog-outline",
+                value: filterValues.engSystemGroup,
+                options: engSystemGroups,
+                clearable: false,
+                placeholder: "Select Engineering System",
+                color: "teal"
             }
         ];
 
@@ -87,7 +99,7 @@ export class FilterService {
 
         let filtered = [...tableData];
 
-        // Apply basic filters (program, phase, organization)
+    // Apply basic filters (program, phase, ATA chapter, engineering system)
         filtered = this.applyBasicFilters(filtered, filterValues);
 
         // Apply statistical filter
@@ -102,7 +114,7 @@ export class FilterService {
     }
 
     /**
-     * Apply basic filters (program, phase, organization)
+    * Apply basic filters (program, phase, ATA chapter, engineering system, make/buy, part type)
      * @param {Array} data - Data to filter
      * @param {Object} filterValues - Filter values
      * @returns {Array} Filtered data
@@ -148,13 +160,24 @@ export class FilterService {
             }
         }
 
-        // Organization filter
-        if (filterValues.organization && filterValues.organization !== "All") {
+        // ATA Chapter Group filter
+        if (filterValues.ataChapterGroup && filterValues.ataChapterGroup !== "All") {
             const beforeCount = filtered.length;
             filtered = filtered.filter(item => 
-                item.organization === filterValues.organization
+                (item.ataChapterGroup === filterValues.ataChapterGroup) ||
+                (item.chapterGroup === filterValues.ataChapterGroup)
             );
-            console.log(`  - Organization filter (${filterValues.organization}): ${beforeCount} -> ${filtered.length}`);
+            console.log(`  - ATA Chapter filter (${filterValues.ataChapterGroup}): ${beforeCount} -> ${filtered.length}`);
+        }
+
+        // Engineering System Group filter
+        if (filterValues.engSystemGroup && filterValues.engSystemGroup !== "All") {
+            const beforeCount = filtered.length;
+            filtered = filtered.filter(item => 
+                (item.engSystemGroup === filterValues.engSystemGroup) ||
+                (item.engineeringSystemGroup === filterValues.engSystemGroup)
+            );
+            console.log(`  - Engineering System filter (${filterValues.engSystemGroup}): ${beforeCount} -> ${filtered.length}`);
         }
 
         // Make/Buy filter - only apply if filter value is set and not "All"

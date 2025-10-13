@@ -12,7 +12,7 @@ export const WIDGET_DEFINITIONS = {
             hideHeader: true    // Hide the outer widget header, but keep the inner "Release Planning Dashboard" header
         },
         dataSource: "parts",
-        filters: ["program", "phase", "organization"],
+        filters: ["program", "phase", "ataChapterGroup", "engSystemGroup"],
         layout: { 
             minHeight: 600, 
             flex: 3,
@@ -57,7 +57,7 @@ export const WIDGET_DEFINITIONS = {
             height: 350
         },
         dataSource: "stats",
-        filters: ["organization"],
+    filters: ["ataChapterGroup", "engSystemGroup"],
         layout: { 
             minHeight: 350, 
             flex: 1,
@@ -79,7 +79,7 @@ export const WIDGET_DEFINITIONS = {
             height: 400
         },
         dataSource: "stats",
-        filters: ["organization"],
+    filters: ["ataChapterGroup", "engSystemGroup"],
         layout: { 
             minHeight: 400, 
             flex: 1,
@@ -101,7 +101,7 @@ export const WIDGET_DEFINITIONS = {
             height: 400
         },
         dataSource: "stats",
-        filters: ["organization"],
+    filters: ["ataChapterGroup", "engSystemGroup"],
         layout: { 
             minHeight: 400, 
             flex: 1,
@@ -123,7 +123,7 @@ export const WIDGET_DEFINITIONS = {
             height: 450
         },
         dataSource: "stats",
-        filters: ["organization"],
+    filters: ["ataChapterGroup", "engSystemGroup"],
         layout: { 
             minHeight: 450, 
             flex: 2,
@@ -145,7 +145,7 @@ export const WIDGET_DEFINITIONS = {
             height: 400
         },
         dataSource: "parts",
-        filters: ["program", "phase", "organization"],
+    filters: ["program", "phase", "ataChapterGroup", "engSystemGroup"],
         layout: { 
             minHeight: 400, 
             flex: 2,
@@ -167,13 +167,14 @@ export const WIDGET_DEFINITIONS = {
             filterable: true,
             dense: false,
             itemsPerPage: 15,
-            filterField: "organization"
+            filterField: "ataChapterGroup"
         },
         headers: [
             { text: "Part Number", value: "partNumber", sortable: true },
             { text: "Title", value: "title", sortable: true },
             { text: "Status", value: "status", sortable: true },
-            { text: "Organization", value: "organization", sortable: true },
+            { text: "Chapter Group", value: "ataChapterGroup", sortable: true },
+            { text: "System Group", value: "engSystemGroup", sortable: true },
             { text: "Program", value: "program", sortable: true },
             { text: "Phase", value: "phase", sortable: true },
             { text: "Quantity", value: "quantity", sortable: true },
@@ -196,7 +197,7 @@ export const WIDGET_DEFINITIONS = {
             }
         ],
         dataSource: "parts",
-        filters: ["program", "phase", "organization"],
+    filters: ["program", "phase", "ataChapterGroup", "engSystemGroup"],
         layout: { 
             minHeight: 400, 
             flex: 1,
@@ -384,8 +385,8 @@ export const WIDGET_DEFINITIONS = {
             showReset: true,
             submitText: "Create Part"
         },
-        dataSource: "partPlanner",
-        filters: ["organization", "program", "phase"],
+    dataSource: "partPlanner",
+    filters: ["program", "phase", "ataChapterGroup", "engSystemGroup"],
         layout: { 
             minHeight: 600, 
             flex: 3,

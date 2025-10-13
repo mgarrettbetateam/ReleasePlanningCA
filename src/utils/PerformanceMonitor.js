@@ -1,3 +1,4 @@
+/* global Vue */
 /**
  * Performance Monitoring Utility
  * Helps identify performance bottlenecks in the application

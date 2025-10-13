@@ -27,6 +27,8 @@ class DataTransformationService {
                     description: ["description"],
                     organization: ["organization"],
                     tgtRelease: ["targetReleaseDate", "tgtRelease"],
+                    ataChapterGroup: ["ataChapterGroup", "chapterGroup", "ataChapter"],
+                    engSystemGroup: ["engSystemGroup", "engineeringSystemGroup", "systemGroup"],
                     actualRelease: ["actualReleaseDate", "actualRelease"],
                     actualReleaseDate: ["actualReleaseDate"],
                     criticalRelease: ["criticalReleaseDate", "criticalRelease"],
@@ -53,6 +55,8 @@ class DataTransformationService {
                     approvedDate: ["approvedDate"],
                     actualReleaseDate: ["actualReleaseDate", "actualCompleteDate"],
                     organization: ["organization"],
+                    ataChapterGroup: ["ataChapterGroup", "chapterGroup", "ataChapter"],
+                    engSystemGroup: ["engSystemGroup", "engineeringSystemGroup", "systemGroup"],
                     statusComment: ["statusComment", "caStatusComment"],
                     caStatusComment: ["caStatusComment", "statusComment"],
                     name: ["name", "caNumber", "changeActionNumber"],
@@ -72,6 +76,9 @@ class DataTransformationService {
                     targetReleaseDate: ["targetReleaseDate", "dueDate"],
                     actualCompleteDate: ["actualCompleteDate", "actualReleaseDate", "completedDate"],
                     actualReleaseDate: ["actualReleaseDate", "actualCompleteDate", "completedDate"],
+                    organization: ["organization"],
+                    ataChapterGroup: ["ataChapterGroup", "chapterGroup", "ataChapter"],
+                    engSystemGroup: ["engSystemGroup", "engineeringSystemGroup", "systemGroup"],
                     statusComment: ["statusComment", "caStatusComment"],
                     caStatusComment: ["caStatusComment", "statusComment"]
                 }
@@ -160,7 +167,8 @@ class DataTransformationService {
                 mappedItem[targetField] = "";
             } else {
                 // Extract value using priority order
-                const defaultValue = targetField === "organization" ? "Unknown" : 
+                const orgLikeFields = ["organization", "ataChapterGroup", "engSystemGroup"];
+                const defaultValue = orgLikeFields.includes(targetField) ? "Unknown" : 
                                    targetField.includes("Date") || targetField.includes("Release") ? "N/A" : "";
                 mappedItem[targetField] = this.extractFieldValue(item, sourceOptions, defaultValue);
             }
@@ -256,6 +264,38 @@ class DataTransformationService {
         const organizations = ["All", ...Array.from(orgSet).sort()];
         
         return organizations;
+    }
+
+    extractAtaChapterGroups(tableData) {
+        if (!Array.isArray(tableData)) {
+            return ["All"];
+        }
+
+        const chapterSet = new Set();
+
+        tableData.forEach(item => {
+            if (item.ataChapterGroup && item.ataChapterGroup !== "Unknown" && item.ataChapterGroup.trim() !== "") {
+                chapterSet.add(item.ataChapterGroup.trim());
+            }
+        });
+
+        return ["All", ...Array.from(chapterSet).sort()];
+    }
+
+    extractEngSystemGroups(tableData) {
+        if (!Array.isArray(tableData)) {
+            return ["All"];
+        }
+
+        const systemSet = new Set();
+
+        tableData.forEach(item => {
+            if (item.engSystemGroup && item.engSystemGroup !== "Unknown" && item.engSystemGroup.trim() !== "") {
+                systemSet.add(item.engSystemGroup.trim());
+            }
+        });
+
+        return ["All", ...Array.from(systemSet).sort()];
     }
 
     /**

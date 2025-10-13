@@ -313,11 +313,18 @@
                     <span class="filter-value-header">{{ filterValues.phase }}</span>
                 </div>
 
-                <!-- Organization -->
-                <div v-if="filterValues.organization && filterValues.organization !== 'All'" class="d-flex align-center" style="gap: 4px;">
-                    <v-icon x-small color="white">mdi-domain</v-icon>
-                    <span class="filter-label-header">Organization:</span>
-                    <span class="filter-value-header">{{ filterValues.organization }}</span>
+                <!-- ATA Chapter -->
+                <div v-if="filterValues.ataChapterGroup && filterValues.ataChapterGroup !== 'All'" class="d-flex align-center" style="gap: 4px;">
+                    <v-icon x-small color="white">mdi-book-open-page-variant</v-icon>
+                    <span class="filter-label-header">Chapter:</span>
+                    <span class="filter-value-header">{{ filterValues.ataChapterGroup }}</span>
+                </div>
+
+                <!-- Engineering System -->
+                <div v-if="filterValues.engSystemGroup && filterValues.engSystemGroup !== 'All'" class="d-flex align-center" style="gap: 4px;">
+                    <v-icon x-small color="white">mdi-cog-outline</v-icon>
+                    <span class="filter-label-header">System:</span>
+                    <span class="filter-value-header">{{ filterValues.engSystemGroup }}</span>
                 </div>
 
                 <!-- Make/Buy Filter - Only for PARTS -->
@@ -1323,7 +1330,8 @@ export default {
             filterValues: {
                 program: "",
                 phase: "",
-                organization: "All",
+                ataChapterGroup: "All",
+                engSystemGroup: "All",
                 makeBuyFilter: "All", // Only used for PARTS data type
                 partTypeFilter: "All" // Only used for PARTS data type
             },
@@ -1331,7 +1339,8 @@ export default {
             // Filter options - will be loaded dynamically
             programs: [],
             phases: [],
-            organizations: ["All"], // Initialize with default
+            ataChapterGroups: ["All"], // Initialize with default for new filter
+            engSystemGroups: ["All"], // Initialize with default for new filter
             makeBuyOptions: ["All"], // Initialize with default - only for PARTS
             partTypeOptions: ["All"], // Initialize with default - only for PARTS
             
@@ -1354,7 +1363,8 @@ export default {
                     { text: "Rev", value: "rev", sortable: true, icon: "mdi-source-branch" },
                     { text: "Description", value: "description", sortable: true, icon: "mdi-text" },
                     { text: "Make / Buy", value: "makeBuy", sortable: true, icon: "mdi-factory" },
-                    { text: "Organization", value: "organization", sortable: true, icon: "mdi-domain" },
+                    { text: "Chapter Group", value: "ataChapterGroup", sortable: true, icon: "mdi-book-open-page-variant" },
+                    { text: "System Group", value: "engSystemGroup", sortable: true, icon: "mdi-cog-outline" },
                     { text: "Target Release", value: "tgtRelease", sortable: true, icon: "mdi-calendar-clock" },
                     { text: "Actual Release", value: "actualRelease", sortable: true, icon: "mdi-calendar-check" },
                     { text: "Critical Release", value: "criticalRelease", sortable: true, icon: "mdi-calendar-alert" },
@@ -1522,7 +1532,8 @@ export default {
             const config = filterService.createFilterConfig({
                 programs: this.programs,
                 phases: this.phases,
-                organizations: this.organizations,
+                ataChapterGroups: this.ataChapterGroups,
+                engSystemGroups: this.engSystemGroups,
                 filterValues: this.filterValues
             });
             return config;
@@ -1535,7 +1546,8 @@ export default {
             // Check each filter value to see if it's active (not empty, not "All", not default)
             if (this.filterValues.program && this.filterValues.program !== "" && this.filterValues.program !== "All") count++;
             if (this.filterValues.phase && this.filterValues.phase !== "" && this.filterValues.phase !== "All") count++;
-            if (this.filterValues.organization && this.filterValues.organization !== "All") count++;
+            if (this.filterValues.ataChapterGroup && this.filterValues.ataChapterGroup !== "All") count++;
+            if (this.filterValues.engSystemGroup && this.filterValues.engSystemGroup !== "All") count++;
             if (this.currentDataType === "parts" && this.filterValues.makeBuyFilter && this.filterValues.makeBuyFilter !== "All") count++;
             if (this.currentDataType === "parts" && this.filterValues.partTypeFilter && this.filterValues.partTypeFilter !== "All") count++;
             if (this.selectedStatFilter && this.selectedStatFilter !== "all") count++;
@@ -1900,10 +1912,20 @@ export default {
             }
         },
         
-        "filterValues.organization": {
+        "filterValues.ataChapterGroup": {
             handler() {
-                console.log("👀 CHART WATCH: Organization filter changed");
-                this.changeActionRefreshKey++; // Refresh Change Action links
+                console.log("👀 CHART WATCH: ATA Chapter filter changed");
+                this.changeActionRefreshKey++;
+                this.$nextTick(() => {
+                    this.updateChartFromFiltered();
+                });
+            }
+        },
+
+        "filterValues.engSystemGroup": {
+            handler() {
+                console.log("👀 CHART WATCH: Engineering System filter changed");
+                this.changeActionRefreshKey++;
                 this.$nextTick(() => {
                     this.updateChartFromFiltered();
                 });
@@ -2375,8 +2397,12 @@ export default {
             } else if (filterEvent.key === "phase") {
                 console.log("🔄 Phase changed, fetching data...");
                 this.handlePhaseChange();
-            } else if (filterEvent.key === "organization") {
-                console.log("🔄 Organization changed, updating chart...");
+            } else if (filterEvent.key === "ataChapterGroup") {
+                console.log("🔄 ATA Chapter changed, updating chart...");
+                this.updateChartFromFiltered();
+                this.lastUpdated = new Date().toLocaleTimeString();
+            } else if (filterEvent.key === "engSystemGroup") {
+                console.log("🔄 Engineering System changed, updating chart...");
                 this.updateChartFromFiltered();
                 this.lastUpdated = new Date().toLocaleTimeString();
             }
@@ -2521,7 +2547,8 @@ export default {
                 if (!this.currentDataType) {
                     console.log("⚠️  No data type selected, skipping data fetch");
                     this.tableData = [];
-                    this.organizations = ["All"];
+                    this.ataChapterGroups = ["All"];
+                    this.engSystemGroups = ["All"];
                     // Don't immediately reset parts options - let them persist until parts is selected again
                     // this.makeBuyOptions = ["All"];
                     // this.filterValues.makeBuyFilter = "All";
@@ -2556,9 +2583,12 @@ export default {
                 }
                 console.log("=== FETCHDATA END ===");
 
-                // Update organizations from the actual parts data using DataTransformationService
-                this.organizations = dataTransformationService.extractOrganizations(this.tableData);
-                console.log("✅ Organizations updated from data:", this.organizations);
+                // Update Chapter/System group filters from the data using DataTransformationService
+                this.ataChapterGroups = dataTransformationService.extractAtaChapterGroups(this.tableData);
+                console.log("✅ ATA Chapter groups updated from data:", this.ataChapterGroups);
+
+                this.engSystemGroups = dataTransformationService.extractEngSystemGroups(this.tableData);
+                console.log("✅ Engineering System groups updated from data:", this.engSystemGroups);
 
                 // Update Make/Buy options - only for PARTS data type
                 if (this.currentDataType === "parts") {
@@ -2593,7 +2623,8 @@ export default {
                 // Clear data when API fails - no fallback data
                 console.log("Clearing data due to API failure");
                 this.tableData = [];
-                this.organizations = ["All"];
+                this.ataChapterGroups = ["All"];
+                this.engSystemGroups = ["All"];
                 
                 // Only reset parts-specific options if we're currently viewing parts
                 // Otherwise preserve existing options to prevent dropdown flickering
@@ -2625,7 +2656,8 @@ export default {
                     this.filterValues = {
                         program: "",
                         phase: "",
-                        organization: "All",
+                        ataChapterGroup: "All",
+                        engSystemGroup: "All",
                         makeBuyFilter: "All",
                         partTypeFilter: "All"
                     };
@@ -2654,7 +2686,8 @@ export default {
                 this.filterValues = {
                     program: "",
                     phase: "",
-                    organization: "All",
+                    ataChapterGroup: "All",
+                    engSystemGroup: "All",
                     makeBuyFilter: "All",
                     partTypeFilter: "All"
                 };
@@ -2731,7 +2764,8 @@ export default {
                 // 5. Reset component data
                 this.tableData = [];
                 this.chartData = { labels: [], datasets: [] };
-                this.organizations = ["All"];
+                this.ataChapterGroups = ["All"];
+                this.engSystemGroups = ["All"];
                 this.makeBuyOptions = ["All"];
                 this.partTypeOptions = ["All"];
                 

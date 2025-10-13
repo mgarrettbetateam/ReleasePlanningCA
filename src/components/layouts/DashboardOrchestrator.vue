@@ -105,7 +105,8 @@ export default {
             filterValues: {
                 program: "All",
                 phase: "All", 
-                organization: "All"
+                ataChapterGroup: "All",
+                engSystemGroup: "All"
             },
             widgetData: {}, // Store data for each widget separately
             filterOptions: {
@@ -121,12 +122,17 @@ export default {
                     { text: "Phase 2", value: "Phase 2" },
                     { text: "Phase 3", value: "Phase 3" }
                 ],
-                organization: [
+                ataChapterGroup: [
                     { text: "All", value: "All" },
-                    { text: "Engineering", value: "Engineering" },
-                    { text: "Manufacturing", value: "Manufacturing" },
-                    { text: "Quality", value: "Quality" },
-                    { text: "Procurement", value: "Procurement" }
+                    { text: "Structures", value: "Structures" },
+                    { text: "Interiors", value: "Interiors" },
+                    { text: "Propulsion", value: "Propulsion" }
+                ],
+                engSystemGroup: [
+                    { text: "All", value: "All" },
+                    { text: "Electrical", value: "Electrical" },
+                    { text: "Hydraulics", value: "Hydraulics" },
+                    { text: "Avionics", value: "Avionics" }
                 ]
             },
             loading: false,
@@ -135,8 +141,8 @@ export default {
     },
     computed: {
         activeFilters() {
-            // Always show program, phase, and organization filters for the main dashboard
-            return ["program", "phase", "organization"];
+            // Always show program, phase, chapter, and system filters for the main dashboard
+            return ["program", "phase", "ataChapterGroup", "engSystemGroup"];
         },
         
         visibleWidgets() {
@@ -236,7 +242,8 @@ export default {
                     // Ensure we pass the selected values, not "All"
                     program: this.filterValues.program === "All" ? undefined : this.filterValues.program,
                     phase: this.filterValues.phase === "All" ? undefined : this.filterValues.phase,
-                    organization: this.filterValues.organization === "All" ? undefined : this.filterValues.organization
+                    ataChapterGroup: this.filterValues.ataChapterGroup === "All" ? undefined : this.filterValues.ataChapterGroup,
+                    engSystemGroup: this.filterValues.engSystemGroup === "All" ? undefined : this.filterValues.engSystemGroup
                 };
 
                 // Fetch data for each unique data source
@@ -281,28 +288,40 @@ export default {
         
         async loadFilterOptions() {
             try {
-                // Load organization options from parts data (primary data source)
+                // Load filter options from parts data (primary data source)
                 const data = await UniversalDataService.fetchData(
                     "parts", // Always use parts as the primary data source for filter options
                     { phase: this.filterValues.phase }
                 );
-                
+
                 if (data.raw && Array.isArray(data.raw)) {
-                    // Extract unique organizations from the data
-                    const uniqueOrgs = [...new Set(
+                    const uniqueChapters = [...new Set(
                         data.raw
-                            .map(item => item.organization || item.org)
-                            .filter(org => org && org !== "")
+                            .map(item => item.ataChapterGroup || item.chapterGroup || item.ataChapter)
+                            .filter(group => group && group !== "")
                     )];
-                    
-                    if (uniqueOrgs.length > 0) {
-                        this.filterOptions.organization = [
+
+                    if (uniqueChapters.length > 0) {
+                        this.filterOptions.ataChapterGroup = [
                             { text: "All", value: "All" },
-                            ...uniqueOrgs.map(org => ({ text: org, value: org }))
+                            ...uniqueChapters.sort().map(group => ({ text: group, value: group }))
+                        ];
+                    }
+
+                    const uniqueSystems = [...new Set(
+                        data.raw
+                            .map(item => item.engSystemGroup || item.engineeringSystemGroup || item.systemGroup)
+                            .filter(group => group && group !== "")
+                    )];
+
+                    if (uniqueSystems.length > 0) {
+                        this.filterOptions.engSystemGroup = [
+                            { text: "All", value: "All" },
+                            ...uniqueSystems.sort().map(group => ({ text: group, value: group }))
                         ];
                     }
                 }
-                
+
             } catch (error) {
                 console.error("Error loading filter options:", error);
                 // Keep default filter options on error
@@ -314,7 +333,8 @@ export default {
             this.filterValues = {
                 program: "All",
                 phase: "All", 
-                organization: "All"
+                ataChapterGroup: "All",
+                engSystemGroup: "All"
             };
             
             // Load any dynamic filter options if needed
@@ -325,7 +345,8 @@ export default {
             this.filterValues = {
                 program: "All",
                 phase: "All",
-                organization: "All"
+                ataChapterGroup: "All",
+                engSystemGroup: "All"
             };
         },
         
@@ -453,10 +474,16 @@ export default {
                     if (rowPhase !== this.filterValues.phase) return false;
                 }
                 
-                // Organization filter
-                if (this.filterValues.organization && this.filterValues.organization !== "All") {
-                    const rowOrg = row.organization || row.org;
-                    if (rowOrg !== this.filterValues.organization) return false;
+                // ATA Chapter filter
+                if (this.filterValues.ataChapterGroup && this.filterValues.ataChapterGroup !== "All") {
+                    const rowChapter = row.ataChapterGroup || row.chapterGroup || row.ataChapter;
+                    if (rowChapter !== this.filterValues.ataChapterGroup) return false;
+                }
+
+                // Engineering System filter
+                if (this.filterValues.engSystemGroup && this.filterValues.engSystemGroup !== "All") {
+                    const rowSystem = row.engSystemGroup || row.engineeringSystemGroup || row.systemGroup;
+                    if (rowSystem !== this.filterValues.engSystemGroup) return false;
                 }
                 
                 return true;

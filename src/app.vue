@@ -678,7 +678,8 @@ export default {
                 const parts = [];
                 if (filters.program && filters.program !== "All") parts.push(`Program: ${filters.program}`);
                 if (filters.phase && filters.phase !== "All") parts.push(`Phase: ${filters.phase}`);
-                if (filters.organization && filters.organization !== "All") parts.push(`Org: ${filters.organization}`);
+                if (filters.ataChapterGroup && filters.ataChapterGroup !== "All") parts.push(`Chapter: ${filters.ataChapterGroup}`);
+                if (filters.engSystemGroup && filters.engSystemGroup !== "All") parts.push(`System: ${filters.engSystemGroup}`);
                 return parts.length > 0 ? parts.join(", ") : "All";
             }
             return "Loading...";

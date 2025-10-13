@@ -18,9 +18,9 @@ class UniversalSearchService {
     constructor() {
         // Define searchable fields for each data type
         this.searchFields = {
-            parts: ["partNo", "description", "organization", "statusComment", "makeBuy", "partType", "currentState"],
-            cas: ["caNumber", "changeDescription", "resEngr", "statusComment", "organization", "currentState"],
-            crs: ["crNumber", "changeDescription", "owner", "statusComment", "currentState"]
+            parts: ["partNo", "description", "organization", "ataChapterGroup", "engSystemGroup", "statusComment", "makeBuy", "partType", "currentState"],
+            cas: ["caNumber", "changeDescription", "resEngr", "organization", "ataChapterGroup", "engSystemGroup", "statusComment", "currentState"],
+            crs: ["crNumber", "changeDescription", "owner", "ataChapterGroup", "engSystemGroup", "statusComment", "currentState"]
         };
         
         // Field weights for relevance scoring (higher = more important)
@@ -28,7 +28,9 @@ class UniversalSearchService {
             parts: {
                 partNo: 10,
                 description: 8,
-                organization: 5,
+                organization: 4,
+                ataChapterGroup: 6,
+                engSystemGroup: 6,
                 statusComment: 3,
                 makeBuy: 4,
                 partType: 4,
@@ -38,7 +40,9 @@ class UniversalSearchService {
                 caNumber: 10,
                 changeDescription: 8,
                 resEngr: 6,
-                organization: 5,
+                organization: 4,
+                ataChapterGroup: 5,
+                engSystemGroup: 5,
                 statusComment: 3,
                 currentState: 2
             },
@@ -46,6 +50,8 @@ class UniversalSearchService {
                 crNumber: 10,
                 changeDescription: 8,
                 owner: 6,
+                ataChapterGroup: 5,
+                engSystemGroup: 5,
                 statusComment: 3,
                 currentState: 2
             }

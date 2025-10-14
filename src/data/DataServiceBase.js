@@ -9,6 +9,24 @@ const log = (...args) => {
   console.log("[DataService]", ...args);
 };
 
+const filterDataByPhase = (data, phase) => {
+  if (!phase) {
+    return data;
+  }
+
+  const filtered = data.filter(item => {
+    const candidatePhase = item?.phase || item?.currentState || item?.currentPhase;
+    return candidatePhase === phase;
+  });
+
+  if (filtered.length > 0) {
+    return filtered;
+  }
+
+  // If nothing matched, return original data so the UI still has content in local mode
+  return data;
+};
+
 /**
  * Base class for data services
  * Now uses the sophisticated ApiService for all requests
@@ -218,7 +236,7 @@ const dataService = {
         console.warn("⚠️ fetchItems called with null/undefined itemType, defaulting to 'parts'");
         itemType = "parts";
       }
-      
+
       // Determine endpoint and cache key based on item type
       const endpointMap = {
         parts: "/internal/resources/AttributeValQuery/retrievePhaseParts",
@@ -232,25 +250,29 @@ const dataService = {
       const apiCall = async () => {
         const url = `${getApiBaseUrl()}${endpoint}`;
         const params = { phase };
-        
+
         const response = await axios.get(url, {
           params,
           timeout: 30000
         });
-        
+
         // Check if response contains an error
         if (response.data && response.data.error) {
           throw new Error(`API Error: ${response.data.error}`);
         }
-        
+
         return response.data;
       };
-      
+
       const rawData = await ApiService.fetchData(cacheKey, apiCall);
-      
+
       // Process the API response
       let processedData = this.processApiResponse(rawData, itemType);
-      
+
+      if (Array.isArray(processedData)) {
+        processedData = filterDataByPhase(processedData, phase);
+      }
+
       // Apply field mapping for CAs and CRs to ensure caStatusComment is set
       if ((itemType === "cas" || itemType === "crs") && Array.isArray(processedData)) {
         processedData = processedData.map(item => {
@@ -259,8 +281,8 @@ const dataService = {
             console.log("🔍 Raw API Data for CA-00000268:", {
               item,
               allKeys: Object.keys(item),
-              statusRelatedFields: Object.keys(item).filter(key => 
-                key.toLowerCase().includes("status") || 
+              statusRelatedFields: Object.keys(item).filter(key =>
+                key.toLowerCase().includes("status") ||
                 key.toLowerCase().includes("comment") ||
                 key.toLowerCase().includes("notes")
               ).reduce((acc, key) => {
@@ -269,7 +291,7 @@ const dataService = {
               }, {})
             });
           }
-          
+
           if (item && item.statusComment && !item.caStatusComment) {
             return {
               ...item,
@@ -279,9 +301,9 @@ const dataService = {
           return item;
         });
       }
-      
+
       return processedData;
-      
+
     } catch (error) {
       console.error(`Error in fetchItems (${itemType}):`, error.message);
       throw error;

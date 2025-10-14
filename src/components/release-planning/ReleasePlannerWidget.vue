@@ -111,6 +111,17 @@
             </v-chip>
         </v-card-title>
 
+        <v-alert
+            v-if="dataSourceStatus.hasError"
+            type="error"
+            outlined
+            dense
+            icon="mdi-alert-circle"
+            class="mx-4 mt-2"
+        >
+            {{ dataSourceStatus.message }}
+        </v-alert>
+
         <!-- Layout: Chart and Stats Side by Side -->
         <div class="pa-2" style="margin: 16px; padding: 12px;">
             <!-- Chart and Stats Row - Clean Horizontal Layout -->
@@ -1090,6 +1101,10 @@ export default {
             // UI state
             loading: false,
             lastUpdated: new Date().toLocaleTimeString(),
+            dataSourceStatus: {
+                hasError: false,
+                message: ""
+            },
             
             // Environment change detection
             environmentChangeKey: 0, // Force reactivity updates when environment changes
@@ -1379,11 +1394,15 @@ export default {
             const today = new Date();
             const DASH_LEN = 6;
             const GAP_LEN = 4;
-            const LABEL_PADDING = 20;
-            const LABEL_TOP_OFFSET = 16;
+            const LABEL_VERTICAL_GAP = 8;
+            const LABEL_PADDING_X = 8;
+            const LABEL_PADDING_Y = 4;
+            const LABEL_BORDER_RADIUS = 6;
+            const LABEL_MIN_TOP = 6;
+            const DEFAULT_TEXT_ASCENT = 9;
+            const DEFAULT_TEXT_DESCENT = 3;
             const HOVER_THRESHOLD = 8;
             const TOOLTIP_Y_OFFSET = 26; // distance above chart area top
-            const TEXT_X_OFFSET = 8; // horizontal offset to the right of the line
             const todayAlternatives = [
                 today.toLocaleDateString(),
                 today.toLocaleDateString("en-US"),
@@ -1445,12 +1464,47 @@ export default {
 
                     // Label to the right of the line (inside chart area)
                     ctx.setLineDash([]);
-                    ctx.fillStyle = "rgba(25, 118, 210, 0.9)";
                     ctx.font = "bold 12px sans-serif";
-                    ctx.textAlign = "left";
-                    const labelX = Math.min(Math.max(x + TEXT_X_OFFSET, chartArea.left + LABEL_PADDING), chartArea.right - LABEL_PADDING);
-                    const labelY = chartArea.top + LABEL_TOP_OFFSET;
-                    ctx.fillText("Today", labelX, labelY);
+                    const labelText = "Today";
+                    const textMetrics = ctx.measureText(labelText);
+                    const textWidth = textMetrics.width || 0;
+                    const ascent = textMetrics.actualBoundingBoxAscent || DEFAULT_TEXT_ASCENT;
+                    const descent = textMetrics.actualBoundingBoxDescent || DEFAULT_TEXT_DESCENT;
+                    const textHeight = ascent + descent;
+                    const labelWidth = textWidth + LABEL_PADDING_X * 2;
+                    const labelHeight = Math.max(textHeight + LABEL_PADDING_Y * 2, ascent + LABEL_PADDING_Y * 2);
+
+                    const halfLabelWidth = labelWidth / 2;
+                    const labelCenterX = x;
+                    const labelLeft = labelCenterX - halfLabelWidth;
+                    const labelRight = labelCenterX + halfLabelWidth;
+                    let labelBottom = chartArea.top - LABEL_VERTICAL_GAP;
+                    let labelTop = labelBottom - labelHeight;
+                    if (labelTop < LABEL_MIN_TOP) {
+                        labelTop = LABEL_MIN_TOP;
+                        labelBottom = labelTop + labelHeight;
+                    }
+
+                    const radius = Math.min(LABEL_BORDER_RADIUS, labelHeight / 2, labelWidth / 2);
+                    ctx.beginPath();
+                    ctx.moveTo(labelLeft + radius, labelTop);
+                    ctx.lineTo(labelRight - radius, labelTop);
+                    ctx.quadraticCurveTo(labelRight, labelTop, labelRight, labelTop + radius);
+                    ctx.lineTo(labelRight, labelBottom - radius);
+                    ctx.quadraticCurveTo(labelRight, labelBottom, labelRight - radius, labelBottom);
+                    ctx.lineTo(labelLeft + radius, labelBottom);
+                    ctx.quadraticCurveTo(labelLeft, labelBottom, labelLeft, labelBottom - radius);
+                    ctx.lineTo(labelLeft, labelTop + radius);
+                    ctx.quadraticCurveTo(labelLeft, labelTop, labelLeft + radius, labelTop);
+                    ctx.closePath();
+                    ctx.fillStyle = "rgba(25, 118, 210, 0.92)";
+                    ctx.fill();
+
+                    ctx.fillStyle = "#fff";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    const textY = labelTop + labelHeight / 2;
+                    ctx.fillText(labelText, labelCenterX, textY);
                     ctx.restore();
                 },
                 afterEvent(chart, evt) {
@@ -2296,6 +2350,11 @@ export default {
                 
                 // Use the generic fetchItems method with the current data type
                 const items = await dataService.fetchItems(phase, this.currentDataType);
+
+                this.dataSourceStatus = {
+                    hasError: false,
+                    message: ""
+                };
                 
                 console.log("=== RAW API RESPONSE ===");
                 console.log("Type of items:", typeof items);
@@ -2358,6 +2417,10 @@ export default {
                 this.tableData = [];
                 this.ataChapterGroups = ["All"];
                 this.engSystemGroups = ["All"];
+                this.dataSourceStatus = {
+                    hasError: true,
+                    message: `Unable to load ${this.currentDataType?.toUpperCase() || ""} data right now. ${error.message}`
+                };
                 
                 // Only reset parts-specific options if we're currently viewing parts
                 // Otherwise preserve existing options to prevent dropdown flickering
@@ -2396,6 +2459,10 @@ export default {
                     };
                     console.log(`🔄 Filters reset due to data type change: ${previousDataType} → ${dataType}`);
                 }
+                this.dataSourceStatus = {
+                    hasError: false,
+                    message: ""
+                };
                 
                 console.log(`✅ Data type set to: ${dataType}`);
                 console.log(`✅ Widget title will automatically update to: ${this.widgetTitle}`);

@@ -11,6 +11,10 @@
 
 /* eslint-disable no-console */
 
+const TWO_DIGIT_YEAR_PIVOT = 70;
+const BASE_YEAR_1900 = 1900;
+const BASE_YEAR_2000 = 2000;
+
 export class ChartDataService {
     constructor() {
         // Chart color scheme constants
@@ -351,6 +355,7 @@ export class ChartDataService {
                 "actual", 
                 sortedDates
             );
+            this.trimDatasetAfterToday(actualDataset, sortedDates);
             datasets.push(actualDataset);
         }
         
@@ -374,6 +379,80 @@ export class ChartDataService {
         });
 
         return chartData;
+    }
+
+    trimDatasetAfterToday(dataset, labels) {
+        if (!dataset || !Array.isArray(dataset.data) || !Array.isArray(labels) || labels.length === 0) {
+            return;
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayMs = today.getTime();
+
+        const normalizedDates = labels.map(label => this.normalizeLabelToDate(label));
+
+        let cutoffIndex = -1;
+        for (let index = 0; index < normalizedDates.length; index += 1) {
+            const date = normalizedDates[index];
+            if (date && date.getTime() > todayMs) {
+                cutoffIndex = index;
+                break;
+            }
+        }
+
+        if (cutoffIndex === -1) {
+            return;
+        }
+
+        dataset.data = dataset.data.map((value, index) => (index >= cutoffIndex ? NaN : value));
+        dataset.spanGaps = false;
+    }
+
+    normalizeLabelToDate(label) {
+        if (label instanceof Date && !Number.isNaN(label.getTime())) {
+            const clone = new Date(label.getTime());
+            clone.setHours(0, 0, 0, 0);
+            return clone;
+        }
+
+        if (typeof label === "number" && Number.isFinite(label)) {
+            const dateFromNumber = new Date(label);
+            if (!Number.isNaN(dateFromNumber.getTime())) {
+                dateFromNumber.setHours(0, 0, 0, 0);
+                return dateFromNumber;
+            }
+        }
+
+        if (typeof label === "string") {
+            const trimmed = label.trim();
+            if (!trimmed) {
+                return null;
+            }
+
+            let parsed = new Date(trimmed);
+            if (!Number.isNaN(parsed.getTime())) {
+                parsed.setHours(0, 0, 0, 0);
+                return parsed;
+            }
+
+            const match = trimmed.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})$/);
+            if (match) {
+                const month = parseInt(match[1], 10) - 1;
+                const day = parseInt(match[2], 10);
+                let year = parseInt(match[3], 10);
+                if (year < 100) {
+                    year += year >= TWO_DIGIT_YEAR_PIVOT ? BASE_YEAR_1900 : BASE_YEAR_2000;
+                }
+                parsed = new Date(year, month, day);
+                parsed.setHours(0, 0, 0, 0);
+                if (!Number.isNaN(parsed.getTime())) {
+                    return parsed;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**

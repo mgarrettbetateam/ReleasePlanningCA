@@ -112,7 +112,7 @@
         </v-card-title>
 
         <v-alert
-            v-if="dataSourceStatus.hasError"
+            v-if="showDataErrors && dataSourceStatus.hasError"
             type="error"
             outlined
             dense
@@ -121,6 +121,53 @@
         >
             {{ dataSourceStatus.message }}
         </v-alert>
+
+        <v-dialog
+            v-model="loading"
+            persistent
+            width="420"
+            content-class="loading-dashboard-dialog"
+            overlay-opacity="0.35"
+            eager
+        >
+            <v-card class="loading-dashboard-card elevation-16 py-6 px-6">
+                <div class="loading-card-header d-flex align-center justify-space-between">
+                    <div class="d-flex align-center">
+                        <v-icon color="white" size="36" class="mr-3">mdi-view-dashboard</v-icon>
+                        <div>
+                            <h3 class="loading-title mb-1">{{ loadingDialog.headline }}</h3>
+                            <p class="loading-detail mb-0">{{ loadingDialog.detail }}</p>
+                        </div>
+                    </div>
+                    <v-icon color="white" size="24" class="loading-sync-icon">mdi-sync</v-icon>
+                </div>
+
+                <div class="loading-progress-block mt-6">
+                    <div class="d-flex align-center justify-space-between mb-2">
+                        <span class="loading-progress-percentage">{{ loadingPercentDisplay }}</span>
+                        <span class="loading-progress-stage">{{ loadingDialog.progressLabel }}</span>
+                    </div>
+                    <v-progress-linear
+                        :value="loadingDialog.percent"
+                        color="white"
+                        background-color="rgba(255, 255, 255, 0.35)"
+                        height="12"
+                        rounded
+                    />
+                </div>
+
+                <div class="loading-status-block mt-8">
+                    <div class="loading-status-row d-flex align-center mb-3">
+                        <v-icon small color="white" class="mr-3">mdi-layers-triple</v-icon>
+                        <span class="loading-status-text">{{ loadingPhaseDisplay }}</span>
+                    </div>
+                    <div class="loading-status-row d-flex align-center">
+                        <v-icon small color="white" class="mr-3">mdi-database-import</v-icon>
+                        <span class="loading-status-text">{{ loadingStatusDisplay }}</span>
+                    </div>
+                </div>
+            </v-card>
+        </v-dialog>
 
         <!-- Layout: Chart and Stats Side by Side -->
         <div class="pa-2" style="margin: 16px; padding: 12px;">
@@ -312,27 +359,6 @@
                 
                 <v-card-text class="pa-0 position-relative">
                     <!-- Loading Overlay for Better Visibility -->
-                    <v-overlay 
-                        v-if="loading" 
-                        absolute
-                        color="white" 
-                        opacity="0.8"
-                        z-index="10"
-                    >
-                        <div class="text-center">
-                            <v-progress-circular
-                                indeterminate
-                                size="64"
-                                width="4"
-                                color="primary"
-                            />
-                            <div class="mt-4">
-                                <h4 class="text-h6 mb-2">Loading Data...</h4>
-                                <p class="text-body-2 grey--text">Please wait while we fetch your {{ currentDataType || 'release planning' }} data</p>
-                            </div>
-                        </div>
-                    </v-overlay>
-                    
                     <!-- Show getting started message when no data type is selected -->
                     <div v-if="!currentDataType" class="getting-started-message d-flex flex-column align-center justify-center" :style="{ height: `${currentTableHeight}px` }">
                         <v-icon size="64" color="primary" class="mb-4">mdi-format-list-checks</v-icon>
@@ -540,6 +566,77 @@
 /* Position relative for loading overlay */
 .position-relative {
   position: relative;
+}
+
+.loading-dashboard-dialog {
+    backdrop-filter: blur(1px);
+}
+
+.loading-dashboard-card {
+    background: linear-gradient(135deg, #2a7fde, #52a5ff);
+    border-radius: 16px;
+    color: white;
+    box-shadow: 0 18px 48px rgba(42, 127, 222, 0.4);
+}
+
+.loading-card-header {
+    gap: 12px;
+}
+
+.loading-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+.loading-detail {
+    font-size: 0.95rem;
+    opacity: 0.85;
+    letter-spacing: 0.2px;
+}
+
+.loading-sync-icon {
+    animation: loadingSyncRotation 1.2s linear infinite;
+}
+
+.loading-progress-block {
+    padding: 0 4px;
+}
+
+.loading-progress-percentage {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.loading-progress-stage {
+    font-size: 0.85rem;
+    opacity: 0.85;
+    text-transform: uppercase;
+    letter-spacing: 0.12rem;
+}
+
+.loading-status-block {
+    background-color: rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 16px 20px;
+}
+
+.loading-status-row {
+    gap: 12px;
+}
+
+.loading-status-text {
+    font-size: 0.9rem;
+    letter-spacing: 0.25px;
+}
+
+@keyframes loadingSyncRotation {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* Custom text colors for Release Stats */
@@ -996,6 +1093,10 @@ import { responsiveUtils, ResponsiveMixin } from "@/utils/ResponsiveUtils.js";
 import { useDragAndDrop } from "@/composables/useDragAndDrop.js";
 
 const FOCUS_SCROLL_DELAY = 50;
+const LOADING_PROGRESS_DEFAULT_STEP = 1;
+const LOADING_PROGRESS_DEFAULT_INTERVAL = 120;
+const LOADING_PROGRESS_COMPLETE_STEP = 3;
+const LOADING_PROGRESS_COMPLETE_INTERVAL = 45;
 
 /* eslint-disable no-console */
 export default {
@@ -1023,6 +1124,9 @@ export default {
             // Debouncing for filter changes
             filterChangeTimeout: null,
             filterDebounceDelay: 1000, // 1000ms delay before triggering API calls
+            urlSyncTimeout: null,
+            urlSyncDelay: 400,
+            isApplyingQuery: false,
             
             // Filter values - consolidated object for UniversalFilterControls
             filterValues: {
@@ -1100,11 +1204,25 @@ export default {
             
             // UI state
             loading: false,
+            loadingDialog: {
+                headline: "Loading Dashboard Data",
+                detail: "Preparing UI: Chart • Table",
+                status: "Fetching API data…",
+                progressLabel: "Initializing",
+                percent: 0,
+                phasesCompleted: 0,
+                totalPhases: 0
+            },
+            loadingProgressTimer: null,
+            loadingProgressTarget: 0,
+            loadingProgressStep: LOADING_PROGRESS_DEFAULT_STEP,
+            loadingProgressInterval: LOADING_PROGRESS_DEFAULT_INTERVAL,
             lastUpdated: new Date().toLocaleTimeString(),
             dataSourceStatus: {
                 hasError: false,
                 message: ""
             },
+            showDataErrors: false,
             
             // Environment change detection
             environmentChangeKey: 0, // Force reactivity updates when environment changes
@@ -1179,6 +1297,30 @@ export default {
                 return "Release Planner - Select Data Type";
             }
             return dataTransformationService.getDataTypeTitle(this.currentDataType);
+        },
+
+        loadingPercentDisplay() {
+            const percent = Math.round(this.loadingDialog.percent || 0);
+            const clamped = Math.min(100, Math.max(0, percent));
+            return `${clamped}%`;
+        },
+
+        loadingPhaseDisplay() {
+            const completed = Math.max(0, Math.round(this.loadingDialog.phasesCompleted || 0));
+            const total = Math.max(0, Math.round(this.loadingDialog.totalPhases || 0));
+            if (total > 0) {
+                const safeCompleted = Math.min(completed, total);
+                return `${safeCompleted}/${total} phases completed`;
+            }
+            return "Preparing workflow steps…";
+        },
+
+        loadingStatusDisplay() {
+            if (this.loadingDialog.status) {
+                return this.loadingDialog.status;
+            }
+            const typeLabel = this.currentDataType ? `${this.currentDataType} ` : "dashboard ";
+            return `Fetching ${typeLabel}data…`;
         },
 
         // Dynamic table headers based on current data type and available data
@@ -1455,7 +1597,7 @@ export default {
 
                     ctx.save();
                     ctx.setLineDash([DASH_LEN, GAP_LEN]);
-                    ctx.strokeStyle = "rgba(25, 118, 210, 0.9)";
+                    ctx.strokeStyle = "rgba(66, 66, 66, 0.9)";
                     ctx.lineWidth = 2;
                     ctx.beginPath();
                     ctx.moveTo(x, chartArea.top);
@@ -1497,7 +1639,7 @@ export default {
                     ctx.lineTo(labelLeft, labelTop + radius);
                     ctx.quadraticCurveTo(labelLeft, labelTop, labelLeft + radius, labelTop);
                     ctx.closePath();
-                    ctx.fillStyle = "rgba(25, 118, 210, 0.92)";
+                    ctx.fillStyle = "rgba(66, 66, 66, 0.92)";
                     ctx.fill();
 
                     ctx.fillStyle = "#fff";
@@ -1693,6 +1835,13 @@ export default {
                 }
             }
         },
+
+        "filterValues": {
+            handler() {
+                this.scheduleUrlSync();
+            },
+            deep: true
+        },
         
         // Watch selectedStatFilter changes
         "selectedStatFilter": {
@@ -1701,6 +1850,7 @@ export default {
                 this.$nextTick(() => {
                     this.updateChartFromFiltered();
                 });
+                this.scheduleUrlSync();
             }
         },
         
@@ -1714,6 +1864,7 @@ export default {
                     // Re-setup drag listeners when data type changes
                     this.setupTableDragListeners();
                 });
+                this.scheduleUrlSync();
             }
         },
         
@@ -1739,6 +1890,9 @@ export default {
         
         // Initialize by fetching programs first
         await this.fetchPrograms();
+
+    // Apply any filters provided via URL query parameters
+    await this.applyFiltersFromQuery();
         
         // Setup drag listeners after initial render
         this.setupTableDragListeners();
@@ -1752,9 +1906,433 @@ export default {
         if (this.filterChangeTimeout) {
             clearTimeout(this.filterChangeTimeout);
         }
+        if (this.urlSyncTimeout) {
+            clearTimeout(this.urlSyncTimeout);
+        }
+        this.clearLoadingProgressTimer();
     },
     
     methods: {
+        clearLoadingProgressTimer() {
+            if (this.loadingProgressTimer) {
+                clearInterval(this.loadingProgressTimer);
+                this.loadingProgressTimer = null;
+            }
+        },
+
+        setLoadingProgressTarget(target, options = {}) {
+            if (typeof window === "undefined") {
+                return;
+            }
+
+            const {
+                immediate = false,
+                step,
+                interval
+            } = options;
+
+            const clampedTarget = Math.min(100, Math.max(0, Number(target) || 0));
+
+            this.loadingProgressTarget = clampedTarget;
+            this.loadingProgressStep = typeof step === "number" && step > 0 ? step : (this.loadingProgressStep || LOADING_PROGRESS_DEFAULT_STEP);
+            this.loadingProgressInterval = typeof interval === "number" && interval > 0 ? interval : (this.loadingProgressInterval || LOADING_PROGRESS_DEFAULT_INTERVAL);
+
+            if (!this.loadingDialog) {
+                return;
+            }
+
+            if (immediate) {
+                this.clearLoadingProgressTimer();
+                this.loadingDialog = {
+                    ...this.loadingDialog,
+                    percent: clampedTarget
+                };
+                return;
+            }
+
+            this.clearLoadingProgressTimer();
+
+            this.loadingProgressTimer = window.setInterval(() => {
+                if (!this.loadingDialog) {
+                    this.clearLoadingProgressTimer();
+                    return;
+                }
+
+                const currentPercent = Number(this.loadingDialog.percent) || 0;
+
+                if (currentPercent >= this.loadingProgressTarget) {
+                    if (this.loadingProgressTarget >= 100) {
+                        this.clearLoadingProgressTimer();
+                    }
+                    return;
+                }
+
+                const nextPercent = Math.min(
+                    this.loadingProgressTarget,
+                    currentPercent + this.loadingProgressStep
+                );
+
+                this.loadingDialog = {
+                    ...this.loadingDialog,
+                    percent: nextPercent
+                };
+
+                if (nextPercent >= this.loadingProgressTarget && this.loadingProgressTarget >= 100) {
+                    this.clearLoadingProgressTimer();
+                }
+            }, this.loadingProgressInterval);
+        },
+
+        setLoadingDialog(payload = {}) {
+            const {
+                headline = "Loading Dashboard Data",
+                detail = "Preparing UI: Chart • Table",
+                status = "Fetching API data…",
+                progressLabel = "Initializing",
+                percent = 0,
+                phasesCompleted = 0,
+                totalPhases = 0,
+                targetPercent,
+                progressStep,
+                progressInterval,
+                immediatePercent = false
+            } = payload;
+
+            const basePercent = Math.min(100, Math.max(0, Number(percent) || 0));
+            const effectiveTarget = typeof targetPercent === "number" ? targetPercent : basePercent;
+
+            this.loadingDialog = {
+                headline,
+                detail,
+                status,
+                progressLabel,
+                percent: immediatePercent ? Math.min(100, Math.max(0, Number(effectiveTarget) || 0)) : basePercent,
+                phasesCompleted,
+                totalPhases
+            };
+
+            if (typeof effectiveTarget === "number") {
+                this.setLoadingProgressTarget(effectiveTarget, {
+                    step: progressStep,
+                    interval: progressInterval,
+                    immediate: immediatePercent
+                });
+            }
+        },
+
+        updateLoadingDialog(updates = {}) {
+            if (!this.loadingDialog) {
+                return;
+            }
+
+            const {
+                percent,
+                targetPercent,
+                progressStep,
+                progressInterval,
+                immediatePercent = false,
+                ...rest
+            } = updates;
+
+            this.loadingDialog = {
+                ...this.loadingDialog,
+                ...rest
+            };
+
+            const effectiveTarget = typeof targetPercent === "number" ? targetPercent : percent;
+            if (typeof effectiveTarget === "number" && Number.isFinite(effectiveTarget)) {
+                this.setLoadingProgressTarget(effectiveTarget, {
+                    step: progressStep,
+                    interval: progressInterval,
+                    immediate: immediatePercent
+                });
+            }
+        },
+
+        completeLoadingDialog(options = {}) {
+            if (!this.loadingDialog) {
+                return;
+            }
+
+            const { preserveStatus = false, preservePhases = false, immediate = false } = options;
+            const { totalPhases = 0 } = this.loadingDialog;
+
+            const nextState = {
+                progressLabel: "Wrapping up"
+            };
+
+            if (!preservePhases) {
+                nextState.phasesCompleted = totalPhases;
+            }
+
+            if (!preserveStatus) {
+                nextState.status = "Finalizing dashboard…";
+            }
+
+            this.updateLoadingDialog({
+                ...nextState,
+                targetPercent: 100,
+                progressStep: immediate ? undefined : LOADING_PROGRESS_COMPLETE_STEP,
+                progressInterval: immediate ? undefined : LOADING_PROGRESS_COMPLETE_INTERVAL,
+                immediatePercent: immediate
+            });
+        },
+
+        async applyFiltersFromQuery() {
+            if (typeof window === "undefined") {
+                return;
+            }
+
+            const search = window.location.search || "";
+            if (!search || search.length <= 1) {
+                return;
+            }
+
+            const params = new URLSearchParams(search);
+            if (Array.from(params.keys()).length === 0) {
+                return;
+            }
+
+            console.log("🌐 Applying filters from query string:", params.toString());
+
+            this.isApplyingQuery = true;
+
+            try {
+                const rawType = params.get("type") || params.get("dataType") || params.get("objectType");
+                if (rawType) {
+                    this.setDataType(String(rawType).trim().toLowerCase());
+                }
+
+                const programParam = params.get("program");
+                const phaseParam = params.get("phase");
+                const ataParam = params.get("ata");
+                const engParam = params.get("eng");
+                const makeBuyParam = params.get("makeBuy");
+                const partTypeParam = params.get("partType");
+                const statParam = params.get("stat");
+
+                if (programParam) {
+                    const programValue = this.findMatchingOptionValue(this.programs, programParam);
+                    this.filterValues.program = programValue || String(programParam);
+                    await this.fetchPhases();
+                }
+
+                if (phaseParam) {
+                    const phaseValue = this.findMatchingOptionValue(this.phases, phaseParam);
+                    this.filterValues.phase = phaseValue || String(phaseParam);
+                    if (this.filterValues.phase) {
+                        await this.handlePhaseChange();
+                    }
+                }
+
+                if (ataParam) {
+                    this.filterValues.ataChapterGroup = this.findMatchingOptionValue(this.ataChapterGroups, ataParam) || String(ataParam);
+                }
+
+                if (engParam) {
+                    this.filterValues.engSystemGroup = this.findMatchingOptionValue(this.engSystemGroups, engParam) || String(engParam);
+                }
+
+                if (makeBuyParam && this.currentDataType === "parts") {
+                    this.filterValues.makeBuyFilter = this.findMatchingOptionValue(this.makeBuyOptions, makeBuyParam) || String(makeBuyParam);
+                }
+
+                if (partTypeParam && this.currentDataType === "parts") {
+                    this.filterValues.partTypeFilter = this.findMatchingOptionValue(this.partTypeOptions, partTypeParam) || String(partTypeParam);
+                }
+
+                const normalizedStat = this.normalizeStatFilterFromQuery(statParam);
+                if (normalizedStat) {
+                    this.selectedStatFilter = normalizedStat;
+                }
+            } catch (error) {
+                console.error("⚠️ Failed to apply filters from query:", error);
+            } finally {
+                this.isApplyingQuery = false;
+                this.scheduleUrlSync(true);
+            }
+        },
+
+        findMatchingOptionValue(options, rawValue) {
+            if (rawValue === null || rawValue === undefined) {
+                return null;
+            }
+
+            const trimmed = String(rawValue).trim();
+            if (!trimmed) {
+                return null;
+            }
+
+            if (!Array.isArray(options) || options.length === 0) {
+                return trimmed;
+            }
+
+            const normalizedTarget = trimmed.toLowerCase();
+            let fallback = null;
+
+            for (const option of options) {
+                if (option === null || option === undefined) {
+                    continue;
+                }
+
+                if (typeof option === "string" || typeof option === "number") {
+                    const candidate = String(option);
+                    if (candidate.trim().toLowerCase() === normalizedTarget) {
+                        return candidate;
+                    }
+                    continue;
+                }
+
+                if (typeof option === "object") {
+                    const candidateValues = [];
+
+                    if (option.value !== undefined && option.value !== null) {
+                        const valueStr = String(option.value);
+                        candidateValues.push(valueStr);
+                        if (!fallback) {
+                            fallback = valueStr;
+                        }
+                    }
+
+                    if (option.text !== undefined && option.text !== null) {
+                        candidateValues.push(String(option.text));
+                    }
+
+                    if (option.label !== undefined && option.label !== null) {
+                        candidateValues.push(String(option.label));
+                    }
+
+                    if (option.name !== undefined && option.name !== null) {
+                        candidateValues.push(String(option.name));
+                    }
+
+                    if (option.id !== undefined && option.id !== null) {
+                        candidateValues.push(String(option.id));
+                    }
+
+                    for (const candidate of candidateValues) {
+                        if (candidate.trim().toLowerCase() === normalizedTarget) {
+                            return option.value !== undefined && option.value !== null
+                                ? String(option.value)
+                                : candidate;
+                        }
+                    }
+                }
+            }
+
+            return fallback || trimmed;
+        },
+
+        normalizeStatFilterFromQuery(statParam) {
+            if (statParam === null || statParam === undefined) {
+                return null;
+            }
+
+            const normalized = String(statParam)
+                .trim()
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, "");
+
+            const lookup = {
+                all: "all",
+                released: "released",
+                thisweek: "thisWeek",
+                nextweek: "nextWeek",
+                overdue: "overdue",
+                criticallyoverdue: "criticallyOverdue",
+                criticaloverdue: "criticallyOverdue",
+                critoverdue: "criticallyOverdue",
+                next30days: "next30Days",
+                next30day: "next30Days"
+            };
+
+            return lookup[normalized] || null;
+        },
+
+        scheduleUrlSync(immediate = false) {
+            if (typeof window === "undefined" || this.isApplyingQuery) {
+                return;
+            }
+
+            if (this.urlSyncTimeout) {
+                clearTimeout(this.urlSyncTimeout);
+                this.urlSyncTimeout = null;
+            }
+
+            const execute = () => {
+                this.writeFiltersToQuery();
+            };
+
+            if (immediate) {
+                execute();
+            } else {
+                this.urlSyncTimeout = setTimeout(execute, this.urlSyncDelay);
+            }
+        },
+
+        writeFiltersToQuery() {
+            if (typeof window === "undefined") {
+                return;
+            }
+
+            const queryString = this.buildQueryFromState();
+            const basePath = window.location.pathname;
+            const hash = window.location.hash || "";
+            const newUrl = queryString ? `${basePath}?${queryString}${hash}` : `${basePath}${hash}`;
+
+            window.history.replaceState({}, "", newUrl);
+        },
+
+        buildQueryFromState() {
+            const params = new URLSearchParams();
+
+            if (this.currentDataType && this.currentDataType !== "parts") {
+                params.set("type", this.currentDataType);
+            }
+
+            const {
+                program,
+                phase,
+                ataChapterGroup,
+                engSystemGroup,
+                makeBuyFilter,
+                partTypeFilter
+            } = this.filterValues;
+
+            if (program) {
+                params.set("program", program);
+            }
+
+            if (phase) {
+                params.set("phase", phase);
+            }
+
+            if (ataChapterGroup && ataChapterGroup !== "All") {
+                params.set("ata", ataChapterGroup);
+            }
+
+            if (engSystemGroup && engSystemGroup !== "All") {
+                params.set("eng", engSystemGroup);
+            }
+
+            if (this.currentDataType === "parts" && makeBuyFilter && makeBuyFilter !== "All") {
+                params.set("makeBuy", makeBuyFilter);
+            }
+
+            if (this.currentDataType === "parts" && partTypeFilter && partTypeFilter !== "All") {
+                params.set("partType", partTypeFilter);
+            }
+
+            if (this.selectedStatFilter && this.selectedStatFilter !== "all") {
+                params.set("stat", this.selectedStatFilter);
+            }
+
+            const sortedEntries = Array.from(params.entries()).sort(([a], [b]) => a.localeCompare(b));
+            const sortedParams = new URLSearchParams(sortedEntries);
+
+            return sortedParams.toString();
+        },
+
         scrollToFilters() {
             this.$nextTick(() => {
                 const filterRef = this.$refs.inlineFilterBar;
@@ -2276,9 +2854,29 @@ export default {
         },
 
         async fetchPhases() {
+            this.setLoadingDialog({
+                headline: "Loading Phase Options",
+                detail: "Preparing UI: Filters • Table",
+                status: "Contacting API for phases…",
+                progressLabel: "Requesting phase list",
+                percent: 12,
+                targetPercent: 55,
+                progressInterval: 90,
+                phasesCompleted: 0,
+                totalPhases: 2
+            });
+
+            let loadFailed = false;
             this.loading = true;
             try {
                 const phases = await dataService.fetchPhases(this.filterValues.program);
+                this.updateLoadingDialog({
+                    status: "Processing phase list…",
+                    progressLabel: "Analyzing response",
+                    phasesCompleted: 1,
+                    targetPercent: 78,
+                    progressInterval: 90
+                });
                 this.phases = phases || [];
                 console.log("✅ Phases loaded:", this.phases.length);
 
@@ -2297,13 +2895,30 @@ export default {
                 // Clear any existing table data since no phase is selected
                 this.tableData = [];
                 this.updateChartFromFiltered();
+
+                this.updateLoadingDialog({
+                    status: "Phase list ready",
+                    progressLabel: "Preparing dashboard filters",
+                    phasesCompleted: 2,
+                    targetPercent: 92,
+                    progressInterval: 70
+                });
             } catch (error) {
                 console.error("Failed to fetch phases:", error.message);
+                this.updateLoadingDialog({
+                    status: `Unable to load phases: ${error.message}`,
+                    progressLabel: "Encountered an issue",
+                    targetPercent: 100,
+                    immediatePercent: true,
+                    phasesCompleted: 0
+                });
+                loadFailed = true;
                 this.phases = [];
                 this.filterValues.phase = "";
                 this.tableData = [];
                 this.updateChartFromFiltered();
             } finally {
+                this.completeLoadingDialog({ preserveStatus: true, preservePhases: loadFailed, immediate: loadFailed });
                 this.loading = false;
             }
         },
@@ -2318,12 +2933,23 @@ export default {
             }
             
             console.log("🎯 Phase selected by user:", this.filterValues.phase, "- fetching data...");
-            this.loading = true;
             await this.fetchData(this.filterValues.phase);
-            this.loading = false;
         },
 
         async fetchData(phase) {
+            this.setLoadingDialog({
+                headline: "Loading Dashboard Data",
+                detail: this.currentDataType ? `Preparing ${this.currentDataType.toUpperCase()} UI: Chart • Table` : "Preparing UI: Chart • Table",
+                status: this.currentDataType ? `Fetching ${this.currentDataType} data…` : "Fetching release planning data…",
+                progressLabel: "Contacting data services",
+                percent: 12,
+                targetPercent: 65,
+                progressInterval: 90,
+                phasesCompleted: 0,
+                totalPhases: 3
+            });
+
+            let loadFailed = false;
             this.loading = true;
             try {
                 console.log("=== FETCHDATA START ===");
@@ -2351,6 +2977,14 @@ export default {
                 // Use the generic fetchItems method with the current data type
                 const items = await dataService.fetchItems(phase, this.currentDataType);
 
+                this.updateLoadingDialog({
+                    progressLabel: "Structuring dataset",
+                    status: "Transforming API response…",
+                    phasesCompleted: 1,
+                    targetPercent: 78,
+                    progressInterval: 80
+                });
+
                 this.dataSourceStatus = {
                     hasError: false,
                     message: ""
@@ -2364,6 +2998,14 @@ export default {
                 
                 // Use DataTransformationService to process API response and transform data
                 this.tableData = dataTransformationService.transformApiResponseToTableData(items, this.currentDataType);
+
+                this.updateLoadingDialog({
+                    progressLabel: "Refreshing widgets",
+                    status: "Updating charts and filters…",
+                    phasesCompleted: 2,
+                    targetPercent: 90,
+                    progressInterval: 70
+                });
                 
                 console.log("=== FINAL TABLE DATA ===");
                 console.log("Final tableData array length:", this.tableData.length);
@@ -2404,6 +3046,14 @@ export default {
                 // Update chart data from the filtered table data
                 this.updateChartFromFiltered();
 
+                this.updateLoadingDialog({
+                    progressLabel: "Finalizing dashboard",
+                    status: "Polishing visuals…",
+                    phasesCompleted: 3,
+                    targetPercent: 96,
+                    progressInterval: 70
+                });
+
             } catch (error) {
                 console.error("Error fetching data:", {
                     message: error.message,
@@ -2411,6 +3061,15 @@ export default {
                     currentDataType: this.currentDataType,
                     fullError: error
                 });
+
+                this.updateLoadingDialog({
+                    progressLabel: "Encountered an issue",
+                    status: `Unable to load ${this.currentDataType?.toUpperCase() || ""} data: ${error.message}`,
+                    targetPercent: 100,
+                    immediatePercent: true,
+                    phasesCompleted: 0
+                });
+                loadFailed = true;
                 
                 // Clear data when API fails - no fallback data
                 console.log("Clearing data due to API failure");
@@ -2435,6 +3094,7 @@ export default {
                 
                 this.updateChartFromFiltered();
             } finally {
+                this.completeLoadingDialog({ preserveStatus: true, preservePhases: loadFailed, immediate: loadFailed });
                 this.loading = false;
                 this.lastUpdated = new Date().toLocaleTimeString();
             }

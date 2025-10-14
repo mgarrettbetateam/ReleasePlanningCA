@@ -2,283 +2,71 @@
  
 <template>
     <div class="enhanced-parts-planner">
-        <!-- Professional Filter Tab -->
-        <div 
-            class="global-filter-tab" 
-            :class="{ 'active': showFilterFlyout, 'has-filters': activeFilterCount > 0, 'hidden': showFilterFlyout }" 
-            style="position: fixed; left: 0; top: 50%; transform: translateY(-50%); background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%); color: white; padding: 16px 12px; cursor: pointer; border-radius: 0 12px 12px 0; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 48px; box-shadow: 2px 4px 12px rgba(0,0,0,0.25); transition: transform 0.3s ease;"
-            @click="showFilterFlyout = !showFilterFlyout; console.log('Filter tab clicked!', showFilterFlyout)"
+        <!-- Inline Filter Bar -->
+        <v-card
+            ref="inlineFilterBar"
+            class="inline-filter-bar elevation-3 mb-6"
         >
-            <v-icon color="white" size="20" style="margin-bottom: 8px;">mdi-tune-variant</v-icon>
-            <div style="writing-mode: vertical-rl; text-orientation: mixed; font-size: 12px; font-weight: 500; letter-spacing: 0.5px; line-height: 1.2;">
-                FILTERS
-            </div>
-            <v-badge
-                v-if="activeFilterCount > 0"
-                :content="activeFilterCount"
-                color="orange"
-                style="position: absolute; top: 8px; right: 8px;"
-                inline
-            />
-        </div>
-
-        <!-- Filter Flyout Panel -->
-        <v-navigation-drawer
-            v-model="showFilterFlyout"
-            temporary
-            left
-            width="400"
-            class="filter-flyout-panel"
-            app
-        >
-            <div class="flyout-header d-flex align-center pa-4" style="background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);">
-                <v-icon left color="white">mdi-filter-variant</v-icon>
-                <span class="flyout-title white--text text-h6 font-weight-medium ml-2">Filters</span>
-                <v-spacer />
-                <v-chip 
-                    color="primary" 
-                    x-small
-                    outlined
-                    class="filter-chip"
-                >
-                    {{ activeFilterCount }} Active
-                </v-chip>
-            </div>
-
-            <v-divider />
-
-            <div class="flyout-content-scrollable pa-5 overflow-y-auto" style="height: calc(100vh - 120px); scrollbar-width: thin; scrollbar-color: rgba(25, 118, 210, 0.3) transparent;">
-                <!-- Data Type Switcher - First priority at the top -->
-                <div class="mb-6">
-                    <div class="text-subtitle-2 font-weight-bold primary--text text-uppercase mb-3 d-flex align-center">
-                        <v-icon small color="primary" class="mr-2">mdi-database</v-icon>
-                        Data Type
-                        <v-spacer />
-                        <v-chip 
-                            v-if="currentDataType"
-                            x-small
-                            color="success"
-                            class="ml-2"
-                        >
-                            {{ currentDataType.toUpperCase() }} Active
-                        </v-chip>
-                        <v-chip 
-                            v-else
-                            x-small
-                            color="grey"
-                            outlined
-                            class="ml-2"
-                        >
-                            None Selected
-                        </v-chip>
-                    </div>
-                    
-                    <!-- Show currently selected data type prominently -->
-                    <v-alert
-                        v-if="currentDataType"
-                        type="success"
-                        dense
-                        class="mb-3 selected-data-type-alert"
-                        style="font-size: 13px; font-weight: 500;"
-                    >
-                        <div class="d-flex align-center">
-                            <v-icon small left color="success">mdi-check-circle</v-icon>
-                            <span class="font-weight-bold">{{ currentDataType.toUpperCase() }}</span>
-                            <span class="ml-2">data type selected</span>
-                            <v-spacer />
-                            <v-chip
-                                x-small
-                                color="success"
-                                outlined
-                                class="ml-2"
-                            >
-                                Active
-                            </v-chip>
-                        </div>
-                    </v-alert>
-                    
-                    <!-- Helpful message when no data type is selected -->
-                    <v-alert
-                        v-if="!currentDataType"
-                        type="info"
-                        dense
-                        text
-                        class="mb-3"
-                        style="font-size: 12px;"
-                    >
-                        <v-icon small left>mdi-information</v-icon>
-                        Choose a data type to get started
-                    </v-alert>
-                    
-                    <v-chip-group 
-                        v-model="currentDataType" 
-                        column
-                        class="ma-0"
-                    >
-                        <v-chip
-                            v-for="dataType in getAvailableDataTypes()"
-                            :key="dataType"
-                            :value="dataType"
-                            small
-                            block
-                            class="mb-2 data-type-chip"
-                            :class="{ 'selected-chip': currentDataType === dataType }"
-                            @click="switchDataType(dataType)"
-                        >
-                            <v-icon small left>{{ currentDataType === dataType ? 'mdi-check-circle' : 'mdi-table' }}</v-icon>
-                            {{ dataType.toUpperCase() }}
-                            <v-spacer />
-                            <v-icon v-if="currentDataType === dataType" small color="white">mdi-check-bold</v-icon>
-                        </v-chip>
-                    </v-chip-group>
-                </div>
-
-                <v-divider class="my-4" />
-
-                <!-- Filter Controls Grid -->
-                <div class="mb-6">
-                    <div class="text-subtitle-2 font-weight-bold primary--text text-uppercase mb-3 d-flex align-center">
-                        <v-icon small color="primary" class="mr-2">mdi-tune</v-icon>
-                        Data Filters
-                        <v-spacer />
-                        <v-chip 
-                            v-if="!currentDataType"
-                            x-small
-                            color="grey"
-                            outlined
-                            class="ml-2"
-                        >
-                            Disabled
-                        </v-chip>
-                    </div>
-                    
-                    <!-- Show helper message when no data type is selected -->
-                    <v-alert
-                        v-if="!currentDataType"
-                        type="warning"
-                        dense
-                        text
-                        class="mb-3"
-                        style="font-size: 12px;"
-                    >
-                        <v-icon small left>mdi-alert-circle</v-icon>
-                        Select a data type above to enable data filters
-                    </v-alert>
-                    
-                    <!-- Show helper message about phase dependency -->
-                    <v-alert
-                        v-if="currentDataType && (!filterValues.program || filterValues.program === '' || filterValues.program === 'All')"
-                        type="info"
-                        dense
-                        text
-                        class="mb-3"
-                        style="font-size: 12px;"
-                    >
-                        <v-icon small left>mdi-information</v-icon>
-                        Select a program to enable phase filtering
-                    </v-alert>
-                    
-                    <div 
-                        v-for="filter in filterConfig"
-                        :key="filter.key"
-                        class="mb-4"
-                    >
-                        <label class="caption font-weight-bold grey--text text--darken-2 mb-2 d-flex align-center text-uppercase">
-                            <v-icon small class="mr-1">{{ filter.icon }}</v-icon>
-                            {{ filter.label }}
-                            <v-chip 
-                                v-if="filter.key === 'phase' && getFilterDisabledState('phase')"
-                                x-small
-                                color="grey"
-                                outlined
-                                class="ml-2"
-                            >
-                                Requires Program
-                            </v-chip>
-                        </label>
+            <v-card-text class="px-4 py-3">
+                <div class="filter-bar-top">
+                    <div class="filter-inline-row">
                         <v-select
+                            v-model="objectType"
+                            :items="objectTypeOptions"
+                            item-text="text"
+                            item-value="value"
+                            label="Object Type"
+                            prepend-inner-icon="mdi-table"
+                            class="filter-inline-input object-type-dropdown"
+                            dense
+                            outlined
+                            hide-details
+                        />
+                        <v-select
+                            v-for="filter in filterConfig"
+                            :key="filter.key"
                             :value="filterValues[filter.key]"
                             :items="filter.options"
                             :placeholder="filter.placeholder"
+                            :label="filter.label"
+                            :prepend-inner-icon="filter.icon"
+                            class="filter-inline-input"
                             dense
                             outlined
                             hide-details
                             clearable
                             :disabled="getFilterDisabledState(filter.key)"
-                            class="mb-3"
+                            :append-icon="filter.key === 'phase' && getFilterDisabledState('phase') ? 'mdi-lock-outline' : undefined"
                             @change="handleFilterChange({ key: filter.key, value: $event, allFilters: { ...filterValues, [filter.key]: $event } })"
                         />
+                        <template v-if="currentDataType === 'parts'">
+                            <v-select
+                                v-model="filterValues.makeBuyFilter"
+                                :items="makeBuyOptions"
+                                label="Make / Buy"
+                                prepend-inner-icon="mdi-factory"
+                                class="filter-inline-input"
+                                dense
+                                outlined
+                                hide-details
+                                :disabled="makeBuyOptions.length <= 1"
+                            />
+                            <v-select
+                                v-model="filterValues.partTypeFilter"
+                                :items="partTypeOptions"
+                                label="Part Type"
+                                prepend-inner-icon="mdi-cog"
+                                class="filter-inline-input"
+                                dense
+                                outlined
+                                hide-details
+                                :disabled="partTypeOptions.length <= 1"
+                            />
+                        </template>
                     </div>
                 </div>
-
-                <v-divider class="my-4" />
-
-                <!-- PARTS-Specific Filters - Only shown for PARTS data type -->
-                <div v-if="currentDataType === 'parts'" class="mb-6">
-                    <div class="text-subtitle-2 font-weight-bold warning--text text-uppercase mb-3 d-flex align-center">
-                        <v-icon small color="warning" class="mr-2">mdi-cog-outline</v-icon>
-                        Part Filters
-                        <v-spacer />
-                        <v-chip 
-                            x-small
-                            color="warning"
-                            outlined
-                            class="ml-2"
-                        >
-                            PARTS Only
-                        </v-chip>
-                    </div>
-                    
-                    <!-- Make/Buy Filter -->
-                    <div class="mb-4">
-                        <label class="caption font-weight-bold grey--text text--darken-2 mb-2 d-flex align-center text-uppercase">
-                            <v-icon small class="mr-1">mdi-factory</v-icon>
-                            Make / Buy
-                        </label>
-                        <v-select
-                            v-model="filterValues.makeBuyFilter"
-                            :items="makeBuyOptions"
-                            placeholder="Select Make / Buy"
-                            dense
-                            outlined
-                            hide-details
-                            class="mb-3"
-                            :loading="loading && currentDataType === 'parts'"
-                            :disabled="loading && currentDataType === 'parts' && makeBuyOptions.length <= 1"
-                            @change="handlePartsFilterChange"
-                        />
-                    </div>
-
-                    <!-- Part Type Filter -->
-                    <div class="mb-4">
-                        <label class="caption font-weight-bold grey--text text--darken-2 mb-2 d-flex align-center text-uppercase">
-                            <v-icon small class="mr-1">mdi-shape</v-icon>
-                            Part Type
-                        </label>
-                        <v-select
-                            v-model="filterValues.partTypeFilter"
-                            :items="partTypeOptions"
-                            placeholder="Select Part Type"
-                            dense
-                            outlined
-                            hide-details
-                            class="mb-3"
-                            :loading="loading && currentDataType === 'parts'"
-                            :disabled="loading && currentDataType === 'parts' && partTypeOptions.length <= 1"
-                            @change="handlePartsFilterChange"
-                        />
-                    </div>
-                </div>
-
-                <v-divider v-if="currentDataType === 'parts'" class="my-4" />
-
-                <!-- Scroll indicator at bottom -->
-                <div class="d-flex align-center justify-center pt-4 pb-5 mt-5 opacity-60" style="border-top: 1px solid #e0e0e0;">
-                    <v-icon small color="grey">mdi-chevron-down</v-icon>
-                    <span class="caption grey--text ml-1 font-italic">Scroll for more options</span>
-                </div>
-            </div>
-        </v-navigation-drawer>
+            </v-card-text>
+        </v-card>
 
         <!-- Header with Title and Discrete Filter Button -->
         <v-card-title class="planner-header">
@@ -296,51 +84,6 @@
                 <v-icon small left>mdi-check-circle</v-icon>
                 {{ currentDataType.toUpperCase() }}
             </v-chip>
-            
-            <!-- Filter Summary in Header -->
-            <div v-if="currentDataType || hasActiveFilters" class="ml-4 d-flex align-center flex-wrap" style="gap: 8px;">
-                <!-- Program -->
-                <div v-if="filterValues.program && filterValues.program !== ''" class="d-flex align-center" style="gap: 4px;">
-                    <v-icon x-small color="white">mdi-folder</v-icon>
-                    <span class="filter-label-header">Program:</span>
-                    <span class="filter-value-header">{{ filterValues.program }}</span>
-                </div>
-
-                <!-- Phase -->
-                <div v-if="filterValues.phase && filterValues.phase !== ''" class="d-flex align-center" style="gap: 4px;">
-                    <v-icon x-small color="white">mdi-timeline</v-icon>
-                    <span class="filter-label-header">Phase:</span>
-                    <span class="filter-value-header">{{ filterValues.phase }}</span>
-                </div>
-
-                <!-- ATA Chapter -->
-                <div v-if="filterValues.ataChapterGroup && filterValues.ataChapterGroup !== 'All'" class="d-flex align-center" style="gap: 4px;">
-                    <v-icon x-small color="white">mdi-book-open-page-variant</v-icon>
-                    <span class="filter-label-header">Chapter:</span>
-                    <span class="filter-value-header">{{ filterValues.ataChapterGroup }}</span>
-                </div>
-
-                <!-- Engineering System -->
-                <div v-if="filterValues.engSystemGroup && filterValues.engSystemGroup !== 'All'" class="d-flex align-center" style="gap: 4px;">
-                    <v-icon x-small color="white">mdi-cog-outline</v-icon>
-                    <span class="filter-label-header">System:</span>
-                    <span class="filter-value-header">{{ filterValues.engSystemGroup }}</span>
-                </div>
-
-                <!-- Make/Buy Filter - Only for PARTS -->
-                <div v-if="currentDataType === 'parts' && filterValues.makeBuyFilter && filterValues.makeBuyFilter !== 'All'" class="d-flex align-center" style="gap: 4px;">
-                    <v-icon x-small color="white">mdi-factory</v-icon>
-                    <span class="filter-label-header">Make/Buy:</span>
-                    <span class="filter-value-header">{{ filterValues.makeBuyFilter }}</span>
-                </div>
-
-                <!-- Part Type Filter - Only for PARTS -->
-                <div v-if="currentDataType === 'parts' && filterValues.partTypeFilter && filterValues.partTypeFilter !== 'All'" class="d-flex align-center" style="gap: 4px;">
-                    <v-icon x-small color="white">mdi-cog</v-icon>
-                    <span class="filter-label-header">Part Type:</span>
-                    <span class="filter-value-header">{{ filterValues.partTypeFilter }}</span>
-                </div>
-            </div>
             
             <v-spacer />
             
@@ -424,16 +167,16 @@
                             <div v-else class="no-chart-data d-flex flex-column align-center justify-center" style="height: 100%;">
                                 <v-icon size="64" color="grey lighten-2">mdi-chart-line-variant</v-icon>
                                 <h4 class="mt-4">No Chart Data</h4>
-                                <p class="text-center mt-2">Use the filter panel to select data</p>
+                                <p class="text-center mt-2">Use the filters above to select data</p>
                                 <v-btn
                                     color="primary"
                                     outlined
                                     small
                                     class="mt-3"
-                                    @click="showFilterFlyout = true"
+                                    @click="scrollToFilters"
                                 >
                                     <v-icon small left>mdi-filter-variant</v-icon>
-                                    Open Filters
+                                    Adjust Filters
                                 </v-btn>
                             </div>
                         </div>
@@ -584,16 +327,16 @@
                         <v-icon size="64" color="primary" class="mb-4">mdi-format-list-checks</v-icon>
                         <h3 class="text-h5 font-weight-light primary--text mb-2">Welcome to Release Planner</h3>
                         <p class="text-body-1 grey--text text--darken-2 mb-4 text-center">
-                            Select a data type from the filter panel to get started
+                            Select a data type from the filters above to get started
                         </p>
                         <v-btn
                             color="primary"
                             large
                             outlined
-                            @click="showFilterFlyout = true"
+                            @click="scrollToFilters"
                         >
                             <v-icon left>mdi-filter-variant</v-icon>
-                            Open Filters
+                            Choose Filters
                         </v-btn>
                     </div>
                     
@@ -710,10 +453,10 @@
                                 outlined
                                 small
                                 class="mt-3"
-                                @click="showFilterFlyout = true"
+                                @click="scrollToFilters"
                             >
                                 <v-icon left small>mdi-filter-variant</v-icon>
-                                Open Filters
+                                Adjust Filters
                             </v-btn>
                         </template>
                         <template v-else>
@@ -725,7 +468,7 @@
                                 outlined
                                 small
                                 class="mt-3"
-                                @click="showFilterFlyout = true"
+                                @click="scrollToFilters"
                             >
                                 <v-icon left small>mdi-filter-variant</v-icon>
                                 Try Different Phase
@@ -791,87 +534,6 @@
 /* Custom text colors for Release Stats */
 .orange--text {
   color: #ff9800 !important;
-}
-
-/* Left-side Filter Tab - More visible for testing */
-.filter-tab-subtle {
-  position: fixed;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
-  color: white;
-  padding: 8px 4px;
-  cursor: pointer;
-  border-radius: 0 6px 6px 0;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
-  transition: all 0.3s ease;
-  z-index: 9999 !important;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  min-width: 28px;
-  opacity: 1;
-}
-
-.filter-tab-subtle:hover {
-  transform: translateY(-50%) translateX(4px);
-  background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
-  box-shadow: 3px 0 12px rgba(0, 0, 0, 0.3);
-}
-
-.filter-tab-subtle.active {
-  background: linear-gradient(135deg, #0d47a1 0%, #01579b 100%);
-  transform: translateY(-50%) translateX(6px);
-}
-
-.filter-tab-subtle.has-filters {
-  border-right: 2px solid #ff9800;
-}
-
-.filter-tab-subtle .tab-text-vertical {
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  font-size: 8px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  line-height: 1;
-}
-
-.filter-tab-subtle .filter-badge-subtle {
-  position: absolute;
-  top: 4px;
-  right: -2px;
-}
-
-/* Global Filter Tab Animations */
-.global-filter-tab {
-  transform: translateX(0);
-}
-
-.global-filter-tab.hidden {
-  transform: translateX(-40px);
-}
-
-/* Filter Flyout Styles - Keep custom glass effect */
-/* Custom scrollbar styling for flyout */
-.flyout-content-scrollable::-webkit-scrollbar {
-  width: 6px;
-}
-
-.flyout-content-scrollable::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.flyout-content-scrollable::-webkit-scrollbar-thumb {
-  background-color: rgba(25, 118, 210, 0.3);
-  border-radius: 3px;
-  transition: background-color 0.2s ease;
-}
-
-.flyout-content-scrollable::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(25, 118, 210, 0.5);
 }
 
 /* Custom stat item interactions that can't be replicated with Vuetify */
@@ -1008,11 +670,6 @@
   .legend-chip-container .v-chip {
     align-self: flex-start !important;
   }
-  
-  /* Hide filter tab on mobile to avoid interference */
-  .filter-tab {
-    display: none;
-  }
 }
 
 /* Hide scroll indicator when content fits */
@@ -1141,28 +798,6 @@
 }
 
 /* Header filter styles for blue header bar */
-.filter-label-header {
-  font-size: 11px;
-  font-weight: 500;
-  color: #E3F2FD;
-}
-
-.filter-value-header {
-  font-size: 11px;
-  font-weight: 600;
-  color: #FFF9C4;
-  background-color: rgba(255, 193, 7, 0.2);
-  padding: 2px 6px;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 193, 7, 0.3);
-}
-
-.results-count {
-  font-size: 13px;
-  font-weight: 600;
-  color: #4caf50;
-}
-
 /* Mobile responsive */
 @media (max-width: 600px) {
   .filter-summary-card .d-flex {
@@ -1227,27 +862,80 @@
   border-radius: 8px !important;
 }
 
-/* Better filter tab hover and slide animations */
-.global-filter-tab {
-  cursor: pointer;
-  transform: translateY(-50%) translateX(0);
+/* Inline Filter Bar Styling */
+.inline-filter-bar {
+    border: 1px solid rgba(25, 118, 210, 0.14) !important;
+    border-radius: 14px !important;
+    background: linear-gradient(145deg, rgba(227, 242, 253, 0.7), #ffffff) !important;
+    position: sticky;
+    top: 16px;
+    z-index: 5;
 }
 
-.global-filter-tab:hover:not(.hidden) {
-  transform: translateY(-50%) translateX(6px);
-  box-shadow: 3px 6px 16px rgba(0,0,0,0.35) !important;
+.inline-filter-bar .v-card__text {
+    padding: 12px 18px !important;
 }
 
-.global-filter-tab.active {
-  background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%) !important;
+.filter-bar-top {
+    display: flex;
+    width: 100%;
+    padding: 4px 0;
 }
 
-.global-filter-tab.hidden {
-  transform: translateY(-50%) translateX(-60px) !important;
+.object-type-dropdown {
+    width: 100%;
+    max-width: 220px;
 }
 
-.global-filter-tab.has-filters:not(.hidden) {
-  border-right: 3px solid #ff9800;
+.object-type-dropdown .v-input__slot {
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.object-type-dropdown .v-input__slot:hover {
+    box-shadow: 0 4px 10px rgba(25, 118, 210, 0.12);
+    border-color: rgba(25, 118, 210, 0.4) !important;
+}
+
+.filter-inline-row {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    flex: 1 1 auto;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 6px 4px;
+}
+
+.filter-inline-input {
+    flex: 0 0 200px;
+    min-width: 180px;
+    max-width: 220px;
+}
+
+.filter-inline-input .v-input__slot {
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    min-height: 42px;
+    align-items: center;
+    padding-top: 2px;
+    padding-bottom: 2px;
+}
+
+.filter-inline-input .v-input__slot:hover {
+    box-shadow: 0 4px 10px rgba(25, 118, 210, 0.12);
+    border-color: rgba(25, 118, 210, 0.4) !important;
+}
+
+.filter-inline-input .v-select__selections {
+    line-height: 1.3;
+    padding-top: 2px;
+    padding-bottom: 2px;
+}
+
+@media (max-width: 1600px) {
+    .filter-bar-top {
+        overflow-x: auto;
+    }
 }
 
 /* Clean table styling */
@@ -1296,6 +984,8 @@ import { getApiBaseUrl, API_CONFIG } from "@/config/ApiConfig.js";
 import { responsiveUtils, ResponsiveMixin } from "@/utils/ResponsiveUtils.js";
 import { useDragAndDrop } from "@/composables/useDragAndDrop.js";
 
+const FOCUS_SCROLL_DELAY = 50;
+
 /* eslint-disable no-console */
 export default {
     name: "EnhancedPartsPlannerWidget",
@@ -1318,9 +1008,6 @@ export default {
         return {
             // Drag and drop functionality
             dragDrop: dragDropComposable,
-            
-            // Filter flyout state
-            showFilterFlyout: false,
             
             // Debouncing for filter changes
             filterChangeTimeout: null,
@@ -1351,7 +1038,7 @@ export default {
             chartData: { labels: [], datasets: [] },
             
             // Current data type being displayed - determines which header configuration to use
-            currentDataType: null, // null initially - user must select "parts", "cas", "crs", etc.
+            currentDataType: "parts",
             
             // Configuration for different data types - easily extensible
             // ⚠️  IMPORTANT: When adding new data types here, you MUST also update 
@@ -1453,6 +1140,24 @@ export default {
     },
     
     computed: {
+        objectTypeOptions() {
+            return this.getAvailableDataTypes().map(type => ({
+                text: type.toUpperCase(),
+                value: type
+            }));
+        },
+
+        objectType: {
+            get() {
+                return this.currentDataType || "parts";
+            },
+            set(objectType) {
+                if (objectType && objectType !== this.currentDataType) {
+                    this.switchDataType(objectType);
+                }
+            }
+        },
+
         // Dynamic widget title based on current data type using DataTransformationService
         widgetTitle() {
             if (!this.currentDataType) {
@@ -1537,27 +1242,6 @@ export default {
                 filterValues: this.filterValues
             });
             return config;
-        },
-
-        // Count of active filters for display
-        activeFilterCount() {
-            let count = 0;
-            
-            // Check each filter value to see if it's active (not empty, not "All", not default)
-            if (this.filterValues.program && this.filterValues.program !== "" && this.filterValues.program !== "All") count++;
-            if (this.filterValues.phase && this.filterValues.phase !== "" && this.filterValues.phase !== "All") count++;
-            if (this.filterValues.ataChapterGroup && this.filterValues.ataChapterGroup !== "All") count++;
-            if (this.filterValues.engSystemGroup && this.filterValues.engSystemGroup !== "All") count++;
-            if (this.currentDataType === "parts" && this.filterValues.makeBuyFilter && this.filterValues.makeBuyFilter !== "All") count++;
-            if (this.currentDataType === "parts" && this.filterValues.partTypeFilter && this.filterValues.partTypeFilter !== "All") count++;
-            if (this.selectedStatFilter && this.selectedStatFilter !== "all") count++;
-            
-            return count;
-        },
-
-        // Boolean flag for whether any filters are active
-        hasActiveFilters() {
-            return this.activeFilterCount > 0;
         },
 
         // Release stats as array for vertical layout
@@ -1931,6 +1615,30 @@ export default {
                 });
             }
         },
+
+        "filterValues.makeBuyFilter": {
+            handler(newValue, oldValue) {
+                if (newValue === oldValue) {
+                    return;
+                }
+                console.log("👀 CHART WATCH: Make/Buy filter changed from", oldValue, "to", newValue);
+                if (this.currentDataType === "parts") {
+                    this.handlePartsFilterChange();
+                }
+            }
+        },
+
+        "filterValues.partTypeFilter": {
+            handler(newValue, oldValue) {
+                if (newValue === oldValue) {
+                    return;
+                }
+                console.log("👀 CHART WATCH: Part Type filter changed from", oldValue, "to", newValue);
+                if (this.currentDataType === "parts") {
+                    this.handlePartsFilterChange();
+                }
+            }
+        },
         
         // Watch selectedStatFilter changes
         "selectedStatFilter": {
@@ -1993,6 +1701,27 @@ export default {
     },
     
     methods: {
+        scrollToFilters() {
+            this.$nextTick(() => {
+                const filterRef = this.$refs.inlineFilterBar;
+                const element = filterRef?.$el || filterRef;
+                if (element && typeof element.scrollIntoView === "function") {
+                    element.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+
+                const schedule = (typeof window !== "undefined" && window.requestAnimationFrame)
+                    ? window.requestAnimationFrame.bind(window)
+                    : cb => setTimeout(cb, FOCUS_SCROLL_DELAY);
+
+                schedule(() => {
+                    const firstInput = element?.querySelector?.("input, button, [tabindex]");
+                    if (firstInput && typeof firstInput.focus === "function") {
+                        firstInput.focus({ preventScroll: true });
+                    }
+                });
+            });
+        },
+
         /**
          * Determine if a filter should be disabled based on dependencies
          * @param {string} filterKey - The key of the filter to check
@@ -2421,6 +2150,10 @@ export default {
             this.filterChangeTimeout = setTimeout(() => {
                 console.log("⏰ Executing debounced parts filter change");
                 this.changeActionRefreshKey++;
+                this.$nextTick(() => {
+                    this.updateChartFromFiltered();
+                    this.lastUpdated = new Date().toLocaleTimeString();
+                });
             }, this.filterDebounceDelay);
         },
         

@@ -2150,18 +2150,19 @@ export default {
             this.isApplyingQuery = true;
 
             try {
-                const rawType = params.get("type") || params.get("dataType") || params.get("objectType");
+                // Support human-readable parameters with backward compatibility
+                const rawType = params.get("view") || params.get("t") || params.get("type") || params.get("dataType") || params.get("objectType");
                 if (rawType) {
                     this.setDataType(String(rawType).trim().toLowerCase());
                 }
 
-                const programParam = params.get("program");
-                const phaseParam = params.get("phase");
-                const ataParam = params.get("ata");
-                const engParam = params.get("eng");
-                const makeBuyParam = params.get("makeBuy");
-                const partTypeParam = params.get("partType");
-                const statParam = params.get("stat");
+                const programParam = params.get("program") || params.get("p");
+                const phaseParam = params.get("phase") || params.get("ph");
+                const ataParam = params.get("ata") || params.get("a");
+                const engParam = params.get("eng") || params.get("e");
+                const makeBuyParam = params.get("make") || params.get("m") || params.get("makeBuy");
+                const partTypeParam = params.get("part") || params.get("pt") || params.get("partType");
+                const statParam = params.get("status") || params.get("s") || params.get("stat");
 
                 if (programParam) {
                     const programValue = this.findMatchingOptionValue(this.programs, programParam);
@@ -2339,7 +2340,7 @@ export default {
             const params = new URLSearchParams();
 
             if (this.currentDataType && this.currentDataType !== "parts") {
-                params.set("type", this.currentDataType);
+                params.set("view", this.currentDataType);
             }
 
             const {
@@ -2368,15 +2369,15 @@ export default {
             }
 
             if (this.currentDataType === "parts" && makeBuyFilter && makeBuyFilter !== "All") {
-                params.set("makeBuy", makeBuyFilter);
+                params.set("make", makeBuyFilter);
             }
 
             if (this.currentDataType === "parts" && partTypeFilter && partTypeFilter !== "All") {
-                params.set("partType", partTypeFilter);
+                params.set("part", partTypeFilter);
             }
 
             if (this.selectedStatFilter && this.selectedStatFilter !== "all") {
-                params.set("stat", this.selectedStatFilter);
+                params.set("status", this.selectedStatFilter);
             }
 
             const sortedEntries = Array.from(params.entries()).sort(([a], [b]) => a.localeCompare(b));

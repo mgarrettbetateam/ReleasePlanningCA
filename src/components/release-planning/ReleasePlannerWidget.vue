@@ -559,6 +559,27 @@
                 </v-card-actions>
             </v-card>
         </v-dialog>
+
+        <!-- Version Number Display -->
+        <div class="version-display">
+            <v-chip
+                small
+                color="success"
+                outlined
+                class="version-chip"
+            >
+                <v-icon small left>mdi-check-circle</v-icon>
+                Ready
+            </v-chip>
+            <v-chip
+                small
+                color="primary"
+                class="version-number-chip"
+            >
+                v{{ appVersion }}
+            </v-chip>
+        </div>
+
     </div>
 </template>
 
@@ -956,6 +977,34 @@
   border-color: rgba(0, 0, 0, 0.2) !important;
 }
 
+/* Version Display Positioning */
+.version-display {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.version-chip, .version-number-chip {
+  pointer-events: auto;
+  font-size: 0.75rem;
+  height: 24px;
+}
+
+.version-chip {
+  background-color: rgba(76, 175, 80, 0.1) !important;
+  border-color: #4caf50 !important;
+}
+
+.version-number-chip {
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(25, 118, 210, 0.2);
+}
+
 .v-select.v-input--is-disabled .v-select__selection {
   color: rgba(0, 0, 0, 0.4) !important;
 }
@@ -1121,6 +1170,9 @@ export default {
             // Drag and drop functionality
             dragDrop: dragDropComposable,
             
+            // App version
+            appVersion: "2.0.0",
+
             // Debouncing for filter changes
             filterChangeTimeout: null,
             filterDebounceDelay: 1000, // 1000ms delay before triggering API calls

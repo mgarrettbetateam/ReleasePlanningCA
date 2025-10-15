@@ -234,16 +234,7 @@
                     <v-col>
                         <span class="caption">{{ getStatusText() }}</span>
                     </v-col>
-                    <v-col cols="auto">
-                        <v-chip v-if="!loading" small color="success">
-                            <v-icon small left>mdi-check-circle</v-icon>
-                            Ready
-                        </v-chip>
-                        <v-chip v-else small color="warning">
-                            <v-icon small left>mdi-loading</v-icon>
-                            Loading...
-                        </v-chip>
-                    </v-col>
+
                 </v-row>
             </v-footer>
         </v-main>

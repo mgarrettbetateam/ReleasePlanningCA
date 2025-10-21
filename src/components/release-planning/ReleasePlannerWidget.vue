@@ -1,9 +1,99 @@
 <!-- Release Planning Widget - Self-contained with prominent filter dropdowns -->
  
 <template>
-    <div class="enhanced-parts-planner">
-        <!-- Inline Filter Bar -->
+    <div class="enhanced-parts-planner" :class="{ 'kiosk-mode': isKioskMode }">
+        <!-- Kiosk Mode Filter Badge Bar -->
         <v-card
+            v-if="isKioskMode"
+            class="kiosk-filter-badge-bar elevation-2 mb-3"
+            color="blue-grey darken-4"
+            dark
+        >
+            <v-card-text class="py-2 px-4">
+                <div class="d-flex align-center justify-space-between">
+                    <div class="d-flex align-center flex-wrap">
+                        <v-chip
+                            v-for="(filter, index) in activeFilterLabels"
+                            :key="index"
+                            small
+                            color="blue darken-1"
+                            class="mr-2 mb-1 mt-1 filter-badge"
+                            dark
+                        >
+                            <v-icon small left>{{ filter.icon }}</v-icon>
+                            <span class="font-weight-medium">{{ filter.text }}</span>
+                        </v-chip>
+                        <v-chip
+                            v-if="activeFilterLabels.length === 0"
+                            small
+                            color="grey darken-1"
+                            class="mr-2"
+                            dark
+                        >
+                            <v-icon small left>mdi-filter-off</v-icon>
+                            <span>No Filters Applied</span>
+                        </v-chip>
+                    </div>
+                    <div class="d-flex align-center">
+                        <v-chip
+                            small
+                            color="green darken-1"
+                            dark
+                            class="ml-2"
+                        >
+                            <v-icon small left>mdi-monitor-dashboard</v-icon>
+                            <span class="font-weight-bold">KIOSK MODE</span>
+                        </v-chip>
+                        <v-chip
+                            small
+                            color="teal darken-1"
+                            dark
+                            class="ml-2 refresh-indicator"
+                        >
+                            <v-icon small left>mdi-refresh</v-icon>
+                            <span class="font-weight-medium">
+                                {{ kioskRefreshCountdown || '60s' }}
+                            </span>
+                        </v-chip>
+                        <v-tooltip bottom>
+                            <template #activator="{ on, attrs }">
+                                <v-icon 
+                                    small 
+                                    class="ml-2" 
+                                    color="white"
+                                    v-bind="attrs"
+                                    v-on="on"
+                                >
+                                    mdi-information
+                                </v-icon>
+                            </template>
+                            <div style="max-width: 300px;">
+                                <strong>Kiosk Mode Active</strong><br>
+                                • Auto-rotates pages every 10s<br>
+                                • Auto-refreshes data every 60s<br>
+                                • Shows 15 rows per page<br>
+                                • 30% chart, 70% table<br>
+                                • Copy URL to use on another display
+                            </div>
+                        </v-tooltip>
+                        <v-btn
+                            small
+                            icon
+                            color="white"
+                            class="ml-2"
+                            title="Exit Kiosk Mode"
+                            @click="toggleKioskMode"
+                        >
+                            <v-icon small>mdi-close-circle</v-icon>
+                        </v-btn>
+                    </div>
+                </div>
+            </v-card-text>
+        </v-card>
+
+        <!-- Inline Filter Bar (Hidden in Kiosk Mode) -->
+        <v-card
+            v-if="!isKioskMode"
             ref="inlineFilterBar"
             class="inline-filter-bar elevation-3 mb-6"
         >
@@ -68,8 +158,8 @@
             </v-card-text>
         </v-card>
 
-        <!-- Header with Title and Discrete Filter Button -->
-        <v-card-title class="planner-header">
+        <!-- Header with Title and Discrete Filter Button (Hidden in Kiosk Mode) -->
+        <v-card-title v-if="!isKioskMode" class="planner-header">
             <v-icon left color="primary">mdi-clipboard-list</v-icon>
             {{ widgetTitle }}
             
@@ -109,10 +199,21 @@
                 <v-icon small left>{{ apiEnvironmentChip.icon }}</v-icon>
                 {{ apiEnvironmentChip.text }}
             </v-chip>
+
+            <!-- Kiosk Mode Toggle -->
+            <v-btn
+                small
+                :color="isKioskMode ? 'green' : 'grey'"
+                class="ml-3"
+                @click="toggleKioskMode"
+            >
+                <v-icon small left>{{ isKioskMode ? 'mdi-monitor-dashboard' : 'mdi-monitor' }}</v-icon>
+                {{ isKioskMode ? 'Kiosk Mode' : 'Enable Kiosk' }}
+            </v-btn>
         </v-card-title>
 
         <v-alert
-            v-if="showDataErrors && dataSourceStatus.hasError"
+            v-if="!isKioskMode && showDataErrors && dataSourceStatus.hasError"
             type="error"
             outlined
             dense
@@ -170,12 +271,12 @@
         </v-dialog>
 
         <!-- Layout: Chart and Stats Side by Side -->
-        <div class="pa-2" style="margin: 16px; padding: 12px;">
+        <div class="pa-2" :class="isKioskMode ? 'kiosk-layout' : ''" style="margin: 16px; padding: 12px;">
             <!-- Chart and Stats Row - Clean Horizontal Layout -->
-            <div class="d-flex" style="gap: 16px; margin-bottom: 12px; margin-left: 24px;">
+            <div class="d-flex" :class="isKioskMode ? 'kiosk-chart-row' : ''" style="gap: 16px; margin-bottom: 12px; margin-left: 24px;">
                 <!-- Chart Container - Takes most of the space -->
                 <v-card class="flex-grow-1" elevation="2" style="border-radius: 8px;">
-                    <v-card-title class="pa-2" style="border-bottom: 1px solid #e0e0e0;">
+                    <v-card-title v-if="!isKioskMode" class="pa-2" style="border-bottom: 1px solid #e0e0e0;">
                         <v-icon left color="primary" size="20">mdi-chart-line</v-icon>
                         <span class="text-subtitle-1 font-weight-medium">Release Timeline</span>
                         <v-spacer />
@@ -212,8 +313,8 @@
                         </div>
                     </v-card-title>
                     
-                    <v-card-text class="pa-2">
-                        <div style="height: 280px; width: 100%;">
+                    <v-card-text class="pa-2" :class="isKioskMode ? 'kiosk-chart-content' : ''">
+                        <div :style="{ height: currentChartHeight + 'px', width: '100%' }">
                             <ReleaseChart
                                 v-if="chartData.labels?.length > 0"
                                 ref="lineChart"
@@ -241,8 +342,8 @@
                     </v-card-text>
                 </v-card>
                 
-                <!-- Release Stats Container - Compact Width -->
-                <v-card style="width: 260px; flex-shrink: 0;" elevation="2" class="rounded-lg">
+                <!-- Release Stats Container - Compact Width (Hidden in Kiosk Mode) -->
+                <v-card v-if="!isKioskMode" style="width: 260px; flex-shrink: 0;" elevation="2" class="rounded-lg">
                     <v-card-title class="pa-2" style="border-bottom: 1px solid #e0e0e0;">
                         <v-icon left color="primary" size="20">mdi-chart-bar</v-icon>
                         <span class="text-subtitle-1 font-weight-medium">Release Stats</span>
@@ -381,13 +482,13 @@
                     <v-data-table
                         v-else-if="currentDataType && filteredTableData.length > 0"
                         :headers="tableHeaders"
-                        :items="filteredTableData"
+                        :items="isKioskMode ? kioskPagedData : filteredTableData"
                         :loading="loading"
                         :dense="isMobile"
                         :height="currentTableHeight"
                         :fixed-header="isDesktop"
                         :items-per-page="currentItemsPerPage"
-                        :hide-default-footer="isMobile"
+                        :hide-default-footer="isMobile || isKioskMode"
                         :mobile-breakpoint="600"
                         :item-class="getRowClass"
                         item-value="partNo"
@@ -477,6 +578,46 @@
                             </a>
                         </template>
                     </v-data-table>
+
+                    <!-- Kiosk Mode Page Indicator Bar -->
+                    <v-card
+                        v-if="isKioskMode && filteredTableData.length > 0"
+                        class="kiosk-page-indicator elevation-2 mt-2"
+                        color="blue-grey darken-3"
+                        dark
+                    >
+                        <v-card-text class="py-2 px-4">
+                            <div class="d-flex align-center justify-space-between">
+                                <div class="d-flex align-center">
+                                    <v-icon small class="mr-2">mdi-file-document-multiple</v-icon>
+                                    <span class="font-weight-medium">
+                                        Showing {{ ((kioskCurrentPage - 1) * kioskRowsPerPage) + 1 }} - 
+                                        {{ Math.min(kioskCurrentPage * kioskRowsPerPage, filteredTableData.length) }} 
+                                        of {{ filteredTableData.length }} items
+                                    </span>
+                                    <span v-if="kioskLastRefreshTime" class="ml-4 caption grey--text text--lighten-1">
+                                        <v-icon x-small class="mr-1">mdi-clock-outline</v-icon>
+                                        Updated {{ kioskLastRefreshDisplay }}
+                                    </span>
+                                </div>
+                                <div class="d-flex align-center">
+                                    <span class="mr-3 caption">Page {{ kioskCurrentPage }} of {{ kioskTotalPages }}</span>
+                                    <div class="d-flex align-center">
+                                        <v-chip
+                                            v-for="page in kioskPageIndicators"
+                                            :key="page"
+                                            x-small
+                                            :color="page === kioskCurrentPage ? 'blue' : 'grey darken-1'"
+                                            class="mx-1 page-dot"
+                                            :class="{ 'active-page': page === kioskCurrentPage }"
+                                        >
+                                            {{ page }}
+                                        </v-chip>
+                                    </div>
+                                </div>
+                            </div>
+                        </v-card-text>
+                    </v-card>
                     
                     <!-- Show no data message when data type is selected but no data is available -->
                     <div v-else-if="currentDataType" class="no-data-message d-flex flex-column align-center justify-center" :style="{ height: `${currentTableHeight}px` }">
@@ -660,6 +801,100 @@
     }
 }
 
+/* Kiosk Mode Filter Badge Bar Styles */
+.kiosk-filter-badge-bar {
+    border-radius: 8px !important;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.kiosk-filter-badge-bar .v-card__text {
+    min-height: 50px;
+}
+
+.filter-badge {
+    font-size: 0.875rem !important;
+    height: 28px !important;
+    letter-spacing: 0.3px;
+}
+
+.filter-badge .v-chip__content {
+    font-weight: 500;
+}
+
+/* Kiosk Mode Page Indicator Styles */
+.kiosk-page-indicator {
+    border-radius: 6px !important;
+    position: sticky;
+    bottom: 0;
+    z-index: 9;
+}
+
+.kiosk-page-indicator .v-card__text {
+    min-height: 40px;
+}
+
+.page-dot {
+    min-width: 28px !important;
+    height: 22px !important;
+    font-size: 0.75rem !important;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.page-dot.active-page {
+    transform: scale(1.2);
+    box-shadow: 0 0 8px rgba(33, 150, 243, 0.6);
+}
+
+/* Kiosk Mode Refresh Animation */
+@keyframes refreshPulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.05);
+    }
+}
+
+.refresh-indicator {
+    animation: refreshPulse 2s ease-in-out infinite;
+}
+
+/* Kiosk Mode Layout Optimizations */
+.kiosk-layout {
+    margin: 0 !important;
+    padding: 4px !important;
+}
+
+.kiosk-chart-row {
+    margin-left: 0 !important;
+    margin-bottom: 4px !important;
+    gap: 0 !important;
+}
+
+.kiosk-chart-content {
+    padding: 4px !important;
+}
+
+/* Kiosk mode - increase font sizes for visibility */
+.enhanced-parts-planner.kiosk-mode .v-data-table {
+    font-size: 1.1rem !important;
+}
+
+.enhanced-parts-planner.kiosk-mode .v-data-table th {
+    font-size: 1.15rem !important;
+    font-weight: 700 !important;
+}
+
+.enhanced-parts-planner.kiosk-mode .v-data-table td {
+    font-size: 1.05rem !important;
+    padding: 12px 16px !important;
+}
+
 /* Custom text colors for Release Stats */
 .orange--text {
   color: #ff9800 !important;
@@ -830,6 +1065,25 @@
 
 .draggable-table >>> .v-data-table__wrapper {
   overflow-x: auto !important;
+  overflow-y: auto !important;
+  max-height: 100%;
+}
+
+/* Ensure table respects fixed heights */
+.draggable-table {
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.draggable-table >>> .v-data-table {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.draggable-table >>> .v-data-table__wrapper {
+  flex: 1;
+  overflow: auto !important;
 }
 
 /* Draggable row styles */
@@ -1012,6 +1266,16 @@
 /* Professional UI Improvements */
 .enhanced-parts-planner {
   font-family: 'Roboto', sans-serif;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure main container fills viewport without scrolling */
+.enhanced-parts-planner > * {
+  flex-shrink: 0;
 }
 
 /* Simple, clean card styling */
@@ -1121,6 +1385,28 @@
   opacity: 1;
   transform: scale(1.1);
   background-color: rgba(25, 118, 210, 0.1) !important;
+}
+</style>
+
+<style>
+/* Global styles for viewport fitting (unscoped) */
+html, body {
+  overflow: hidden;
+  height: 100vh;
+  max-height: 100vh;
+}
+
+#app {
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+/* Ensure widget wrapper fills viewport */
+.enhanced-parts-planner {
+  height: 100vh !important;
+  max-height: 100vh !important;
+  overflow: hidden !important;
 }
 </style>
 
@@ -1320,11 +1606,131 @@ export default {
                         desktop: { height: 600, itemsPerPage: 20 }
                     }
                 }
-            }
+            },
+            
+            // Kiosk mode - simple defaults
+            kioskCurrentPage: 1,
+            kioskPageRotationTimer: null,
+            kioskPageDelay: 10000, // Fixed: 10 seconds per page
+            kioskRowsPerPage: 15, // Fixed: 15 rows per page
+            kioskResizeTimeout: null,
+            kioskModeActive: false, // Track kiosk mode state
+            
+            // Kiosk mode auto-refresh
+            kioskRefreshTimer: null,
+            kioskRefreshInterval: 60000, // Fixed: 60 seconds refresh
+            kioskLastRefreshTime: null,
+            kioskNextRefreshTime: null,
+            kioskCountdownUpdateTimer: null
         };
     },
     
     computed: {
+        // Detect kiosk mode from URL parameter or internal state
+        isKioskMode() {
+            if (typeof window === "undefined") return false;
+            const params = new URLSearchParams(window.location.search);
+            const urlKioskMode = params.get("mode") === "kiosk" || params.get("display") === "kiosk";
+            console.log("🔍 isKioskMode computed:", { urlKioskMode, kioskModeActive: this.kioskModeActive, result: urlKioskMode || this.kioskModeActive });
+            return urlKioskMode || this.kioskModeActive;
+        },
+
+        // Get active filter labels for display in kiosk mode
+        activeFilterLabels() {
+            const labels = [];
+            
+            if (this.filterValues.program) {
+                labels.push({ icon: "mdi-briefcase", text: this.filterValues.program });
+            }
+            
+            if (this.filterValues.phase) {
+                labels.push({ icon: "mdi-calendar-range", text: this.filterValues.phase });
+            }
+            
+            if (this.filterValues.ataChapterGroup && this.filterValues.ataChapterGroup !== "All") {
+                labels.push({ icon: "mdi-book-open-page-variant", text: `ATA: ${this.filterValues.ataChapterGroup}` });
+            }
+            
+            if (this.filterValues.engSystemGroup && this.filterValues.engSystemGroup !== "All") {
+                labels.push({ icon: "mdi-cog-outline", text: `ENG: ${this.filterValues.engSystemGroup}` });
+            }
+            
+            if (this.currentDataType === "parts") {
+                if (this.filterValues.makeBuyFilter && this.filterValues.makeBuyFilter !== "All") {
+                    labels.push({ icon: "mdi-factory", text: this.filterValues.makeBuyFilter });
+                }
+                
+                if (this.filterValues.partTypeFilter && this.filterValues.partTypeFilter !== "All") {
+                    labels.push({ icon: "mdi-cog", text: this.filterValues.partTypeFilter });
+                }
+            }
+            
+            if (this.selectedStatFilter && this.selectedStatFilter !== "all") {
+                labels.push({ icon: "mdi-flag", text: `Status: ${this.selectedStatFilter}` });
+            }
+            
+            return labels;
+        },
+
+        // Kiosk mode pagination computed properties
+        kioskTotalPages() {
+            if (!this.isKioskMode || !this.filteredTableData) return 1;
+            return Math.ceil(this.filteredTableData.length / this.kioskRowsPerPage);
+        },
+
+        kioskPagedData() {
+            if (!this.isKioskMode) return this.filteredTableData;
+            
+            const start = (this.kioskCurrentPage - 1) * this.kioskRowsPerPage;
+            const end = start + this.kioskRowsPerPage;
+            return this.filteredTableData.slice(start, end);
+        },
+
+        kioskPageIndicators() {
+            const indicators = [];
+            for (let i = 1; i <= this.kioskTotalPages; i++) {
+                indicators.push(i);
+            }
+            return indicators;
+        },
+
+        // Get items per page based on mode
+        currentItemsPerPage() {
+            if (this.isKioskMode) {
+                return this.kioskRowsPerPage;
+            }
+            return this.baseConfig.table.itemsPerPage;
+        },
+
+        // Kiosk mode refresh countdown display
+        kioskRefreshCountdown() {
+            if (!this.isKioskMode || !this.kioskNextRefreshTime) return null;
+            
+            const now = Date.now();
+            const remaining = Math.max(0, this.kioskNextRefreshTime - now);
+            const seconds = Math.ceil(remaining / 1000);
+            
+            if (seconds > 60) {
+                const minutes = Math.floor(seconds / 60);
+                return `${minutes}m`;
+            }
+            return `${seconds}s`;
+        },
+
+        kioskLastRefreshDisplay() {
+            if (!this.kioskLastRefreshTime) return "Never";
+            
+            const now = Date.now();
+            const elapsed = now - this.kioskLastRefreshTime;
+            const seconds = Math.floor(elapsed / 1000);
+            
+            if (seconds < 60) return `${seconds}s ago`;
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes}m ago`;
+            const hours = Math.floor(minutes / 60);
+            return `${hours}h ago`;
+        },
+
         objectTypeOptions() {
             return this.getAvailableDataTypes().map(type => ({
                 text: type.toUpperCase(),
@@ -1758,6 +2164,23 @@ export default {
     
     // Watch for changes that should trigger chart updates
     watch: {
+        // Reset kiosk pagination when in kiosk mode and filters change
+        isKioskMode: {
+            handler(isKiosk) {
+                if (isKiosk) {
+                    this.resetKioskPagination();
+                    this.$nextTick(() => {
+                        this.startKioskPageRotation();
+                        this.startKioskAutoRefresh();
+                    });
+                } else {
+                    this.stopKioskPageRotation();
+                    this.stopKioskAutoRefresh();
+                }
+            },
+            immediate: true
+        },
+
         // Smart watcher: Only update chart if data count changes, not content edits
         "filteredTableData": {
             handler(newData, oldData) {
@@ -1770,6 +2193,11 @@ export default {
                     this.$nextTick(() => {
                         this.updateChartFromFiltered();
                     });
+                    
+                    // Reset kiosk pagination when data changes
+                    if (this.isKioskMode) {
+                        this.resetKioskPagination();
+                    }
                 } else {
                     console.log("👀 CHART WATCH: Ignoring content-only changes (same count)");
                 }
@@ -1935,7 +2363,28 @@ export default {
         console.log("🚀 ReleasePlannerWidget mounted - initializing...");
         console.log("📊 Current data type:", this.currentDataType);
         console.log("🏷️  Widget title:", this.widgetTitle);
-        console.log(" USE_MOCK_DATA:", USE_MOCK_DATA);
+        console.log("🖥️ Kiosk mode:", this.isKioskMode);
+        console.log("🔧 USE_MOCK_DATA:", USE_MOCK_DATA);
+        
+        // Check URL for kiosk mode on mount
+        if (typeof window !== "undefined") {
+            const params = new URLSearchParams(window.location.search);
+            const isKiosk = params.get("mode") === "kiosk";
+            
+            if (isKiosk) {
+                this.kioskModeActive = true;
+                console.log("🖥️ Kiosk mode detected from URL - preserving all parameters");
+            } else {
+                // Only clear URL parameters when NOT in kiosk mode
+                // This allows kiosk URLs with filters to work when shared
+                if (window.location.search) {
+                    const basePath = window.location.pathname;
+                    const hash = window.location.hash || "";
+                    window.history.replaceState({}, "", `${basePath}${hash}`);
+                    console.log("🧹 Cleared URL parameters on page load (not in kiosk mode)");
+                }
+            }
+        }
         
         // Initialize responsive dimensions
         this.initializeResponsiveDimensions();
@@ -1943,8 +2392,27 @@ export default {
         // Initialize by fetching programs first
         await this.fetchPrograms();
 
-    // Apply any filters provided via URL query parameters
-    await this.applyFiltersFromQuery();
+        // Only apply filters from URL if in kiosk mode, otherwise start fresh
+        if (this.isKioskMode) {
+            await this.applyFiltersFromQuery();
+        }
+        
+        // Start kiosk mode page rotation if enabled
+        if (this.isKioskMode) {
+            this.$nextTick(() => {
+                this.startKioskPageRotation();
+                this.startKioskAutoRefresh();
+                this.kioskLastRefreshTime = Date.now(); // Set initial refresh time
+                
+                // Recalculate dimensions for kiosk mode
+                this.onResponsiveResize({});
+            });
+        }
+        
+        // Add window resize listener for all modes
+        if (typeof window !== "undefined") {
+            window.addEventListener("resize", this.handleWindowResize);
+        }
         
         // Setup drag listeners after initial render
         this.setupTableDragListeners();
@@ -1962,9 +2430,206 @@ export default {
             clearTimeout(this.urlSyncTimeout);
         }
         this.clearLoadingProgressTimer();
+        this.stopKioskPageRotation();
+        this.stopKioskAutoRefresh();
+        
+        // Remove window resize listener
+        if (typeof window !== "undefined") {
+            window.removeEventListener("resize", this.handleWindowResize);
+        }
     },
     
     methods: {
+        // Kiosk Mode Pagination Methods
+        startKioskPageRotation() {
+            if (!this.isKioskMode) return;
+            
+            this.stopKioskPageRotation();
+            
+            // Simple defaults: 10 seconds per page, 15 rows per page
+            this.kioskPageDelay = 10000;
+            this.kioskRowsPerPage = 15;
+            
+            // Start rotation timer
+            this.kioskPageRotationTimer = setInterval(() => {
+                this.rotateToNextPage();
+            }, this.kioskPageDelay);
+            
+            console.log("🖥️ Kiosk page rotation: 10s per page, 15 rows");
+        },
+
+        stopKioskPageRotation() {
+            if (this.kioskPageRotationTimer) {
+                clearInterval(this.kioskPageRotationTimer);
+                this.kioskPageRotationTimer = null;
+            }
+        },
+
+        rotateToNextPage() {
+            if (!this.isKioskMode || this.kioskTotalPages <= 1) return;
+            
+            if (this.kioskCurrentPage >= this.kioskTotalPages) {
+                this.kioskCurrentPage = 1;
+            } else {
+                this.kioskCurrentPage++;
+            }
+            
+            console.log(`🖥️ Rotated to page ${this.kioskCurrentPage} of ${this.kioskTotalPages}`);
+        },
+
+        resetKioskPagination() {
+            this.kioskCurrentPage = 1;
+        },
+
+        handleWindowResize() {
+            // Debounce resize events for all modes
+            if (this.kioskResizeTimeout) {
+                clearTimeout(this.kioskResizeTimeout);
+            }
+            
+            this.kioskResizeTimeout = setTimeout(() => {
+                this.onResponsiveResize({});
+            }, 250);
+        },
+
+        async toggleKioskMode() {
+            console.log("🔘 toggleKioskMode called");
+            
+            if (typeof window === "undefined") {
+                console.log("⚠️ Window is undefined");
+                return;
+            }
+            
+            const params = new URLSearchParams(window.location.search);
+            
+            // Store current state before modifying
+            const wasKioskMode = this.isKioskMode;
+            console.log("📊 Current state - wasKioskMode:", wasKioskMode, "kioskModeActive:", this.kioskModeActive);
+            
+            if (wasKioskMode) {
+                // Exit kiosk mode
+                console.log("🚪 Attempting to exit kiosk mode...");
+                params.delete("mode");
+                params.delete("display"); // Also remove alternate parameter
+                this.kioskModeActive = false;
+                
+                // Stop all kiosk timers
+                this.stopKioskPageRotation();
+                this.stopKioskAutoRefresh();
+                
+                console.log("✅ Exited kiosk mode - kioskModeActive:", this.kioskModeActive);
+            } else {
+                // Enter kiosk mode
+                console.log("🖥️ Attempting to enter kiosk mode...");
+                params.set("mode", "kiosk");
+                this.kioskModeActive = true;
+                
+                console.log("✅ Entered kiosk mode - kioskModeActive:", this.kioskModeActive);
+            }
+            
+            // Update URL without reload
+            const basePath = window.location.pathname;
+            const hash = window.location.hash || "";
+            const queryString = params.toString();
+            const newUrl = queryString ? `${basePath}?${queryString}${hash}` : `${basePath}${hash}`;
+            
+            console.log("🔗 Updating URL to:", newUrl);
+            window.history.pushState({}, "", newUrl);
+            
+            // Wait for URL change to propagate
+            await this.$nextTick();
+            
+            // Handle mode transitions after URL update
+            if (!wasKioskMode && this.isKioskMode) {
+                // Entering kiosk mode - start features on next tick
+                console.log("▶️ Starting kiosk features...");
+                await this.$nextTick();
+                this.startKioskPageRotation();
+                this.startKioskAutoRefresh();
+                this.onResponsiveResize({});
+            } else if (wasKioskMode && !this.isKioskMode) {
+                // Exiting kiosk mode - resize for normal mode
+                console.log("⏹️ Exited - resizing for normal mode...");
+                await this.$nextTick();
+                this.onResponsiveResize({});
+            }
+            
+            // Trigger reactivity
+            console.log("🔄 Forcing component update - new isKioskMode:", this.isKioskMode);
+            this.$forceUpdate();
+        },
+
+        // Kiosk Mode Auto-Refresh Methods
+        startKioskAutoRefresh() {
+            if (!this.isKioskMode) return;
+            
+            this.stopKioskAutoRefresh();
+            
+            // Simple default: 60 seconds auto-refresh
+            this.kioskRefreshInterval = 60000;
+            
+            // Set next refresh time
+            this.kioskNextRefreshTime = Date.now() + this.kioskRefreshInterval;
+            
+            // Start refresh timer
+            this.kioskRefreshTimer = setInterval(() => {
+                this.refreshKioskData();
+            }, this.kioskRefreshInterval);
+            
+            // Start countdown update timer (updates every second for display)
+            this.kioskCountdownUpdateTimer = setInterval(() => {
+                // Force reactivity update for countdown display
+                this.$forceUpdate();
+            }, 1000);
+            
+            console.log("🔄 Kiosk auto-refresh: every 60 seconds");
+        },
+
+        stopKioskAutoRefresh() {
+            if (this.kioskRefreshTimer) {
+                clearInterval(this.kioskRefreshTimer);
+                this.kioskRefreshTimer = null;
+                this.kioskNextRefreshTime = null;
+            }
+            if (this.kioskCountdownUpdateTimer) {
+                clearInterval(this.kioskCountdownUpdateTimer);
+                this.kioskCountdownUpdateTimer = null;
+            }
+        },
+
+        async refreshKioskData() {
+            console.log("🔄 Kiosk auto-refresh triggered");
+            
+            try {
+                // Store current page to restore after refresh
+                const currentPage = this.kioskCurrentPage;
+                
+                // Update last refresh time
+                this.kioskLastRefreshTime = Date.now();
+                
+                // Calculate next refresh time
+                this.kioskNextRefreshTime = Date.now() + this.kioskRefreshInterval;
+                
+                // Reload data based on current filters
+                if (this.filterValues.phase) {
+                    await this.fetchData(this.filterValues.phase); // Refresh data for current phase
+                }
+                
+                // Restore current page if still valid
+                this.$nextTick(() => {
+                    if (currentPage <= this.kioskTotalPages) {
+                        this.kioskCurrentPage = currentPage;
+                    } else {
+                        this.kioskCurrentPage = 1;
+                    }
+                });
+                
+                console.log("✅ Kiosk data refreshed successfully");
+            } catch (error) {
+                console.error("❌ Kiosk refresh failed:", error);
+            }
+        },
+
         clearLoadingProgressTimer() {
             if (this.loadingProgressTimer) {
                 clearInterval(this.loadingProgressTimer);
@@ -2642,16 +3307,75 @@ export default {
         },
 
         /**
-         * Handle responsive resize events from ResponsiveMixin
+         * Handle responsive resize events - calculate dimensions to fit viewport without scrolling
          */
         onResponsiveResize(_resizeData) {
-            // Update chart height
-            const chartConfig = responsiveUtils.getResponsiveDimensions(this.baseConfig.chart);
-            this.currentChartHeight = chartConfig.height;
+            if (typeof window === "undefined") return;
             
-            // Update table height
-            const tableConfig = responsiveUtils.getResponsiveDimensions(this.baseConfig.table);
-            this.currentTableHeight = tableConfig.height;
+            const viewportHeight = window.innerHeight || 900;
+            const viewportWidth = window.innerWidth || 1200;
+            
+            // Calculate fixed UI element heights
+            let reservedHeight = 0;
+            
+            // Header/Title bar (approximate)
+            reservedHeight += 64;
+            
+            if (this.isKioskMode) {
+                // Kiosk mode: badge bar + page indicator + margins
+                reservedHeight += 60;  // Badge bar
+                reservedHeight += 40;  // Page indicator bar
+                reservedHeight += 40;  // Additional margins
+                
+                const availableHeight = Math.max(400, viewportHeight - reservedHeight);
+                
+                // 30% chart, 70% table for maximum data visibility in kiosk
+                this.currentChartHeight = Math.floor(availableHeight * 0.30);
+                this.currentTableHeight = Math.floor(availableHeight * 0.70);
+                
+                console.log("🖥️ Kiosk mode adaptive:", {
+                    viewport: `${viewportWidth}x${viewportHeight}`,
+                    reserved: reservedHeight,
+                    available: availableHeight,
+                    chart: this.currentChartHeight + 'px',
+                    table: this.currentTableHeight + 'px'
+                });
+            } else {
+                // Normal mode: filter bar + spacing
+                reservedHeight += 120; // Filter bar (approximate)
+                reservedHeight += 60;  // Spacing and margins
+                
+                const availableHeight = Math.max(400, viewportHeight - reservedHeight);
+                
+                // Responsive split based on viewport size
+                let chartRatio, tableRatio;
+                
+                if (viewportHeight < 700) {
+                    // Small screens: minimize chart, maximize table
+                    chartRatio = 0.25;
+                    tableRatio = 0.75;
+                } else if (viewportHeight < 900) {
+                    // Medium screens: balanced split
+                    chartRatio = 0.35;
+                    tableRatio = 0.65;
+                } else {
+                    // Large screens: more space for chart
+                    chartRatio = 0.40;
+                    tableRatio = 0.60;
+                }
+                
+                this.currentChartHeight = Math.floor(availableHeight * chartRatio);
+                this.currentTableHeight = Math.floor(availableHeight * tableRatio);
+                
+                console.log("📐 Normal mode adaptive:", {
+                    viewport: `${viewportWidth}x${viewportHeight}`,
+                    reserved: reservedHeight,
+                    available: availableHeight,
+                    ratio: `${Math.round(chartRatio * 100)}/${Math.round(tableRatio * 100)}`,
+                    chart: this.currentChartHeight + 'px',
+                    table: this.currentTableHeight + 'px'
+                });
+            }
             
             // Force chart resize
             this.$nextTick(() => {

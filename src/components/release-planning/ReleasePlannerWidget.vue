@@ -145,11 +145,13 @@
                         />
                         <v-select
                             v-model="filterValues.partTypeFilter"
-                            :items="partTypeOptions"
+                            :items="partTypeDisplayOptions"
+                            item-text="text"
+                            item-value="value"
                             label="Part Type"
                             prepend-inner-icon="mdi-cog"
                             class="filter-inline-input"
-                            :style="{ width: getDropdownWidth(filterValues.partTypeFilter, 'Part Type') }"
+                            :style="{ width: getDropdownWidth(partTypeDisplayOptions.find(opt => opt.value === filterValues.partTypeFilter)?.text || filterValues.partTypeFilter, 'Part Type') }"
                             dense
                             outlined
                             hide-details
@@ -1719,6 +1721,41 @@ export default {
                     this.switchDataType(objectType);
                 }
             }
+        },
+
+        // Part Type display mapping - convert internal values to user-friendly names
+        partTypeDisplayOptions() {
+            const partTypeMap = {
+                "A": "Assy Item",
+                "A-BetaAssembly": "Assy Item",
+                "C": "Config Item",
+                "C-ConfigurationModule": "Config Item",
+                "P": "Part Item",
+                "P-BetaPart": "Part Item",
+                "R": "Reqmt Item",
+                "R-ReferenceDocument": "Reqmt Item",
+                "V": "Vendor Item",
+                "V-VendorItem": "Vendor Item",
+                "Unassigned": "Unassigned"
+            };
+
+            return this.partTypeOptions.map(value => {
+                if (value === "All") {
+                    return { text: "All", value: "All" };
+                }
+                
+                // Extract the suffix after the last period (e.g., "A-BetaAssembly" from "emxFramework.Range.BT_BETAExt.BT_PartType.A-BetaAssembly")
+                let shortValue = value;
+                if (value.includes('.')) {
+                    const parts = value.split('.');
+                    shortValue = parts[parts.length - 1];
+                }
+                
+                return {
+                    text: partTypeMap[shortValue] || shortValue,
+                    value: value
+                };
+            });
         },
 
         // Dynamic widget title based on current data type using DataTransformationService

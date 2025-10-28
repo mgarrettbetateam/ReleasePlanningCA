@@ -277,7 +277,7 @@
             <!-- Chart and Stats Row - Clean Horizontal Layout -->
             <div class="d-flex" :class="isKioskMode ? 'kiosk-chart-row' : ''" style="gap: 16px; margin-bottom: 12px; margin-left: 24px;">
                 <!-- Chart Container - Takes most of the space -->
-                <v-card class="flex-grow-1" elevation="2" style="border-radius: 8px;">
+                <v-card class="flex-grow-1" elevation="2" style="border-radius: 8px; min-width: 400px;">
                     <v-card-title v-if="!isKioskMode" class="pa-2" style="border-bottom: 1px solid #e0e0e0;">
                         <v-icon left color="primary" size="20">mdi-chart-line</v-icon>
                         <span class="text-subtitle-1 font-weight-medium">Release Timeline</span>
@@ -315,8 +315,8 @@
                         </div>
                     </v-card-title>
                     
-                    <v-card-text class="pa-2" :class="isKioskMode ? 'kiosk-chart-content' : ''">
-                        <div :style="{ height: currentChartHeight + 'px', width: '100%' }">
+                    <v-card-text class="pa-2" :class="isKioskMode ? 'kiosk-chart-content' : ''" style="min-height: 320px;">
+                        <div :style="{ height: currentChartHeight + 'px', width: '100%', minHeight: '320px' }">
                             <ReleaseChart
                                 v-if="chartData.labels?.length > 0"
                                 ref="lineChart"
@@ -344,8 +344,8 @@
                     </v-card-text>
                 </v-card>
                 
-                <!-- Release Stats Container - Compact Width (Hidden in Kiosk Mode) -->
-                <v-card v-if="!isKioskMode" style="width: 260px; flex-shrink: 0;" elevation="2" class="rounded-lg">
+                <!-- Release Stats Container - Compact Width -->
+                <v-card style="width: 200px; flex-shrink: 0;" elevation="2" class="rounded-lg">
                     <v-card-title class="pa-2" style="border-bottom: 1px solid #e0e0e0;">
                         <v-icon left color="primary" size="20">mdi-chart-bar</v-icon>
                         <span class="text-subtitle-1 font-weight-medium">Release Stats</span>
@@ -1304,25 +1304,40 @@
 }
 
 .filter-inline-input {
-    min-width: 180px;
+    min-width: 140px;
     flex: 0 0 auto; /* Don't grow or shrink, size to content */
     width: auto; /* Allow width to adjust to content */
     max-width: none; /* Remove max-width constraint for dynamic sizing */
-    height: 40px; /* Fixed height to prevent vertical expansion */
+    height: 44px !important; /* Fixed height to prevent vertical expansion */
+    min-height: 44px !important;
+    max-height: 44px !important;
+    overflow: hidden !important;
+}
+
+.filter-inline-input .v-input {
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
 }
 
 .filter-inline-input .v-input__control {
     width: 100% !important;
-    min-width: 180px;
-    height: 40px !important; /* Fixed height */
+    min-width: 140px;
+    height: 44px !important; /* Fixed height */
+    min-height: 44px !important;
+    max-height: 44px !important;
 }
 
 .filter-inline-input .v-input__slot {
     width: 100% !important;
-    min-width: 180px;
-    height: 40px !important; /* Fixed height */
-    min-height: 40px !important;
-    max-height: 40px !important;
+    min-width: 140px;
+    height: 44px !important; /* Fixed height */
+    min-height: 44px !important;
+    max-height: 44px !important;
+    line-height: 44px !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    align-items: center !important;
 }
 
 .filter-inline-input .v-select__selections {
@@ -1332,6 +1347,8 @@
     white-space: nowrap !important;
     flex-wrap: nowrap !important;
     overflow: visible !important;
+    height: 44px !important;
+    line-height: 44px !important;
 }
 
 .filter-inline-input .v-select__selection {
@@ -1354,25 +1371,40 @@
 }
 
 .object-type-dropdown {
-    min-width: 180px;
+    min-width: 140px;
     flex: 0 0 auto; /* Don't grow or shrink, size to content */
     width: auto; /* Allow width to adjust to content */
     max-width: none; /* Remove max-width constraint for dynamic sizing */
-    height: 40px; /* Fixed height to prevent vertical expansion */
+    height: 40px !important; /* Fixed height to prevent vertical expansion */
+    min-height: 40px !important;
+    max-height: 40px !important;
+    overflow: hidden !important;
+}
+
+.object-type-dropdown .v-input {
+    height: 40px !important;
+    min-height: 40px !important;
+    max-height: 40px !important;
 }
 
 .object-type-dropdown .v-input__control {
     width: 100% !important;
-    min-width: 180px;
+    min-width: 140px;
     height: 40px !important; /* Fixed height */
+    min-height: 40px !important;
+    max-height: 40px !important;
 }
 
 .object-type-dropdown .v-input__slot {
     width: 100% !important;
-    min-width: 180px;
-    height: 40px !important; /* Fixed height */
-    min-height: 40px !important;
-    max-height: 40px !important;
+    min-width: 140px;
+    height: 44px !important; /* Fixed height */
+    min-height: 44px !important;
+    max-height: 44px !important;
+    line-height: 44px !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    align-items: center !important;
 }
 
 .object-type-dropdown .v-select__selections {
@@ -1382,6 +1414,8 @@
     white-space: nowrap !important;
     flex-wrap: nowrap !important;
     overflow: visible !important;
+    height: 44px !important;
+    line-height: 44px !important;
 }
 
 .object-type-dropdown .v-select__selection {
@@ -2533,17 +2567,17 @@ export default {
     methods: {
         // Calculate dynamic width for dropdown based on selected value
         getDropdownWidth(value, label) {
-            if (!value && !label) return "180px"; // Default minimum width
+            if (!value && !label) return "140px"; // Default minimum width
             
             // Calculate approximate width based on text length
             const text = value || label || "";
-            // Average character width ~8px + icon (24px) + padding (32px) + chevron (24px)
-            const charWidth = 8;
-            const baseWidth = 80; // icon + padding + chevron
+            // Average character width ~7px + icon (20px) + padding (24px) + chevron (20px)
+            const charWidth = 7;
+            const baseWidth = 64; // icon + padding + chevron
             const calculatedWidth = (text.length * charWidth) + baseWidth;
             
-            // Ensure minimum width of 180px and add some breathing room
-            const finalWidth = Math.max(180, calculatedWidth + 20);
+            // Ensure minimum width of 140px with minimal breathing room
+            const finalWidth = Math.max(140, calculatedWidth + 8);
             
             return `${finalWidth}px`;
         },

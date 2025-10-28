@@ -1304,146 +1304,23 @@
 }
 
 .filter-inline-input {
-    min-width: 140px;
-    flex: 0 0 auto; /* Don't grow or shrink, size to content */
-    width: auto; /* Allow width to adjust to content */
-    max-width: none; /* Remove max-width constraint for dynamic sizing */
-    height: 44px !important; /* Fixed height to prevent vertical expansion */
-    min-height: 44px !important;
-    max-height: 44px !important;
-    overflow: hidden !important;
-}
-
-.filter-inline-input .v-input {
-    height: 44px !important;
-    min-height: 44px !important;
-    max-height: 44px !important;
-}
-
-.filter-inline-input .v-input__control {
-    width: 100% !important;
-    min-width: 140px;
-    height: 44px !important; /* Fixed height */
-    min-height: 44px !important;
-    max-height: 44px !important;
-}
-
-.filter-inline-input .v-input__slot {
-    width: 100% !important;
-    min-width: 140px;
-    height: 44px !important; /* Fixed height */
-    min-height: 44px !important;
-    max-height: 44px !important;
-    line-height: 44px !important;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-    align-items: center !important;
-}
-
-.filter-inline-input .v-select__selections {
-    max-width: none !important; /* Remove text truncation */
-    width: 100% !important;
-    flex: 1 1 auto !important;
-    white-space: nowrap !important;
-    flex-wrap: nowrap !important;
-    overflow: visible !important;
-    height: 44px !important;
-    line-height: 44px !important;
-}
-
-.filter-inline-input .v-select__selection {
-    max-width: none !important; /* Remove text truncation */
-    width: auto !important;
-    white-space: nowrap !important;
-    overflow: visible !important;
-    text-overflow: clip !important; /* Prevent ellipsis */
-}
-
-.filter-inline-input .v-select__selection--comma {
-    max-width: none !important;
-    overflow: visible !important;
-    text-overflow: clip !important;
-}
-
-.filter-inline-input .v-label {
-    max-width: none !important;
-    overflow: visible !important;
+    min-width: 180px;
 }
 
 .object-type-dropdown {
-    min-width: 140px;
-    flex: 0 0 auto; /* Don't grow or shrink, size to content */
-    width: auto; /* Allow width to adjust to content */
-    max-width: none; /* Remove max-width constraint for dynamic sizing */
-    height: 40px !important; /* Fixed height to prevent vertical expansion */
-    min-height: 40px !important;
-    max-height: 40px !important;
-    overflow: hidden !important;
+    min-width: 180px;
 }
 
-.object-type-dropdown .v-input {
-    height: 40px !important;
-    min-height: 40px !important;
-    max-height: 40px !important;
-}
-
-.object-type-dropdown .v-input__control {
-    width: 100% !important;
-    min-width: 140px;
-    height: 40px !important; /* Fixed height */
-    min-height: 40px !important;
-    max-height: 40px !important;
-}
-
-.object-type-dropdown .v-input__slot {
-    width: 100% !important;
-    min-width: 140px;
-    height: 44px !important; /* Fixed height */
-    min-height: 44px !important;
-    max-height: 44px !important;
-    line-height: 44px !important;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-    align-items: center !important;
-}
-
-.object-type-dropdown .v-select__selections {
-    max-width: none !important; /* Remove text truncation */
-    width: 100% !important;
-    flex: 1 1 auto !important;
-    white-space: nowrap !important;
-    flex-wrap: nowrap !important;
-    overflow: visible !important;
-    height: 44px !important;
-    line-height: 44px !important;
-}
-
-.object-type-dropdown .v-select__selection {
-    max-width: none !important; /* Remove text truncation */
-    width: auto !important;
-    white-space: nowrap !important;
-    overflow: visible !important;
-    text-overflow: clip !important; /* Prevent ellipsis */
-}
-
-.object-type-dropdown .v-select__selection--comma {
-    max-width: none !important;
-    overflow: visible !important;
+/* Show full text in dropdown selections without truncation */
+.filter-inline-input >>> .v-select__selection,
+.object-type-dropdown >>> .v-select__selection {
+    max-width: 100% !important;
     text-overflow: clip !important;
 }
 
-.object-type-dropdown .v-label {
-    max-width: none !important;
-    overflow: visible !important;
-}
-
-.filter-inline-input .v-text-field__slot {
-    overflow: visible !important;
-}
-
-.filter-inline-input .v-input__append-inner {
-    margin-top: 0 !important;
-    align-self: center;
+.filter-inline-input >>> .v-select__selections,
+.object-type-dropdown >>> .v-select__selections {
+    flex-wrap: nowrap !important;
 }
 
 @media (max-width: 1600px) {
@@ -1502,37 +1379,7 @@ html, body {
   overflow: hidden !important;
 }
 
-/* Force full text display in dropdowns - Deep Vuetify overrides */
-.filter-inline-input .v-select__selections input,
-.object-type-dropdown .v-select__selections input {
-    max-width: none !important;
-    width: auto !important;
-}
-
-.filter-inline-input .v-input__control .v-input__slot,
-.object-type-dropdown .v-input__control .v-input__slot {
-    overflow: visible !important;
-}
-
-.filter-inline-input .v-select__slot,
-.object-type-dropdown .v-select__slot {
-    overflow: visible !important;
-    max-width: none !important;
-}
-
-.filter-inline-input .v-select__selections > div,
-.object-type-dropdown .v-select__selections > div {
-    max-width: none !important;
-    overflow: visible !important;
-    text-overflow: clip !important;
-}
-
-/* Override any Vuetify flex basis that might cause truncation */
-.filter-inline-input .v-select__selection,
-.object-type-dropdown .v-select__selection {
-    flex: 0 0 auto !important;
-    max-width: none !important;
-}
+/* No custom dropdown overrides - using Vuetify defaults */
 </style>
 
 <script>

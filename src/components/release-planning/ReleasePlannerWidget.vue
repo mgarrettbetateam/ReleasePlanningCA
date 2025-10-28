@@ -91,74 +91,76 @@
             </v-card-text>
         </v-card>
 
-        <!-- Inline Filter Bar (Hidden in Kiosk Mode) -->
+        <!-- Inline Filter Bar - Positioned ABOVE the header (Hidden in Kiosk Mode) -->
         <v-card
             v-if="!isKioskMode"
             ref="inlineFilterBar"
-            class="inline-filter-bar elevation-3 mb-6"
+            class="inline-filter-bar elevation-3 mb-0"
         >
             <v-card-text class="px-4 py-3">
-                <div class="filter-bar-top">
-                    <div class="filter-inline-row">
+                <div class="filter-inline-row">
+                    <v-select
+                        v-model="objectType"
+                        :items="objectTypeOptions"
+                        item-text="text"
+                        item-value="value"
+                        label="Object Type"
+                        prepend-inner-icon="mdi-table"
+                        class="filter-inline-input object-type-dropdown"
+                        :style="{ width: getDropdownWidth(objectTypeOptions.find(opt => opt.value === objectType)?.text, 'Object Type') }"
+                        dense
+                        outlined
+                        hide-details
+                    />
+                    <v-select
+                        v-for="filter in filterConfig"
+                        :key="filter.key"
+                        :value="filterValues[filter.key]"
+                        :items="filter.options"
+                        :placeholder="filter.placeholder"
+                        :label="filter.label"
+                        :prepend-inner-icon="filter.icon"
+                        class="filter-inline-input"
+                        :style="{ width: getDropdownWidth(filterValues[filter.key], filter.label) }"
+                        dense
+                        outlined
+                        hide-details
+                        clearable
+                        :disabled="getFilterDisabledState(filter.key)"
+                        :append-icon="filter.key === 'phase' && getFilterDisabledState('phase') ? 'mdi-lock-outline' : undefined"
+                        @change="handleFilterChange({ key: filter.key, value: $event, allFilters: { ...filterValues, [filter.key]: $event } })"
+                    />
+                    <template v-if="currentDataType === 'parts'">
                         <v-select
-                            v-model="objectType"
-                            :items="objectTypeOptions"
-                            item-text="text"
-                            item-value="value"
-                            label="Object Type"
-                            prepend-inner-icon="mdi-table"
-                            class="filter-inline-input object-type-dropdown"
-                            dense
-                            outlined
-                            hide-details
-                        />
-                        <v-select
-                            v-for="filter in filterConfig"
-                            :key="filter.key"
-                            :value="filterValues[filter.key]"
-                            :items="filter.options"
-                            :placeholder="filter.placeholder"
-                            :label="filter.label"
-                            :prepend-inner-icon="filter.icon"
+                            v-model="filterValues.makeBuyFilter"
+                            :items="makeBuyOptions"
+                            label="Make / Buy"
+                            prepend-inner-icon="mdi-factory"
                             class="filter-inline-input"
+                            :style="{ width: getDropdownWidth(filterValues.makeBuyFilter, 'Make / Buy') }"
                             dense
                             outlined
                             hide-details
-                            clearable
-                            :disabled="getFilterDisabledState(filter.key)"
-                            :append-icon="filter.key === 'phase' && getFilterDisabledState('phase') ? 'mdi-lock-outline' : undefined"
-                            @change="handleFilterChange({ key: filter.key, value: $event, allFilters: { ...filterValues, [filter.key]: $event } })"
+                            :disabled="makeBuyOptions.length <= 1"
                         />
-                        <template v-if="currentDataType === 'parts'">
-                            <v-select
-                                v-model="filterValues.makeBuyFilter"
-                                :items="makeBuyOptions"
-                                label="Make / Buy"
-                                prepend-inner-icon="mdi-factory"
-                                class="filter-inline-input"
-                                dense
-                                outlined
-                                hide-details
-                                :disabled="makeBuyOptions.length <= 1"
-                            />
-                            <v-select
-                                v-model="filterValues.partTypeFilter"
-                                :items="partTypeOptions"
-                                label="Part Type"
-                                prepend-inner-icon="mdi-cog"
-                                class="filter-inline-input"
-                                dense
-                                outlined
-                                hide-details
-                                :disabled="partTypeOptions.length <= 1"
-                            />
-                        </template>
-                    </div>
+                        <v-select
+                            v-model="filterValues.partTypeFilter"
+                            :items="partTypeOptions"
+                            label="Part Type"
+                            prepend-inner-icon="mdi-cog"
+                            class="filter-inline-input"
+                            :style="{ width: getDropdownWidth(filterValues.partTypeFilter, 'Part Type') }"
+                            dense
+                            outlined
+                            hide-details
+                            :disabled="partTypeOptions.length <= 1"
+                        />
+                    </template>
                 </div>
             </v-card-text>
         </v-card>
 
-        <!-- Header with Title and Discrete Filter Button (Hidden in Kiosk Mode) -->
+        <!-- Header with Title - Positioned BELOW the filter bar (Hidden in Kiosk Mode) -->
         <v-card-title v-if="!isKioskMode" class="planner-header">
             <v-icon left color="primary">mdi-clipboard-list</v-icon>
             {{ widgetTitle }}
@@ -1283,74 +1285,131 @@
   border-radius: 8px !important;
 }
 
-/* Inline Filter Bar Styling */
+/* Inline Filter Bar Styling - Matching Release Status Dashboard */
 .inline-filter-bar {
-    border: 1px solid rgba(25, 118, 210, 0.14) !important;
-    border-radius: 14px !important;
-    background: linear-gradient(145deg, rgba(227, 242, 253, 0.7), #ffffff) !important;
-    position: sticky;
-    top: 16px;
-    z-index: 5;
+    background: linear-gradient(90deg, #e3f2fd 0%, #f5f5f5 35%, #fafafa 65%, #ffffff 100%);
+    border-radius: 4px !important;
+    margin-bottom: 0 !important;
 }
 
 .inline-filter-bar .v-card__text {
-    padding: 12px 18px !important;
-}
-
-.filter-bar-top {
-    display: flex;
-    width: 100%;
-    padding: 4px 0;
-}
-
-.object-type-dropdown {
-    width: 100%;
-    max-width: 220px;
-}
-
-.object-type-dropdown .v-input__slot {
-    transition: box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-.object-type-dropdown .v-input__slot:hover {
-    box-shadow: 0 4px 10px rgba(25, 118, 210, 0.12);
-    border-color: rgba(25, 118, 210, 0.4) !important;
+    padding: 12px 16px !important;
 }
 
 .filter-inline-row {
     display: flex;
-    align-items: stretch;
-    gap: 10px;
-    flex: 1 1 auto;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 6px 4px;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
 }
 
 .filter-inline-input {
-    flex: 0 0 200px;
     min-width: 180px;
-    max-width: 220px;
+    flex: 0 0 auto; /* Don't grow or shrink, size to content */
+    width: auto; /* Allow width to adjust to content */
+    max-width: none; /* Remove max-width constraint for dynamic sizing */
+    height: 40px; /* Fixed height to prevent vertical expansion */
+}
+
+.filter-inline-input .v-input__control {
+    width: 100% !important;
+    min-width: 180px;
+    height: 40px !important; /* Fixed height */
 }
 
 .filter-inline-input .v-input__slot {
-    transition: box-shadow 0.2s ease, border-color 0.2s ease;
-    min-height: 42px;
-    align-items: center;
-    padding-top: 2px;
-    padding-bottom: 2px;
-}
-
-.filter-inline-input .v-input__slot:hover {
-    box-shadow: 0 4px 10px rgba(25, 118, 210, 0.12);
-    border-color: rgba(25, 118, 210, 0.4) !important;
+    width: 100% !important;
+    min-width: 180px;
+    height: 40px !important; /* Fixed height */
+    min-height: 40px !important;
+    max-height: 40px !important;
 }
 
 .filter-inline-input .v-select__selections {
-    line-height: 1.3;
-    padding-top: 2px;
-    padding-bottom: 2px;
+    max-width: none !important; /* Remove text truncation */
+    width: 100% !important;
+    flex: 1 1 auto !important;
+    white-space: nowrap !important;
+    flex-wrap: nowrap !important;
+    overflow: visible !important;
+}
+
+.filter-inline-input .v-select__selection {
+    max-width: none !important; /* Remove text truncation */
+    width: auto !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important; /* Prevent ellipsis */
+}
+
+.filter-inline-input .v-select__selection--comma {
+    max-width: none !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+.filter-inline-input .v-label {
+    max-width: none !important;
+    overflow: visible !important;
+}
+
+.object-type-dropdown {
+    min-width: 180px;
+    flex: 0 0 auto; /* Don't grow or shrink, size to content */
+    width: auto; /* Allow width to adjust to content */
+    max-width: none; /* Remove max-width constraint for dynamic sizing */
+    height: 40px; /* Fixed height to prevent vertical expansion */
+}
+
+.object-type-dropdown .v-input__control {
+    width: 100% !important;
+    min-width: 180px;
+    height: 40px !important; /* Fixed height */
+}
+
+.object-type-dropdown .v-input__slot {
+    width: 100% !important;
+    min-width: 180px;
+    height: 40px !important; /* Fixed height */
+    min-height: 40px !important;
+    max-height: 40px !important;
+}
+
+.object-type-dropdown .v-select__selections {
+    max-width: none !important; /* Remove text truncation */
+    width: 100% !important;
+    flex: 1 1 auto !important;
+    white-space: nowrap !important;
+    flex-wrap: nowrap !important;
+    overflow: visible !important;
+}
+
+.object-type-dropdown .v-select__selection {
+    max-width: none !important; /* Remove text truncation */
+    width: auto !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important; /* Prevent ellipsis */
+}
+
+.object-type-dropdown .v-select__selection--comma {
+    max-width: none !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+.object-type-dropdown .v-label {
+    max-width: none !important;
+    overflow: visible !important;
+}
+
+.filter-inline-input .v-text-field__slot {
+    overflow: visible !important;
+}
+
+.filter-inline-input .v-input__append-inner {
+    margin-top: 0 !important;
+    align-self: center;
 }
 
 @media (max-width: 1600px) {
@@ -1407,6 +1466,38 @@ html, body {
   height: 100vh !important;
   max-height: 100vh !important;
   overflow: hidden !important;
+}
+
+/* Force full text display in dropdowns - Deep Vuetify overrides */
+.filter-inline-input .v-select__selections input,
+.object-type-dropdown .v-select__selections input {
+    max-width: none !important;
+    width: auto !important;
+}
+
+.filter-inline-input .v-input__control .v-input__slot,
+.object-type-dropdown .v-input__control .v-input__slot {
+    overflow: visible !important;
+}
+
+.filter-inline-input .v-select__slot,
+.object-type-dropdown .v-select__slot {
+    overflow: visible !important;
+    max-width: none !important;
+}
+
+.filter-inline-input .v-select__selections > div,
+.object-type-dropdown .v-select__selections > div {
+    max-width: none !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+/* Override any Vuetify flex basis that might cause truncation */
+.filter-inline-input .v-select__selection,
+.object-type-dropdown .v-select__selection {
+    flex: 0 0 auto !important;
+    max-width: none !important;
 }
 </style>
 
@@ -2440,6 +2531,23 @@ export default {
     },
     
     methods: {
+        // Calculate dynamic width for dropdown based on selected value
+        getDropdownWidth(value, label) {
+            if (!value && !label) return "180px"; // Default minimum width
+            
+            // Calculate approximate width based on text length
+            const text = value || label || "";
+            // Average character width ~8px + icon (24px) + padding (32px) + chevron (24px)
+            const charWidth = 8;
+            const baseWidth = 80; // icon + padding + chevron
+            const calculatedWidth = (text.length * charWidth) + baseWidth;
+            
+            // Ensure minimum width of 180px and add some breathing room
+            const finalWidth = Math.max(180, calculatedWidth + 20);
+            
+            return `${finalWidth}px`;
+        },
+        
         // Kiosk Mode Pagination Methods
         startKioskPageRotation() {
             if (!this.isKioskMode) return;

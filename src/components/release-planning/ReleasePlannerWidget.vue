@@ -286,6 +286,20 @@
                         <v-spacer />
                         <!-- Legend inline in header -->
                         <div class="d-flex align-center" style="gap: 8px;">
+                            <!-- Focus 30 Button -->
+                            <v-btn
+                                small
+                                :color="chartFocusActive ? 'orange darken-2' : 'orange darken-1'"
+                                dark
+                                class="mr-2"
+                                :outlined="!chartFocusActive"
+                                @click="focusOn30Days"
+                                :title="chartFocusActive ? 'Exit focus mode - show full timeline' : 'Zoom chart to ±30 days from today'"
+                            >
+                                <v-icon small left>{{ chartFocusActive ? 'mdi-arrow-expand' : 'mdi-calendar-range' }}</v-icon>
+                                {{ chartFocusActive ? 'Reset' : 'Focus 30' }}
+                            </v-btn>
+                            
                             <v-chip 
                                 small 
                                 :color="showTargetLine ? 'primary' : 'grey'"
@@ -1450,6 +1464,7 @@ html, body {
 
 <script>
 /* eslint-disable no-console */
+import { version } from "../../../package.json";
 import ReleaseChart from "@/components/charts/ReleaseChart.vue";
 import ChangeActionCell from "@/components/release-planning/ChangeActionCell.vue";
 import StatusCommentDisplay from "@/components/common/StatusCommentDisplay.vue";
@@ -1493,9 +1508,6 @@ export default {
         return {
             // Drag and drop functionality
             dragDrop: dragDropComposable,
-            
-            // App version
-            appVersion: "2.0.0",
 
             // Debouncing for filter changes
             filterChangeTimeout: null,
@@ -1539,7 +1551,6 @@ export default {
                 parts: [
                     { text: "Part Number / Rev", value: "partNoWithRev", sortable: true, required: true, icon: "mdi-barcode", width: "auto", minWidth: "240px" },
                     { text: "Description", value: "description", sortable: true, icon: "mdi-text", truncate: true, width: "auto", minWidth: "350px" },
-                    { text: "Owner", value: "owner", sortable: true, icon: "mdi-account" },
                     { text: "Make / Buy", value: "makeBuy", sortable: true, icon: "mdi-factory" },
                     // { text: "Chapter Group", value: "ataChapterGroup", sortable: true, icon: "mdi-book-open-page-variant" },
                     { text: "System Group", value: "engSystemGroupShort", sortable: true, icon: "mdi-cog-outline", truncate: true, fullValueField: "engSystemGroup" },
@@ -1608,6 +1619,11 @@ export default {
             showActualLine: true,
             showCriticalLine: true,
             
+            // Chart focus state
+            chartFocusActive: false,
+            chartFocusStartDate: null,
+            chartFocusEndDate: null,
+            
             // Release headliner filter
             selectedStatFilter: "all",
             
@@ -1664,6 +1680,11 @@ export default {
     },
     
     computed: {
+        // App version from package.json
+        appVersion() {
+            return version;
+        },
+
         // Detect kiosk mode from URL parameter or internal state
         isKioskMode() {
             if (typeof window === "undefined") return false;
@@ -2058,7 +2079,21 @@ export default {
         // Dynamic chart options with current date line
         dynamicChartOptions() {
             // Get base chart options from ChartDataService (Chart.js v2 config)
-            return chartDataService.createChartOptions(this.currentDataType);
+            const options = chartDataService.createChartOptions(this.currentDataType);
+            
+            // Apply focus date range if active
+            if (this.chartFocusActive && this.chartFocusStartDate && this.chartFocusEndDate) {
+                // Chart.js v2 uses xAxes array
+                if (options.scales && options.scales.xAxes && options.scales.xAxes[0]) {
+                    options.scales.xAxes[0].ticks = {
+                        ...options.scales.xAxes[0].ticks,
+                        min: this.chartFocusStartDate.toLocaleDateString(),
+                        max: this.chartFocusEndDate.toLocaleDateString()
+                    };
+                }
+            }
+            
+            return options;
         }
         ,
         // Provide Chart.js v2 plugin(s) to draw a vertical dashed line at today's date
@@ -3620,6 +3655,41 @@ export default {
         toggleCriticalLine() {
             this.showCriticalLine = !this.showCriticalLine;
             console.log("👁️ Critical line toggled:", this.showCriticalLine);
+            this.updateChartFromFiltered();
+        },
+
+        /**
+         * Focus chart on ±30 days from today
+         * Toggles between focused view and full view
+         */
+        focusOn30Days() {
+            if (this.chartFocusActive) {
+                // Exit focus mode - return to full view
+                this.chartFocusActive = false;
+                this.chartFocusStartDate = null;
+                this.chartFocusEndDate = null;
+                console.log("📅 Focus mode deactivated - showing full timeline");
+            } else {
+                // Enter focus mode - zoom to ±30 days
+                const today = new Date();
+                
+                // Calculate start date: 30 days before today
+                const startDate = new Date(today);
+                startDate.setDate(today.getDate() - 30);
+                
+                // Calculate end date: 30 days after today
+                const endDate = new Date(today);
+                endDate.setDate(today.getDate() + 30);
+                
+                this.chartFocusActive = true;
+                this.chartFocusStartDate = startDate;
+                this.chartFocusEndDate = endDate;
+                
+                console.log(`📅 Focused chart on ±30 days: ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}`);
+            }
+            
+            // Force chart update
+            this.chartKey++;
             this.updateChartFromFiltered();
         },
         

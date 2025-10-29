@@ -25,6 +25,7 @@ class DataTransformationService {
                     partNo: ["partNumber", "partNo"],
                     rev: ["revision", "rev"],
                     description: ["description"],
+                    owner: ["owner", "respEngr", "responsibleEngineer", "caRespEngr", "resEngr", "partOwner", "originator", "designer", "created_by", "createdBy"],
                     organization: ["organization"],
                     tgtRelease: ["targetReleaseDate", "tgtRelease"],
                     ataChapterGroup: ["ataChapterGroup", "chapterGroup", "ataChapter"],

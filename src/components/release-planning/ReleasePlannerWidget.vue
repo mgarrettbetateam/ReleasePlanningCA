@@ -568,18 +568,67 @@
                             />
                         </template>
 
-                        <!-- Custom template for Part Number - make it a hyperlink for PARTS data type -->
-                        <template v-if="currentDataType === 'parts'" #item.partNo="{ item }">
+                        <!-- Custom template for Part Number / Rev - make it a hyperlink for PARTS data type -->
+                        <template v-if="currentDataType === 'parts'" #item.partNoWithRev="{ item }">
                             <a 
                                 :href="`https://3dspace-prod.beta.team/3dspace/common/emxTree.jsp?objectId=${item.physId || item.objId}&DefaultCategory=betaProductNavigatorPortalCmd`"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 class="part-number-link"
-                                :title="`Open ${item.partNo} in 3DSpace`"
+                                :title="`Open ${item.partNoWithRev} in 3DSpace`"
                             >
-                                {{ item.partNo }}
+                                {{ item.partNoWithRev }}
                                 <v-icon x-small class="ml-1" color="primary">mdi-open-in-new</v-icon>
                             </a>
+                        </template>
+
+                        <!-- Custom template for Description with tooltip -->
+                        <template #item.description="{ item }">
+                            <v-tooltip bottom>
+                                <template #activator="{ on, attrs }">
+                                    <div
+                                        v-bind="attrs"
+                                        class="text-truncate"
+                                        style="max-width: 350px;"
+                                        v-on="on"
+                                    >
+                                        {{ item.description }}
+                                    </div>
+                                </template>
+                                <span>{{ item.description }}</span>
+                            </v-tooltip>
+                        </template>
+
+                        <!-- Custom template for Change Description with tooltip -->
+                        <template #item.changeDescription="{ item }">
+                            <v-tooltip bottom>
+                                <template #activator="{ on, attrs }">
+                                    <div
+                                        v-bind="attrs"
+                                        class="text-truncate"
+                                        style="max-width: 350px;"
+                                        v-on="on"
+                                    >
+                                        {{ item.changeDescription }}
+                                    </div>
+                                </template>
+                                <span>{{ item.changeDescription }}</span>
+                            </v-tooltip>
+                        </template>
+
+                        <!-- Custom template for System Group Short with full value tooltip -->
+                        <template v-if="currentDataType === 'parts'" #item.engSystemGroupShort="{ item }">
+                            <v-tooltip bottom>
+                                <template #activator="{ on, attrs }">
+                                    <span
+                                        v-bind="attrs"
+                                        v-on="on"
+                                    >
+                                        {{ item.engSystemGroupShort }}
+                                    </span>
+                                </template>
+                                <span>{{ item.engSystemGroup }}</span>
+                            </v-tooltip>
                         </template>
                     </v-data-table>
 
@@ -1204,6 +1253,7 @@
   transition: all 0.2s ease !important;
   border-radius: 4px !important;
   padding: 2px 4px !important;
+  white-space: nowrap !important;
 }
 
 .part-number-link:hover {
@@ -1222,6 +1272,20 @@
 .part-number-link:active {
   transform: translateY(0) !important;
   box-shadow: 0 1px 2px rgba(25, 118, 210, 0.2) !important;
+}
+
+/* Truncated cell styling */
+.text-truncate {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* Part Number / Rev column - dynamic width */
+.draggable-table >>> th:first-child,
+.draggable-table >>> td:first-child {
+  min-width: 240px !important;
+  width: auto !important;
 }
 
 /* Disabled Filter Styling */
@@ -1473,24 +1537,24 @@ export default {
             // to handle the new data type. Field names must match exactly!
             headerConfigurations: {
                 parts: [
-                    { text: "Part Number", value: "partNo", sortable: true, required: true, icon: "mdi-barcode" },
-                    { text: "Rev", value: "rev", sortable: true, icon: "mdi-source-branch" },
-                    { text: "Description", value: "description", sortable: true, icon: "mdi-text" },
+                    { text: "Part Number / Rev", value: "partNoWithRev", sortable: true, required: true, icon: "mdi-barcode", width: "auto", minWidth: "240px" },
+                    { text: "Description", value: "description", sortable: true, icon: "mdi-text", truncate: true, width: "auto", minWidth: "350px" },
+                    { text: "Owner", value: "owner", sortable: true, icon: "mdi-account" },
                     { text: "Make / Buy", value: "makeBuy", sortable: true, icon: "mdi-factory" },
-                    { text: "Chapter Group", value: "ataChapterGroup", sortable: true, icon: "mdi-book-open-page-variant" },
-                    { text: "System Group", value: "engSystemGroup", sortable: true, icon: "mdi-cog-outline" },
+                    // { text: "Chapter Group", value: "ataChapterGroup", sortable: true, icon: "mdi-book-open-page-variant" },
+                    { text: "System Group", value: "engSystemGroupShort", sortable: true, icon: "mdi-cog-outline", truncate: true, fullValueField: "engSystemGroup" },
                     { text: "Target Release", value: "tgtRelease", sortable: true, icon: "mdi-calendar-clock" },
                     { text: "Actual Release", value: "actualRelease", sortable: true, icon: "mdi-calendar-check" },
                     { text: "Critical Release", value: "criticalRelease", sortable: true, icon: "mdi-calendar-alert" },
-                    { text: "State", value: "currentState", sortable: true, icon: "mdi-flag" },
+                    { text: "State", value: "currentStateMasked", sortable: true, icon: "mdi-flag" },
                     { text: "Change Action", value: "caNumber", sortable: false, component: "ChangeActionCell", componentProps: { field: "number" } },
                     { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text", component: "StatusCommentDisplay", componentProps: { itemType: "parts", canEdit: true } }
                 ],
                 cas: [
                     { text: "CA Number", value: "caNumber", sortable: true, required: true, icon: "mdi-file-document", component: "ChangeActionCell", componentProps: { field: "number", itemType: "ca" } },
-                    { text: "Description", value: "changeDescription", sortable: true, icon: "mdi-text" },
+                    { text: "Description", value: "changeDescription", sortable: true, icon: "mdi-text", truncate: true },
                     { text: "Resp Engr", value: "resEngr", sortable: true, icon: "mdi-account" },
-                    { text: "Status", value: "currentState", sortable: true, icon: "mdi-flag" },
+                    { text: "Status", value: "currentStateMasked", sortable: true, icon: "mdi-flag" },
                     { text: "Target Complete", value: "targetReleaseDate", sortable: true, icon: "mdi-calendar-clock" },
                     { text: "Actual Approved", value: "approvedDate", sortable: true, icon: "mdi-calendar-check" },
                     { text: "Actual Complete", value: "actualReleaseDate", sortable: true, icon: "mdi-calendar-check" },
@@ -1498,9 +1562,9 @@ export default {
                 ],
                 crs: [
                     { text: "CR Number", value: "crNumber", sortable: true, required: true, icon: "mdi-file-document-outline", component: "ChangeActionCell", componentProps: { field: "number", itemType: "cr" } },
-                    { text: "Description", value: "changeDescription", sortable: true, icon: "mdi-format-title" },
+                    { text: "Description", value: "changeDescription", sortable: true, icon: "mdi-format-title", truncate: true },
                     { text: "Resp Engr", value: "owner", sortable: true, icon: "mdi-account" },
-                    { text: "Status", value: "currentState", sortable: true, icon: "mdi-flag" },
+                    { text: "Status", value: "currentStateMasked", sortable: true, icon: "mdi-flag" },
                     { text: "Target Complete", value: "targetReleaseDate", sortable: true, icon: "mdi-calendar-plus" },
                     { text: "Actual Complete", value: "actualCompleteDate", sortable: true, icon: "mdi-calendar-check" },
                     { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text", component: "StatusCommentDisplay", componentProps: { itemType: "crs", canEdit: true } }
@@ -3486,7 +3550,58 @@ export default {
          * across different data types (parts, cas, crs).
          */
         mapItemToTableData(item) {
-            return dataTransformationService.mapItemToTableData(item, this.currentDataType);
+            const baseData = dataTransformationService.mapItemToTableData(item, this.currentDataType);
+            
+            // Add masked state value for all data types
+            baseData.currentStateMasked = this.maskStateValue(baseData.currentState);
+            
+            // Add part-specific computed fields
+            if (this.currentDataType === "parts") {
+                baseData.partNoWithRev = this.combinePartNoWithRev(baseData.partNo, baseData.rev);
+                baseData.engSystemGroupShort = this.getSystemGroupShort(baseData.engSystemGroup);
+            }
+            
+            return baseData;
+        },
+
+        /**
+         * Mask state values for display
+         * @param {string} state - Raw state value
+         * @returns {string} Masked state value
+         */
+        maskStateValue(state) {
+            if (!state) return "";
+            
+            const stateMap = {
+                "RELEASED": "RLS",
+                "FROZEN": "FRZ",
+                "In Work": "WRK",
+                "In Approval": "APR"
+            };
+            
+            return stateMap[state] || state;
+        },
+
+        /**
+         * Get truncated system group (first 4 letters)
+         * @param {string} systemGroup - Full system group name
+         * @returns {string} Truncated system group
+         */
+        getSystemGroupShort(systemGroup) {
+            if (!systemGroup || systemGroup === "All") return systemGroup;
+            return systemGroup.substring(0, 4).toUpperCase();
+        },
+
+        /**
+         * Combine part number and revision
+         * @param {string} partNo - Part number
+         * @param {string} rev - Revision
+         * @returns {string} Combined part number with revision
+         */
+        combinePartNoWithRev(partNo, rev) {
+            if (!partNo) return "";
+            if (!rev) return partNo;
+            return `${partNo} (${rev})`;
         },
 
         // Chart legend toggle methods
@@ -3799,8 +3914,44 @@ export default {
                 console.log("Items length:", items?.length);
                 console.log("Raw items data:", items);
                 
+                // Log first raw item to see all available fields
+                if (items && items.length > 0) {
+                    console.log("🔍 First RAW item from API:");
+                    console.log(JSON.stringify(items[0], null, 2));
+                    console.log("Available fields in raw item:", Object.keys(items[0]));
+                }
+                
                 // Use DataTransformationService to process API response and transform data
-                this.tableData = dataTransformationService.transformApiResponseToTableData(items, this.currentDataType);
+                const baseTableData = dataTransformationService.transformApiResponseToTableData(items, this.currentDataType);
+                
+                // Apply additional transformations for computed fields
+                this.tableData = baseTableData.map(item => {
+                    // Add masked state value for all data types
+                    item.currentStateMasked = this.maskStateValue(item.currentState);
+                    
+                    // Add part-specific computed fields
+                    if (this.currentDataType === "parts") {
+                        item.partNoWithRev = this.combinePartNoWithRev(item.partNo, item.rev);
+                        item.engSystemGroupShort = this.getSystemGroupShort(item.engSystemGroup);
+                    }
+                    
+                    return item;
+                });
+                
+                console.log("🔧 Applied computed field transformations");
+                if (this.tableData.length > 0) {
+                    console.log("Sample transformed item:", {
+                        partNo: this.tableData[0].partNo,
+                        rev: this.tableData[0].rev,
+                        partNoWithRev: this.tableData[0].partNoWithRev,
+                        owner: this.tableData[0].owner,
+                        currentState: this.tableData[0].currentState,
+                        currentStateMasked: this.tableData[0].currentStateMasked,
+                        engSystemGroup: this.tableData[0].engSystemGroup,
+                        engSystemGroupShort: this.tableData[0].engSystemGroupShort
+                    });
+                    console.log("All fields in transformed item:", Object.keys(this.tableData[0]));
+                }
 
                 this.updateLoadingDialog({
                     progressLabel: "Refreshing widgets",

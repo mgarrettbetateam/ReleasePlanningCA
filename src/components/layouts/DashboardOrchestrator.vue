@@ -78,7 +78,6 @@ import UniversalChart from "@/components/universal/UniversalChart.vue";
 import UniversalTable from "@/components/universal/UniversalTable.vue";
 import UniversalForm from "@/components/universal/UniversalForm.vue";
 import PartPlanner from "@/components/part-planning/PartPlanner.vue";
-import BomViewer from "@/components/bom/BomViewer.vue";
 import ReleasePlannerWidget from "@/components/release-planning/ReleasePlannerWidget.vue";
 
 // Constants
@@ -91,7 +90,6 @@ export default {
         UniversalTable,
         UniversalForm,
         PartPlanner,
-        BomViewer,
         ReleasePlannerWidget
     },
     props: {

@@ -68,11 +68,11 @@
                                 </v-icon>
                             </template>
                             <div style="max-width: 300px;">
-                                <strong>Kiosk Mode Active</strong><br>
-                                • Auto-rotates pages every 10s<br>
-                                • Auto-refreshes data every 60s<br>
-                                • Shows 15 rows per page<br>
-                                • 30% chart, 70% table<br>
+                                <strong>Kiosk Mode Active</strong><br/>
+                                • Auto-rotates pages every 10s<br/>
+                                • Auto-refreshes data every 60s<br/>
+                                • Shows 15 rows per page<br/>
+                                • 30% chart, 70% table<br/>
                                 • Copy URL to use on another display
                             </div>
                         </v-tooltip>
@@ -293,8 +293,8 @@
                                 dark
                                 class="mr-2"
                                 :outlined="!chartFocusActive"
-                                @click="focusOn30Days"
                                 :title="chartFocusActive ? 'Exit focus mode - show full timeline' : 'Zoom chart to ±30 days from today'"
+                                @click="focusOn30Days"
                             >
                                 <v-icon small left>{{ chartFocusActive ? 'mdi-arrow-expand' : 'mdi-calendar-range' }}</v-icon>
                                 {{ chartFocusActive ? 'Reset' : 'Focus 30' }}
@@ -336,7 +336,7 @@
                             <ReleaseChart
                                 v-if="chartData.labels?.length > 0"
                                 ref="lineChart"
-                                :chart-data="chartData"
+                                :chart-data="focusedChartData"
                                 :chart-options="dynamicChartOptions"
                                 :extra-plugins="todayLinePlugins"
                                 style="height: 100%; width: 100%;"
@@ -1685,6 +1685,45 @@ export default {
             return version;
         },
 
+        // Filter chart data based on focus date range
+        focusedChartData() {
+            if (!this.chartFocusActive || !this.chartFocusStartDate || !this.chartFocusEndDate) {
+                return this.chartData;
+            }
+
+            // Filter labels and datasets to only show data within focus range
+            const startMs = new Date(this.chartFocusStartDate.getFullYear(), this.chartFocusStartDate.getMonth(), this.chartFocusStartDate.getDate()).getTime();
+            const endMs = new Date(this.chartFocusEndDate.getFullYear(), this.chartFocusEndDate.getMonth(), this.chartFocusEndDate.getDate()).getTime();
+
+            const filteredLabels = [];
+            const filteredIndices = [];
+
+            // Find labels within the date range
+            this.chartData.labels.forEach((label, index) => {
+                const labelDate = new Date(label);
+                if (!isNaN(labelDate)) {
+                    const labelMs = new Date(labelDate.getFullYear(), labelDate.getMonth(), labelDate.getDate()).getTime();
+                    if (labelMs >= startMs && labelMs <= endMs) {
+                        filteredLabels.push(label);
+                        filteredIndices.push(index);
+                    }
+                }
+            });
+
+            // Filter each dataset to match the filtered labels
+            const filteredDatasets = this.chartData.datasets.map(dataset => ({
+                ...dataset,
+                data: filteredIndices.map(i => dataset.data[i])
+            }));
+
+            console.log(`📊 Focused chart data: ${filteredLabels.length} labels from ${this.chartData.labels.length} total`);
+
+            return {
+                labels: filteredLabels,
+                datasets: filteredDatasets
+            };
+        },
+
         // Detect kiosk mode from URL parameter or internal state
         isKioskMode() {
             if (typeof window === "undefined") return false;
@@ -1753,12 +1792,23 @@ export default {
             return indicators;
         },
 
-        // Get items per page based on mode
+        // Get items per page based on mode and screen size
         currentItemsPerPage() {
             if (this.isKioskMode) {
                 return this.kioskRowsPerPage;
             }
-            return this.baseConfig.table.itemsPerPage;
+            
+            // Responsive items per page based on screen size
+            const tableConfig = this.baseConfig.table;
+            if (this.isMobile && tableConfig.breakpoints?.mobile) {
+                return tableConfig.breakpoints.mobile.itemsPerPage;
+            } else if (this.isTablet && tableConfig.breakpoints?.tablet) {
+                return tableConfig.breakpoints.tablet.itemsPerPage;
+            } else if (tableConfig.breakpoints?.desktop) {
+                return tableConfig.breakpoints.desktop.itemsPerPage;
+            }
+            
+            return tableConfig.itemsPerPage;
         },
 
         // Kiosk mode refresh countdown display
@@ -1831,14 +1881,14 @@ export default {
                 
                 // Extract the suffix after the last period (e.g., "A-BetaAssembly" from "emxFramework.Range.BT_BETAExt.BT_PartType.A-BetaAssembly")
                 let shortValue = value;
-                if (value.includes('.')) {
-                    const parts = value.split('.');
+                if (value.includes(".")) {
+                    const parts = value.split(".");
                     shortValue = parts[parts.length - 1];
                 }
                 
                 return {
                     text: partTypeMap[shortValue] || shortValue,
-                    value: value
+                    value
                 };
             });
         },
@@ -1927,18 +1977,6 @@ export default {
             }
 
             return filteredHeaders;
-        },
-
-        // Responsive items per page based on screen size and configuration
-        currentItemsPerPage() {
-            const tableConfig = this.baseConfig.table;
-            if (this.isMobile) {
-                return tableConfig.breakpoints.mobile.itemsPerPage;
-            } else if (this.isTablet) {
-                return tableConfig.breakpoints.tablet.itemsPerPage;
-            } else {
-                return tableConfig.breakpoints.desktop.itemsPerPage;
-            }
         },
 
         // Filter configuration using FilterService
@@ -2083,14 +2121,9 @@ export default {
             
             // Apply focus date range if active
             if (this.chartFocusActive && this.chartFocusStartDate && this.chartFocusEndDate) {
-                // Chart.js v2 uses xAxes array
-                if (options.scales && options.scales.xAxes && options.scales.xAxes[0]) {
-                    options.scales.xAxes[0].ticks = {
-                        ...options.scales.xAxes[0].ticks,
-                        min: this.chartFocusStartDate.toLocaleDateString(),
-                        max: this.chartFocusEndDate.toLocaleDateString()
-                    };
-                }
+                // For category scale in Chart.js v2, we filter data instead of using min/max
+                // The filtering happens in focusedChartData computed property
+                console.log(`📊 Chart options with focus range: ${this.chartFocusStartDate.toLocaleDateString()} to ${this.chartFocusEndDate.toLocaleDateString()}`);
             }
             
             return options;
@@ -2130,12 +2163,15 @@ export default {
                     if (!labels || labels.length === 0) return;
 
                     let todayIndex = -1;
+                    
+                    // First try exact match
                     for (const f of todayAlternatives) {
                         const idx = labels.indexOf(f);
                         if (idx >= 0) { todayIndex = idx; break; }
                     }
+                    
+                    // If no exact match, try parsing labels as dates and find the closest
                     if (todayIndex < 0) {
-                        // Try parsing labels as dates and find the closest
                         const todayMs = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
                         let closest = { idx: -1, diff: Infinity };
                         labels.forEach((lbl, i) => {
@@ -2146,10 +2182,97 @@ export default {
                                 if (diff < closest.diff) closest = { idx: i, diff };
                             }
                         });
-                        if (closest.idx >= 0) todayIndex = closest.idx;
+                        // Only use closest if it's actually today (diff === 0)
+                        if (closest.idx >= 0 && closest.diff === 0) {
+                            todayIndex = closest.idx;
+                        }
                     }
-                    if (todayIndex < 0) return;
+                    
+                    // If still not found, calculate position between dates
+                    if (todayIndex < 0) {
+                        // Parse all labels as dates (normalize to midnight)
+                        const parsedDates = labels.map(lbl => {
+                            const d = new Date(lbl);
+                            if (isNaN(d)) return null;
+                            // Normalize to midnight
+                            return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+                        }).filter(d => d !== null);
+                        
+                        if (parsedDates.length < 2) return; // Need at least 2 dates to interpolate
+                        
+                        // Normalize today to midnight
+                        const todayMs = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+                        const minDate = Math.min(...parsedDates);
+                        const maxDate = Math.max(...parsedDates);
+                        
+                        // Check if today is within the range
+                        if (todayMs < minDate || todayMs > maxDate) return;
+                        
+                        // Calculate proportional position
+                        const proportion = (todayMs - minDate) / (maxDate - minDate);
+                        const x = chartArea.left + (proportion * (chartArea.right - chartArea.left));
+                        
+                        // Draw the line at calculated position
+                        chart._todayX = x;
+                        chart._todayDateText = today.toLocaleDateString();
 
+                        ctx.save();
+                        ctx.setLineDash([DASH_LEN, GAP_LEN]);
+                        ctx.strokeStyle = "rgba(66, 66, 66, 0.9)";
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(x, chartArea.top);
+                        ctx.lineTo(x, chartArea.bottom);
+                        ctx.stroke();
+
+                        // Draw label
+                        ctx.setLineDash([]);
+                        ctx.font = "bold 12px sans-serif";
+                        const labelText = "Today";
+                        const textMetrics = ctx.measureText(labelText);
+                        const textWidth = textMetrics.width || 0;
+                        const ascent = textMetrics.actualBoundingBoxAscent || DEFAULT_TEXT_ASCENT;
+                        const descent = textMetrics.actualBoundingBoxDescent || DEFAULT_TEXT_DESCENT;
+                        const textHeight = ascent + descent;
+                        const labelWidth = textWidth + LABEL_PADDING_X * 2;
+                        const labelHeight = Math.max(textHeight + LABEL_PADDING_Y * 2, ascent + LABEL_PADDING_Y * 2);
+
+                        const halfLabelWidth = labelWidth / 2;
+                        const labelCenterX = x;
+                        const labelLeft = labelCenterX - halfLabelWidth;
+                        const labelRight = labelCenterX + halfLabelWidth;
+                        let labelBottom = chartArea.top - LABEL_VERTICAL_GAP;
+                        let labelTop = labelBottom - labelHeight;
+                        if (labelTop < LABEL_MIN_TOP) {
+                            labelTop = LABEL_MIN_TOP;
+                            labelBottom = labelTop + labelHeight;
+                        }
+
+                        const radius = Math.min(LABEL_BORDER_RADIUS, labelHeight / 2, labelWidth / 2);
+                        ctx.beginPath();
+                        ctx.moveTo(labelLeft + radius, labelTop);
+                        ctx.lineTo(labelRight - radius, labelTop);
+                        ctx.quadraticCurveTo(labelRight, labelTop, labelRight, labelTop + radius);
+                        ctx.lineTo(labelRight, labelBottom - radius);
+                        ctx.quadraticCurveTo(labelRight, labelBottom, labelRight - radius, labelBottom);
+                        ctx.lineTo(labelLeft + radius, labelBottom);
+                        ctx.quadraticCurveTo(labelLeft, labelBottom, labelLeft, labelBottom - radius);
+                        ctx.lineTo(labelLeft, labelTop + radius);
+                        ctx.quadraticCurveTo(labelLeft, labelTop, labelLeft + radius, labelTop);
+                        ctx.closePath();
+                        ctx.fillStyle = "rgba(66, 66, 66, 0.92)";
+                        ctx.fill();
+
+                        ctx.fillStyle = "#fff";
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+                        const textY = labelTop + labelHeight / 2;
+                        ctx.fillText(labelText, labelCenterX, textY);
+                        ctx.restore();
+                        return; // We're done
+                    }
+
+                    // Original code for when todayIndex was found
                     const x = (typeof xScale.getPixelForTick === "function")
                         ? xScale.getPixelForTick(todayIndex)
                         : (typeof xScale.getPixelForValue === "function")
@@ -2273,7 +2396,7 @@ export default {
     // Watch for changes that should trigger chart updates
     watch: {
         // Reset kiosk pagination when in kiosk mode and filters change
-        isKioskMode: {
+        "isKioskMode": {
             handler(isKiosk) {
                 if (isKiosk) {
                     this.resetKioskPagination();
@@ -3462,8 +3585,8 @@ export default {
                     viewport: `${viewportWidth}x${viewportHeight}`,
                     reserved: reservedHeight,
                     available: availableHeight,
-                    chart: this.currentChartHeight + 'px',
-                    table: this.currentTableHeight + 'px'
+                    chart: this.currentChartHeight + "px",
+                    table: this.currentTableHeight + "px"
                 });
             } else {
                 // Normal mode: filter bar + spacing
@@ -3497,8 +3620,8 @@ export default {
                     reserved: reservedHeight,
                     available: availableHeight,
                     ratio: `${Math.round(chartRatio * 100)}/${Math.round(tableRatio * 100)}`,
-                    chart: this.currentChartHeight + 'px',
-                    table: this.currentTableHeight + 'px'
+                    chart: this.currentChartHeight + "px",
+                    table: this.currentTableHeight + "px"
                 });
             }
             

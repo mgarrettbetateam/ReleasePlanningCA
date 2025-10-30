@@ -5,6 +5,7 @@ const prod = require("@widget-lab/widget-templates-webpack-configs/webpack.confi
 const VueLoaderPlugin = require("vue-loader/lib/plugin");
 const { VuetifyLoaderPlugin } = require("vuetify-loader");
 const { WindowsPermissionFixPlugin } = require("./src/utils/WindowsPermissionFix");
+const { BundleAnalyzerPlugin } = require("webpack-bundle-analyzer");
 
 const { merge } = require("webpack-merge");
 const path = require("path");
@@ -98,10 +99,28 @@ const myConf = {
     ]
 };
 
+/**
+ * Production optimizations
+ */
+const prodOptimizations = {
+    devtool: false, // Remove source maps for smaller bundle
+    
+    // Add bundle analyzer
+    plugins: [
+        new BundleAnalyzerPlugin({
+            analyzerMode: 'static',
+            openAnalyzer: false,
+            reportFilename: 'bundle-report.html',
+            generateStatsFile: true,
+            statsFilename: 'bundle-stats.json'
+        })
+    ]
+};
+
 // Build merged configs
 let mergedDev = merge(devConf, vueConf, vuetifyConf, myConf);
 let mergedDevS3 = merge(devS3Conf, vueConf, vuetifyConf, myConf);
-let mergedProd = merge(prod, vueConf, vuetifyConf, myConf);
+let mergedProd = merge(prod, vueConf, vuetifyConf, myConf, prodOptimizations);
 
 // Remove CleanWebpackPlugin only for dev variants to avoid EPERM on Windows
 mergedDev = stripCleanPlugin(mergedDev);

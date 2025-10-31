@@ -121,14 +121,6 @@ export class ChartDataService {
         // For parts data type, use criticalRelease field
         criticalDate = item.criticalRelease;
         
-        // Debug logging for critical date extraction
-        console.log("🔍 Critical Date Debug:", {
-            itemName: item.partNo || item.name,
-            dataType,
-            criticalRelease: item.criticalRelease,
-            resolvedDate: criticalDate
-        });
-        
         return this.validateDate(criticalDate);
     }
 

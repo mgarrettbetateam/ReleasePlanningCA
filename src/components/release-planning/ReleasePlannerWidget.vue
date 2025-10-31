@@ -1126,8 +1126,9 @@
 
 /* Ensure header and body column widths stay in sync */
 .draggable-table >>> table {
-  table-layout: fixed !important;
-  width: 100% !important;
+    table-layout: fixed !important;
+    width: 100% !important;
+    min-width: 1750px !important; /* Ensures horizontal scroll when viewport shrinks */
 }
 
 .draggable-table >>> .v-data-table__wrapper {
@@ -1295,11 +1296,84 @@
   white-space: nowrap !important;
 }
 
-/* Part Number / Rev column - dynamic width */
+/* Part Number / Rev column - fixed width to avoid overlap */
 .draggable-table >>> th:first-child,
 .draggable-table >>> td:first-child {
-  min-width: 240px !important;
-  width: auto !important;
+    min-width: 240px !important;
+    width: 240px !important;
+    max-width: 240px !important;
+}
+
+/* Description column - fixed width to maintain layout */
+.draggable-table >>> th:nth-child(2),
+.draggable-table >>> td:nth-child(2) {
+    min-width: 320px !important;
+    width: 320px !important;
+    max-width: 320px !important;
+}
+
+/* Make / Buy column */
+.draggable-table >>> th:nth-child(3),
+.draggable-table >>> td:nth-child(3) {
+    min-width: 120px !important;
+    width: 120px !important;
+    max-width: 120px !important;
+}
+
+/* System Group column */
+.draggable-table >>> th:nth-child(4),
+.draggable-table >>> td:nth-child(4) {
+    min-width: 160px !important;
+    width: 160px !important;
+    max-width: 160px !important;
+}
+
+/* Target Release column */
+.draggable-table >>> th:nth-child(5),
+.draggable-table >>> td:nth-child(5) {
+    min-width: 140px !important;
+    width: 140px !important;
+    max-width: 140px !important;
+}
+
+/* Actual Release column */
+.draggable-table >>> th:nth-child(6),
+.draggable-table >>> td:nth-child(6) {
+    min-width: 140px !important;
+    width: 140px !important;
+    max-width: 140px !important;
+}
+
+/* Critical Release column */
+.draggable-table >>> th:nth-child(7),
+.draggable-table >>> td:nth-child(7) {
+    min-width: 140px !important;
+    width: 140px !important;
+    max-width: 140px !important;
+}
+
+/* State column */
+.draggable-table >>> th:nth-child(8),
+.draggable-table >>> td:nth-child(8) {
+    min-width: 110px !important;
+    width: 110px !important;
+    max-width: 110px !important;
+}
+
+/* Change Action column */
+.draggable-table >>> th:nth-child(9),
+.draggable-table >>> td:nth-child(9) {
+    min-width: 160px !important;
+    width: 160px !important;
+    max-width: 160px !important;
+}
+
+/* Status Comments column */
+.draggable-table >>> th:nth-child(10),
+.draggable-table >>> td:nth-child(10) {
+    min-width: 220px !important;
+    width: 220px !important;
+    max-width: 220px !important;
 }
 
 /* Disabled Filter Styling */

@@ -503,10 +503,14 @@
                         :items="isKioskMode ? kioskPagedData : filteredTableData"
                         :loading="loading"
                         :dense="isMobile"
-                        :height="currentTableHeight"
                         :fixed-header="isDesktop"
                         :items-per-page="currentItemsPerPage"
-                        :hide-default-footer="isMobile || isKioskMode"
+                        :hide-default-footer="isKioskMode"
+                        :footer-props="{
+                            'items-per-page-options': [5, 10, 15, 20, 50, 100],
+                            'show-current-page': true,
+                            'show-first-last-page': true
+                        }"
                         :mobile-breakpoint="600"
                         :item-class="getRowClass"
                         item-value="partNo"
@@ -1713,7 +1717,7 @@ export default {
             
             // Responsive dimensions
             currentChartHeight: 400,
-            currentTableHeight: 500,
+            currentTableHeight: 320,
             
             // Base config for responsive utilities
             baseConfig: {
@@ -1726,12 +1730,12 @@ export default {
                     }
                 },
                 table: {
-                    height: 600,
-                    itemsPerPage: 20,
+                    height: 320,
+                    itemsPerPage: 10,
                     breakpoints: {
-                        mobile: { height: 350, itemsPerPage: 8 },
-                        tablet: { height: 500, itemsPerPage: 15 },
-                        desktop: { height: 600, itemsPerPage: 20 }
+                        mobile: { height: 260, itemsPerPage: 5 },
+                        tablet: { height: 300, itemsPerPage: 8 },
+                        desktop: { height: 320, itemsPerPage: 10 }
                     }
                 }
             },

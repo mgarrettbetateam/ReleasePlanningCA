@@ -503,6 +503,7 @@
                         :items="isKioskMode ? kioskPagedData : filteredTableData"
                         :loading="loading"
                         :dense="isMobile"
+                        :height="currentTableHeight"
                         :fixed-header="isDesktop"
                         :items-per-page="currentItemsPerPage"
                         :hide-default-footer="isKioskMode"
@@ -1144,7 +1145,7 @@
 /* Ensure table respects fixed heights */
 .draggable-table {
   max-height: 100%;
-  overflow: hidden;
+  overflow: visible; /* Changed from hidden to allow footer to show */
 }
 
 .draggable-table >>> .v-data-table {
@@ -1156,6 +1157,12 @@
 .draggable-table >>> .v-data-table__wrapper {
   flex: 1;
   overflow: auto !important;
+}
+
+/* Ensure footer is always visible */
+.draggable-table >>> .v-data-footer {
+  flex-shrink: 0 !important;
+  border-top: thin solid rgba(0, 0, 0, 0.12);
 }
 
 /* Draggable row styles */
@@ -1493,6 +1500,11 @@
   border-radius: 8px;
 }
 
+/* Ensure v-card-text allows footer to show */
+.data-table-container .v-card-text {
+  overflow: visible !important;
+}
+
 /* Stats hover effect */
 .stat-item-compact {
   transition: all 0.2s ease;
@@ -1542,7 +1554,7 @@ html, body {
 
 <script>
 /* eslint-disable no-console */
-import { version } from "../../../package.json";
+import versionData from "@/static/version.json";
 import ReleaseChart from "@/components/charts/ReleaseChart.vue";
 import ChangeActionCell from "@/components/release-planning/ChangeActionCell.vue";
 import StatusCommentDisplay from "@/components/common/StatusCommentDisplay.vue";
@@ -1758,9 +1770,9 @@ export default {
     },
     
     computed: {
-        // App version from package.json
+        // App version from version.json (single source of truth)
         appVersion() {
-            return version;
+            return versionData.stable.replace("v", ""); // Remove 'v' prefix if present
         },
 
         // Filter chart data based on focus date range
@@ -3647,6 +3659,9 @@ export default {
             // Header/Title bar (approximate)
             reservedHeight += 64;
             
+            // FOOTER HEIGHT FOR PAGINATION - Increased to ensure footer is always visible
+            const PAGINATION_FOOTER_HEIGHT = 100; // Height of v-data-table footer + buffer
+            
             if (this.isKioskMode) {
                 // Kiosk mode: badge bar + page indicator + margins
                 reservedHeight += 60;  // Badge bar
@@ -3657,7 +3672,8 @@ export default {
                 
                 // 30% chart, 70% table for maximum data visibility in kiosk
                 this.currentChartHeight = Math.floor(availableHeight * 0.30);
-                this.currentTableHeight = Math.floor(availableHeight * 0.70);
+                // Subtract footer height from table height to ensure pagination is visible
+                this.currentTableHeight = Math.floor(availableHeight * 0.70) - PAGINATION_FOOTER_HEIGHT;
                 
                 console.log("🖥️ Kiosk mode adaptive:", {
                     viewport: `${viewportWidth}x${viewportHeight}`,
@@ -3691,7 +3707,8 @@ export default {
                 }
                 
                 this.currentChartHeight = Math.floor(availableHeight * chartRatio);
-                this.currentTableHeight = Math.floor(availableHeight * tableRatio);
+                // Subtract footer height from table height to ensure pagination is visible
+                this.currentTableHeight = Math.floor(availableHeight * tableRatio) - PAGINATION_FOOTER_HEIGHT;
                 
                 console.log("📐 Normal mode adaptive:", {
                     viewport: `${viewportWidth}x${viewportHeight}`,

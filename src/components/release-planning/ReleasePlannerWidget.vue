@@ -380,7 +380,7 @@
                         </v-btn>
                     </v-card-title>
                     
-                    <v-card-text class="pa-1" style="height: 320px; overflow-y: auto;">
+                    <v-card-text class="pa-1" style="height: auto; overflow-y: visible;">
                         <div v-if="releaseStats" class="d-flex flex-column" style="gap: 2px; padding: 4px;">
                             <v-card
                                 v-for="stat in releaseStatsArray"
@@ -2242,6 +2242,16 @@ export default {
                     color: "#ff9800",
                     border: "2px solid rgba(255, 152, 0, 0.3)",
                     background: "rgba(255, 152, 0, 0.05)"
+                },
+                {
+                    key: "unreleased",
+                    label: "All Unreleased",
+                    count: this.releaseStats.totalCount - this.releaseStats.releasedCount,
+                    icon: "mdi-package-variant",
+                    class: "grey",
+                    color: "#757575",
+                    border: "2px solid rgba(117, 117, 117, 0.3)",
+                    background: "rgba(117, 117, 117, 0.05)"
                 }
             ];
         },
@@ -4623,6 +4633,14 @@ export default {
                     this.showActualLine = false;
                     this.showCriticalLine = true;
                     console.log("👁️ Chart lines adjusted for time-based filter: Target=ON, Actual=OFF, Critical=ON");
+                    break;
+
+                case "unreleased":
+                    // Show target and critical lines for unreleased items
+                    this.showTargetLine = true;
+                    this.showActualLine = false;
+                    this.showCriticalLine = true;
+                    console.log("👁️ Chart lines adjusted for unreleased: Target=ON, Actual=OFF, Critical=ON");
                     break;
                     
                 case "all":

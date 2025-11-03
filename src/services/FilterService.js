@@ -288,6 +288,9 @@ export class FilterService {
                     return tgtMs >= currentMs && tgtMs <= next30Ms;
                 });
             }
+
+            case "unreleased":
+                return data.filter(item => item.currentState !== "RELEASED");
                 
             case "all":
             default:

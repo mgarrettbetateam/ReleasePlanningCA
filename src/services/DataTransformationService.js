@@ -25,7 +25,7 @@ class DataTransformationService {
                     partNo: ["partNumber", "partNo"],
                     rev: ["revision", "rev"],
                     description: ["description"],
-                    owner: ["owner", "respEngr", "responsibleEngineer", "caRespEngr", "resEngr", "partOwner", "originator", "designer", "created_by", "createdBy"],
+                    owner: ["pOwner", "owner", "respEngr", "responsibleEngineer", "caRespEngr", "resEngr", "partOwner", "originator", "designer", "created_by", "createdBy"],
                     organization: ["organization"],
                     tgtRelease: ["targetReleaseDate", "tgtRelease"],
                     ataChapterGroup: ["ataChapterGroup", "chapterGroup", "ataChapter"],
@@ -39,6 +39,7 @@ class DataTransformationService {
                     partType: ["partType"],
                     caNumber: [], // Populated by ChangeActionCell
                     caState: [],   // Populated by ChangeActionCell
+                    caRespEngr: [], // Populated by ChangeActionCell from CA data
                     statusComment: ["statusComment", "caStatusComment", "partStatusComment"],
                     caStatusComment: ["caStatusComment", "statusComment", "partStatusComment"]
                 }
@@ -404,7 +405,8 @@ class DataTransformationService {
             ...tableItem,
             caNumber: caData.caNumber || tableItem.caNumber || "",
             caState: caData.caState || tableItem.caState || "",
-            caLink: caData.caLink || tableItem.caLink || ""
+            caLink: caData.caLink || tableItem.caLink || "",
+            caRespEngr: caData.caRespEngr || tableItem.caRespEngr || ""
         };
     }
 

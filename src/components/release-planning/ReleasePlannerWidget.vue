@@ -1131,38 +1131,110 @@
 
 /* Ensure header and body column widths stay in sync */
 .draggable-table >>> table {
-    table-layout: fixed !important;
+    table-layout: auto !important; /* Changed from fixed to auto for flexible column widths */
     width: 100% !important;
-    min-width: 1750px !important; /* Ensures horizontal scroll when viewport shrinks */
+    min-width: 100% !important; /* Changed from 2200px - let table fill container width */
+}
+
+/* First column (Part Number) fixed width */
+.draggable-table >>> thead th:first-child,
+.draggable-table >>> tbody td:first-child {
+    width: 180px !important;
+    min-width: 180px !important;
+    max-width: 180px !important;
+}
+
+/* All other columns auto-size with no minimum width */
+.draggable-table >>> thead th:not(:first-child),
+.draggable-table >>> tbody td:not(:first-child) {
+    width: auto !important;
+    min-width: 0 !important; /* Allow columns to shrink as much as needed */
+    word-wrap: break-word; /* Allow text to wrap to multiple lines */
+    overflow-wrap: break-word; /* Modern alternative to word-wrap */
 }
 
 .draggable-table >>> .v-data-table__wrapper {
-  overflow-x: auto !important;
+  overflow-x: scroll !important; /* Changed from auto to scroll - forces scrollbar to always show */
   overflow-y: auto !important;
   max-height: 100%;
+  /* Enhanced scrollbar visibility */
+  scrollbar-width: auto; /* Changed from thin to auto for Firefox - makes it bigger */
+  scrollbar-color: #757575 #e8e8e8; /* For Firefox - darker for visibility */
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+}
+
+/* Custom scrollbar styling for Webkit browsers (Chrome, Edge, Safari) */
+.draggable-table >>> .v-data-table__wrapper::-webkit-scrollbar {
+  height: 20px; /* Increased from 16px - make it even more visible */
+  width: 20px;
+  background: #f5f5f5; /* Light gray background to make scrollbar area visible */
+  border-top: 2px solid #d0d0d0; /* Thicker border to separate from table content */
+}
+
+.draggable-table >>> .v-data-table__wrapper::-webkit-scrollbar-track {
+  background: #e0e0e0; /* More visible track background */
+  border-radius: 10px;
+  margin: 2px 4px; /* Add margin to track */
+  box-shadow: inset 0 0 3px rgba(0,0,0,0.1); /* Add subtle shadow for depth */
+}
+
+.draggable-table >>> .v-data-table__wrapper::-webkit-scrollbar-thumb {
+  background: #616161; /* Even darker gray for maximum visibility */
+  border-radius: 10px;
+  border: 3px solid #e0e0e0; /* Border matches track */
+  min-width: 60px; /* Increased from 50px - ensure thumb is at least 60px wide */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2); /* Add shadow to thumb for prominence */
+}
+
+.draggable-table >>> .v-data-table__wrapper::-webkit-scrollbar-thumb:hover {
+  background: #212121; /* Almost black on hover */
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3); /* Stronger shadow on hover */
+}
+
+.draggable-table >>> .v-data-table__wrapper::-webkit-scrollbar-thumb:active {
+  background: #000000; /* Pure black when dragging */
+}
+
+/* Force scrollbar to always appear on horizontal */
+.draggable-table >>> .v-data-table__wrapper::-webkit-scrollbar-corner {
+  background: #f5f5f5;
 }
 
 /* Ensure table respects fixed heights */
 .draggable-table {
   max-height: 100%;
   overflow: visible; /* Changed from hidden to allow footer to show */
+  position: relative;
 }
 
 .draggable-table >>> .v-data-table {
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: visible; /* Allow footer to show outside */
 }
 
 .draggable-table >>> .v-data-table__wrapper {
   flex: 1;
-  overflow: auto !important;
+  overflow-x: auto !important; /* Horizontal scroll */
+  overflow-y: auto !important; /* Vertical scroll */
+  /* Ensure scrollbar is visible above footer */
+  position: relative;
+  z-index: 1;
+  /* Reserve explicit space to prevent overlap with footer */
+  max-height: calc(100% - 30px); /* Increased from 20px - Reserve more space for footer visibility */
+  margin-bottom: 8px; /* Increased from 4px - More visual gap before footer */
 }
 
-/* Ensure footer is always visible */
+/* Ensure footer is always visible and positioned below scrollable area */
 .draggable-table >>> .v-data-footer {
   flex-shrink: 0 !important;
   border-top: thin solid rgba(0, 0, 0, 0.12);
+  position: relative;
+  z-index: 2; /* Above the wrapper */
+  background-color: white; /* Ensure it's opaque */
+  margin-top: 0 !important;
+  min-height: 59px !important; /* Ensure footer has minimum height */
 }
 
 /* Draggable row styles */
@@ -1498,11 +1570,25 @@
 .data-table-container {
   margin-top: 20px;
   border-radius: 8px;
+  width: 100%; /* Ensure container is responsive */
+  max-width: 100%; /* Prevent overflow */
 }
 
 /* Ensure v-card-text allows footer to show */
 .data-table-container .v-card-text {
   overflow: visible !important;
+  width: 100%; /* Ensure card text is responsive */
+}
+
+/* Ensure data table itself is responsive */
+.draggable-table >>> .v-data-table {
+  width: 100% !important; /* Make table fully responsive */
+}
+
+/* Ensure footer follows table width */
+.draggable-table >>> .v-data-footer {
+  width: 100% !important; /* Make footer match table width */
+  box-sizing: border-box; /* Include padding in width calculation */
 }
 
 /* Stats hover effect */
@@ -1644,11 +1730,13 @@ export default {
                     { text: "Make / Buy", value: "makeBuy", sortable: true, icon: "mdi-factory" },
                     // { text: "Chapter Group", value: "ataChapterGroup", sortable: true, icon: "mdi-book-open-page-variant" },
                     { text: "System Group", value: "engSystemGroupShort", sortable: true, icon: "mdi-cog-outline", truncate: true, fullValueField: "engSystemGroup" },
+                    { text: "Owner", value: "owner", sortable: true, icon: "mdi-account" },
                     { text: "Target Release", value: "tgtRelease", sortable: true, icon: "mdi-calendar-clock" },
                     { text: "Actual Release", value: "actualRelease", sortable: true, icon: "mdi-calendar-check" },
                     { text: "Critical Release", value: "criticalRelease", sortable: true, icon: "mdi-calendar-alert" },
                     { text: "State", value: "currentStateMasked", sortable: true, icon: "mdi-flag" },
                     { text: "Change Action", value: "caNumber", sortable: false, component: "ChangeActionCell", componentProps: { field: "number" } },
+                    { text: "Resp Engr", value: "caRespEngr", sortable: true, icon: "mdi-account-hard-hat" },
                     { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text", component: "StatusCommentDisplay", componentProps: { itemType: "parts", canEdit: true } }
                 ],
                 cas: [
@@ -3660,7 +3748,7 @@ export default {
             reservedHeight += 64;
             
             // FOOTER HEIGHT FOR PAGINATION - Increased to ensure footer is always visible
-            const PAGINATION_FOOTER_HEIGHT = 100; // Height of v-data-table footer + buffer
+            const PAGINATION_FOOTER_HEIGHT = 120; // Height of v-data-table footer + buffer (increased from 100)
             
             if (this.isKioskMode) {
                 // Kiosk mode: badge bar + page indicator + margins
@@ -4657,7 +4745,8 @@ export default {
                 const updatedItem = dataTransformationService.updateCaData(this.tableData[rowIndex], {
                     caNumber: caData.itemNumber,
                     caState: caData.itemState,
-                    caLink: caData.itemLink
+                    caLink: caData.itemLink,
+                    caRespEngr: caData.caRespEngr
                 });
                 this.$set(this.tableData, rowIndex, updatedItem);
             }

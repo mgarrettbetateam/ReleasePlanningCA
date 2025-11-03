@@ -185,7 +185,8 @@ export default {
             loading: false,
             caNumber: "",
             caLink: "",
-            caState: ""
+            caState: "",
+            caRespEngr: ""
         };
     },
 
@@ -295,12 +296,14 @@ export default {
                 caLink: data.caLink,
                 caPhysId: data.caPhysId,
                 caState: data.caState,
+                caRespEngr: data.caRespEngr,
                 hasApiLink: !!data.caLink,
                 hasPhysId: !!data.caPhysId
             });
             
             this.caNumber = data.caNumber;
             this.caState = data.caState;
+            this.caRespEngr = data.caRespEngr || "";
             
             // For PARTS items, prefer caLink from API, but if not available, use caPhysId to generate link
             if (data.caLink) {
@@ -373,7 +376,8 @@ export default {
                 itemNumber: this.displayNumber,
                 itemLink: this.displayLink,
                 itemState: this.displayState,
-                itemType: this.itemType
+                itemType: this.itemType,
+                caRespEngr: this.caRespEngr
             });
         }
   }

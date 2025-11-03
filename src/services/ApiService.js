@@ -405,7 +405,8 @@ class ApiService {
         caLink: response.data.caLink || "",
         caPhysId: response.data.caPhysId || response.data.physId || response.data.objectId || 
                   response.data.caObjectId || response.data.changeActionId || response.data.id || "",
-        caState: response.data.caState || ""
+        caState: response.data.caState || "",
+        caRespEngr: response.data.caRespEngr || ""
       };
       
       console.log("✅ Change Action Response:", {

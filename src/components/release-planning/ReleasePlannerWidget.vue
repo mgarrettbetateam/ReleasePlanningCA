@@ -275,11 +275,11 @@
         </v-dialog>
 
         <!-- Layout: Chart and Stats Side by Side -->
-        <div class="pa-2" :class="isKioskMode ? 'kiosk-layout' : ''" style="margin: 16px; padding: 12px;">
+        <div class="content-wrapper">
             <!-- Chart and Stats Row - Clean Horizontal Layout -->
-            <div class="d-flex" :class="isKioskMode ? 'kiosk-chart-row' : ''" style="gap: 16px; margin-bottom: 12px; margin-left: 24px;">
+            <div class="chart-stats-row">
                 <!-- Chart Container - Takes most of the space -->
-                <v-card class="flex-grow-1" elevation="2" style="border-radius: 8px; min-width: 400px;">
+                <v-card class="chart-card" elevation="2">
                     <v-card-title v-if="!isKioskMode" class="pa-2" style="border-bottom: 1px solid #e0e0e0;">
                         <v-icon left color="primary" size="20">mdi-chart-line</v-icon>
                         <span class="text-subtitle-1 font-weight-medium">Release Timeline</span>
@@ -361,7 +361,7 @@
                 </v-card>
                 
                 <!-- Release Stats Container - Compact Width -->
-                <v-card style="width: 200px; flex-shrink: 0;" elevation="2" class="rounded-lg">
+                <v-card class="stats-card" elevation="2">
                     <v-card-title class="pa-2" style="border-bottom: 1px solid #e0e0e0;">
                         <v-icon left color="primary" size="20">mdi-chart-bar</v-icon>
                         <span class="text-subtitle-1 font-weight-medium">Release Stats</span>
@@ -436,7 +436,7 @@
             </div>
             
             <!-- Table - Maximized Space Usage -->
-            <v-card class="table-card data-table-container" style="margin-left: 24px;">
+            <v-card class="table-card" elevation="2">
                 <v-card-title class="table-header pa-2">
                     <v-icon left size="20">mdi-table</v-icon>
                     <span class="text-subtitle-1 font-weight-medium">{{ currentDataType ? currentDataType.toUpperCase() + ' Data' : 'Data Table' }}</span>
@@ -797,6 +797,34 @@
 </template>
 
 <style scoped>
+/* Clean Layout Structure */
+.content-wrapper {
+  padding: 24px;
+  max-width: 100%;
+}
+
+.chart-stats-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.chart-card {
+  flex: 1;
+  border-radius: 8px;
+  min-width: 400px;
+}
+
+.stats-card {
+  width: 200px;
+  flex-shrink: 0;
+  border-radius: 8px;
+}
+
+.table-card {
+  border-radius: 8px;
+}
+
 /* Position relative for loading overlay */
 .position-relative {
   position: relative;
@@ -1570,7 +1598,6 @@
 .data-table-container {
   margin-top: 20px;
   border-radius: 8px;
-  width: 100%; /* Ensure container is responsive */
   max-width: 100%; /* Prevent overflow */
 }
 

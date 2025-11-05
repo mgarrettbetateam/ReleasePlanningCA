@@ -897,7 +897,7 @@
         transform: rotate(0deg);
     }
     to {
-        transform: rotate(360deg);
+        transform: rotate(-360deg);
     }
 }
 
@@ -1501,7 +1501,7 @@
 /* Version Display Positioning */
 .version-display {
   position: fixed;
-  bottom: 16px;
+  bottom: 8px;
   right: 16px;
   z-index: 999;
   display: flex;

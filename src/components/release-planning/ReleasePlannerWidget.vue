@@ -2346,8 +2346,8 @@ export default {
         ,
         // Provide Chart.js v2 plugin(s) to draw a vertical dashed line at today's date
         todayLinePlugins() {
-            // Compute today's common label formats to match our labels array
-            const today = new Date();
+            // Use FilterService's currentDate for consistency
+            const today = new Date(filterService.currentDate);
             const DASH_LEN = 6;
             const GAP_LEN = 4;
             const LABEL_VERTICAL_GAP = 8;
@@ -2382,17 +2382,20 @@ export default {
                     // First try exact match
                     for (const f of todayAlternatives) {
                         const idx = labels.indexOf(f);
-                        if (idx >= 0) { todayIndex = idx; break; }
+                        if (idx >= 0) { 
+                            todayIndex = idx; 
+                            break; 
+                        }
                     }
                     
                     // If no exact match, try parsing labels as dates and find the closest
                     if (todayIndex < 0) {
-                        const todayMs = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+                        const todayMs = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
                         let closest = { idx: -1, diff: Infinity };
                         labels.forEach((lbl, i) => {
                             const d = new Date(lbl);
                             if (!isNaN(d)) {
-                                const dm = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+                                const dm = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
                                 const diff = Math.abs(dm - todayMs);
                                 if (diff < closest.diff) closest = { idx: i, diff };
                             }
@@ -2403,95 +2406,109 @@ export default {
                         }
                     }
                     
-                    // If still not found, calculate position between dates
+                    // If still not found, try to find closest surrounding dates for interpolation
                     if (todayIndex < 0) {
-                        // Parse all labels as dates (normalize to midnight)
-                        const parsedDates = labels.map(lbl => {
-                            const d = new Date(lbl);
-                            if (isNaN(d)) return null;
-                            // Normalize to midnight
-                            return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-                        }).filter(d => d !== null);
-                        
-                        if (parsedDates.length < 2) return; // Need at least 2 dates to interpolate
-                        
-                        // Normalize today to midnight
-                        const todayMs = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
-                        const minDate = Math.min(...parsedDates);
-                        const maxDate = Math.max(...parsedDates);
-                        
-                        // Check if today is within the range
-                        if (todayMs < minDate || todayMs > maxDate) return;
-                        
-                        // Calculate proportional position
-                        const proportion = (todayMs - minDate) / (maxDate - minDate);
-                        const x = chartArea.left + (proportion * (chartArea.right - chartArea.left));
-                        
-                        // Draw the line at calculated position
-                        chart._todayX = x;
-                        chart._todayDateText = today.toLocaleDateString();
-
-                        ctx.save();
-                        ctx.setLineDash([DASH_LEN, GAP_LEN]);
-                        ctx.strokeStyle = "rgba(66, 66, 66, 0.9)";
-                        ctx.lineWidth = 2;
-                        ctx.beginPath();
-                        ctx.moveTo(x, chartArea.top);
-                        ctx.lineTo(x, chartArea.bottom);
-                        ctx.stroke();
-
-                        // Draw label
-                        ctx.setLineDash([]);
-                        ctx.font = "bold 12px sans-serif";
-                        const labelText = "Today";
-                        const textMetrics = ctx.measureText(labelText);
-                        const textWidth = textMetrics.width || 0;
-                        const ascent = textMetrics.actualBoundingBoxAscent || DEFAULT_TEXT_ASCENT;
-                        const descent = textMetrics.actualBoundingBoxDescent || DEFAULT_TEXT_DESCENT;
-                        const textHeight = ascent + descent;
-                        const labelWidth = textWidth + LABEL_PADDING_X * 2;
-                        const labelHeight = Math.max(textHeight + LABEL_PADDING_Y * 2, ascent + LABEL_PADDING_Y * 2);
-
-                        const halfLabelWidth = labelWidth / 2;
-                        const labelCenterX = x;
-                        const labelLeft = labelCenterX - halfLabelWidth;
-                        const labelRight = labelCenterX + halfLabelWidth;
-                        let labelBottom = chartArea.top - LABEL_VERTICAL_GAP;
-                        let labelTop = labelBottom - labelHeight;
-                        if (labelTop < LABEL_MIN_TOP) {
-                            labelTop = LABEL_MIN_TOP;
-                            labelBottom = labelTop + labelHeight;
+                        // Find the index where today would fit in the sorted labels
+                        let insertIndex = -1;
+                        for (let i = 0; i < labels.length - 1; i++) {
+                            const currentDate = new Date(labels[i]);
+                            const nextDate = new Date(labels[i + 1]);
+                            if (isNaN(currentDate) || isNaN(nextDate)) continue;
+                            
+                            if (today >= currentDate && today <= nextDate) {
+                                insertIndex = i;
+                                break;
+                            }
                         }
+                        
+                        // If today is between two labels, interpolate using actual chart scale
+                        if (insertIndex >= 0) {
+                            // xScale is already validated at the top of afterDraw function - reuse it
+                            const beforeDate = new Date(labels[insertIndex]);
+                            const afterDate = new Date(labels[insertIndex + 1]);
+                            const beforeMs = beforeDate.getTime();
+                            const afterMs = afterDate.getTime();
+                            const todayMs = today.getTime();
+                            
+                            // Get pixel positions for the surrounding labels
+                            const beforeX = xScale.getPixelForValue(insertIndex);
+                            const afterX = xScale.getPixelForValue(insertIndex + 1);
+                            
+                            // Interpolate between them based on date
+                            const ratio = (todayMs - beforeMs) / (afterMs - beforeMs);
+                            const x = beforeX + (ratio * (afterX - beforeX));
+                            
+                            // Draw the line at calculated position
+                            chart._todayX = x;
+                            chart._todayDateText = today.toLocaleDateString();
 
-                        const radius = Math.min(LABEL_BORDER_RADIUS, labelHeight / 2, labelWidth / 2);
-                        ctx.beginPath();
-                        ctx.moveTo(labelLeft + radius, labelTop);
-                        ctx.lineTo(labelRight - radius, labelTop);
-                        ctx.quadraticCurveTo(labelRight, labelTop, labelRight, labelTop + radius);
-                        ctx.lineTo(labelRight, labelBottom - radius);
-                        ctx.quadraticCurveTo(labelRight, labelBottom, labelRight - radius, labelBottom);
-                        ctx.lineTo(labelLeft + radius, labelBottom);
-                        ctx.quadraticCurveTo(labelLeft, labelBottom, labelLeft, labelBottom - radius);
-                        ctx.lineTo(labelLeft, labelTop + radius);
-                        ctx.quadraticCurveTo(labelLeft, labelTop, labelLeft + radius, labelTop);
-                        ctx.closePath();
-                        ctx.fillStyle = "rgba(66, 66, 66, 0.92)";
-                        ctx.fill();
+                            ctx.save();
+                            ctx.setLineDash([DASH_LEN, GAP_LEN]);
+                            ctx.strokeStyle = "rgba(66, 66, 66, 0.9)";
+                            ctx.lineWidth = 2;
+                            ctx.beginPath();
+                            ctx.moveTo(x, chartArea.top);
+                            ctx.lineTo(x, chartArea.bottom);
+                            ctx.stroke();
 
-                        ctx.fillStyle = "#fff";
-                        ctx.textAlign = "center";
-                        ctx.textBaseline = "middle";
-                        const textY = labelTop + labelHeight / 2;
-                        ctx.fillText(labelText, labelCenterX, textY);
-                        ctx.restore();
-                        return; // We're done
+                            // Draw label
+                            ctx.setLineDash([]);
+                            ctx.font = "bold 12px sans-serif";
+                            const labelText = "Today";
+                            const textMetrics = ctx.measureText(labelText);
+                            const textWidth = textMetrics.width || 0;
+                            const ascent = textMetrics.actualBoundingBoxAscent || DEFAULT_TEXT_ASCENT;
+                            const descent = textMetrics.actualBoundingBoxDescent || DEFAULT_TEXT_DESCENT;
+                            const textHeight = ascent + descent;
+                            const labelWidth = textWidth + LABEL_PADDING_X * 2;
+                            const labelHeight = Math.max(textHeight + LABEL_PADDING_Y * 2, ascent + LABEL_PADDING_Y * 2);
+
+                            const halfLabelWidth = labelWidth / 2;
+                            const labelCenterX = x;
+                            const labelLeft = labelCenterX - halfLabelWidth;
+                            const labelRight = labelCenterX + halfLabelWidth;
+                            let labelBottom = chartArea.top - LABEL_VERTICAL_GAP;
+                            let labelTop = labelBottom - labelHeight;
+                            if (labelTop < LABEL_MIN_TOP) {
+                                labelTop = LABEL_MIN_TOP;
+                                labelBottom = labelTop + labelHeight;
+                            }
+
+                            const radius = Math.min(LABEL_BORDER_RADIUS, labelHeight / 2, labelWidth / 2);
+                            ctx.beginPath();
+                            ctx.moveTo(labelLeft + radius, labelTop);
+                            ctx.lineTo(labelRight - radius, labelTop);
+                            ctx.quadraticCurveTo(labelRight, labelTop, labelRight, labelTop + radius);
+                            ctx.lineTo(labelRight, labelBottom - radius);
+                            ctx.quadraticCurveTo(labelRight, labelBottom, labelRight - radius, labelBottom);
+                            ctx.lineTo(labelLeft + radius, labelBottom);
+                            ctx.quadraticCurveTo(labelLeft, labelBottom, labelLeft, labelBottom - radius);
+                            ctx.lineTo(labelLeft, labelTop + radius);
+                            ctx.quadraticCurveTo(labelLeft, labelTop, labelLeft + radius, labelTop);
+                            ctx.closePath();
+                            ctx.fillStyle = "rgba(66, 66, 66, 0.92)";
+                            ctx.fill();
+
+                            ctx.fillStyle = "#fff";
+                            ctx.textAlign = "center";
+                            ctx.textBaseline = "middle";
+                            const textY = labelTop + labelHeight / 2;
+                            ctx.fillText(labelText, labelCenterX, textY);
+                            ctx.restore();
+                            return; // We're done with interpolated position
+                        }
+                        
+                        // If we can't interpolate, don't draw the line
+                        return;
                     }
 
-                    // Original code for when todayIndex was found
-                    const x = (typeof xScale.getPixelForTick === "function")
-                        ? xScale.getPixelForTick(todayIndex)
-                        : (typeof xScale.getPixelForValue === "function")
-                            ? xScale.getPixelForValue(null, todayIndex)
+                    // Original code for when todayIndex was found - exact match
+                    const xScale2 = chart.scales.x;
+                    if (!xScale2) return;
+                    const x = (typeof xScale2.getPixelForTick === "function")
+                        ? xScale2.getPixelForTick(todayIndex)
+                        : (typeof xScale2.getPixelForValue === "function")
+                            ? xScale2.getPixelForValue(null, todayIndex)
                             : null;
                     if (x === null || x === undefined) return;
 

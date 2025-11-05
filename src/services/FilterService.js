@@ -13,6 +13,7 @@
 
 export class FilterService {
     constructor() {
+        // Create current date at midnight local time
         this.currentDate = new Date();
         this.currentDate.setHours(0, 0, 0, 0);
     }

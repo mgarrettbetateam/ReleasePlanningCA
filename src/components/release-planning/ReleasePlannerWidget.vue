@@ -512,7 +512,7 @@
                             'show-current-page': true,
                             'show-first-last-page': true
                         }"
-                        :mobile-breakpoint="600"
+                        :mobile-breakpoint="0"
                         :item-class="getRowClass"
                         item-value="partNo"
                         class="pa-0 draggable-table"
@@ -800,13 +800,16 @@
 /* Clean Layout Structure */
 .content-wrapper {
   padding: 24px;
-  max-width: 100%;
+  width: 100%;
+  max-width: 100%; /* STAY WITHIN WINDOW */
+  overflow: visible;
 }
 
 .chart-stats-row {
   display: flex;
   gap: 16px;
   margin-bottom: 24px;
+  width: 100%; /* FILL AVAILABLE SPACE */
 }
 
 .chart-card {
@@ -823,6 +826,9 @@
 
 .table-card {
   border-radius: 8px;
+  width: 100%; /* FILL CONTENT WRAPPER */
+  max-width: 100%; /* DON'T EXCEED CONTENT WRAPPER */
+  overflow: visible; /* Let inner wrapper handle overflow */
 }
 
 /* Position relative for loading overlay */
@@ -1157,101 +1163,52 @@
   text-align: left !important;
 }
 
-/* Ensure header and body column widths stay in sync */
+/* Table should size based on content, not wrapper */
 .draggable-table >>> table {
-    table-layout: auto !important; /* Changed from fixed to auto for flexible column widths */
-    width: 100% !important;
-    min-width: 100% !important; /* Changed from 2200px - let table fill container width */
+    min-width: 2400px !important; /* FORCE TABLE TO BE WIDER THAN ANY VIEWPORT */
+    table-layout: fixed !important; /* PREVENT COLUMN COMPRESSION */
+    /* REMOVED width: 2400px - let columns determine width */
 }
 
-/* First column (Part Number) fixed width */
-.draggable-table >>> thead th:first-child,
-.draggable-table >>> tbody td:first-child {
-    width: 180px !important;
-    min-width: 180px !important;
-    max-width: 180px !important;
+/* Force thead and tbody to respect table width */
+.draggable-table >>> thead {
+    min-width: 2400px !important;
+    display: table !important;
+    table-layout: fixed !important;
+    /* REMOVED width: 2400px */
 }
 
-/* All other columns auto-size with no minimum width */
-.draggable-table >>> thead th:not(:first-child),
-.draggable-table >>> tbody td:not(:first-child) {
-    width: auto !important;
-    min-width: 0 !important; /* Allow columns to shrink as much as needed */
-    word-wrap: break-word; /* Allow text to wrap to multiple lines */
-    overflow-wrap: break-word; /* Modern alternative to word-wrap */
+.draggable-table >>> tbody {
+    min-width: 2400px !important;
+    display: table !important;
+    table-layout: fixed !important;
+    /* REMOVED width: 2400px */
 }
 
+/* Enable horizontal scrolling when table content exceeds wrapper width */
 .draggable-table >>> .v-data-table__wrapper {
-  overflow-x: scroll !important; /* Changed from auto to scroll - forces scrollbar to always show */
-  overflow-y: auto !important;
-  max-height: 100%;
-  /* Enhanced scrollbar visibility */
-  scrollbar-width: auto; /* Changed from thin to auto for Firefox - makes it bigger */
-  scrollbar-color: #757575 #e8e8e8; /* For Firefox - darker for visibility */
-  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    overflow-x: auto !important; /* AUTO - only show when needed */
+    overflow-y: auto !important;
+    max-width: 100vw !important; /* VIEWPORT WIDTH - not parent container */
+    width: 100% !important;
 }
 
-/* Custom scrollbar styling for Webkit browsers (Chrome, Edge, Safari) */
-.draggable-table >>> .v-data-table__wrapper::-webkit-scrollbar {
-  height: 20px; /* Increased from 16px - make it even more visible */
-  width: 20px;
-  background: #f5f5f5; /* Light gray background to make scrollbar area visible */
-  border-top: 2px solid #d0d0d0; /* Thicker border to separate from table content */
-}
-
-.draggable-table >>> .v-data-table__wrapper::-webkit-scrollbar-track {
-  background: #e0e0e0; /* More visible track background */
-  border-radius: 10px;
-  margin: 2px 4px; /* Add margin to track */
-  box-shadow: inset 0 0 3px rgba(0,0,0,0.1); /* Add subtle shadow for depth */
-}
-
-.draggable-table >>> .v-data-table__wrapper::-webkit-scrollbar-thumb {
-  background: #616161; /* Even darker gray for maximum visibility */
-  border-radius: 10px;
-  border: 3px solid #e0e0e0; /* Border matches track */
-  min-width: 60px; /* Increased from 50px - ensure thumb is at least 60px wide */
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2); /* Add shadow to thumb for prominence */
-}
-
-.draggable-table >>> .v-data-table__wrapper::-webkit-scrollbar-thumb:hover {
-  background: #212121; /* Almost black on hover */
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3); /* Stronger shadow on hover */
-}
-
-.draggable-table >>> .v-data-table__wrapper::-webkit-scrollbar-thumb:active {
-  background: #000000; /* Pure black when dragging */
-}
-
-/* Force scrollbar to always appear on horizontal */
-.draggable-table >>> .v-data-table__wrapper::-webkit-scrollbar-corner {
-  background: #f5f5f5;
-}
-
-/* Ensure table respects fixed heights */
+/* Ensure draggable-table container doesn't expand beyond window */
 .draggable-table {
-  max-height: 100%;
-  overflow: visible; /* Changed from hidden to allow footer to show */
-  position: relative;
+    max-width: 100vw !important; /* VIEWPORT WIDTH */
+    overflow: visible; /* Let wrapper handle overflow */
+}
+
+/* Prevent text wrapping in cells so columns stay readable */
+.draggable-table >>> td,
+.draggable-table >>> th {
+    white-space: nowrap;
 }
 
 .draggable-table >>> .v-data-table {
   height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: visible; /* Allow footer to show outside */
-}
-
-.draggable-table >>> .v-data-table__wrapper {
-  flex: 1;
-  overflow-x: auto !important; /* Horizontal scroll */
-  overflow-y: auto !important; /* Vertical scroll */
-  /* Ensure scrollbar is visible above footer */
-  position: relative;
-  z-index: 1;
-  /* Reserve explicit space to prevent overlap with footer */
-  max-height: calc(100% - 30px); /* Increased from 20px - Reserve more space for footer visibility */
-  margin-bottom: 8px; /* Increased from 4px - More visual gap before footer */
 }
 
 /* Ensure footer is always visible and positioned below scrollable area */
@@ -1410,81 +1367,109 @@
 /* Part Number / Rev column - fixed width to avoid overlap */
 .draggable-table >>> th:first-child,
 .draggable-table >>> td:first-child {
-    min-width: 240px !important;
-    width: 240px !important;
-    max-width: 240px !important;
+    min-width: 280px !important;
+    width: 280px !important;
+    max-width: 280px !important;
+    flex: 0 0 280px !important; /* PREVENT FLEX COMPRESSION */
 }
 
 /* Description column - fixed width to maintain layout */
 .draggable-table >>> th:nth-child(2),
 .draggable-table >>> td:nth-child(2) {
-    min-width: 320px !important;
-    width: 320px !important;
-    max-width: 320px !important;
+    min-width: 400px !important;
+    width: 400px !important;
+    max-width: 400px !important;
+    flex: 0 0 400px !important; /* PREVENT FLEX COMPRESSION */
 }
 
 /* Make / Buy column */
 .draggable-table >>> th:nth-child(3),
 .draggable-table >>> td:nth-child(3) {
-    min-width: 120px !important;
-    width: 120px !important;
-    max-width: 120px !important;
+    min-width: 140px !important;
+    width: 140px !important;
+    max-width: 140px !important;
+    flex: 0 0 140px !important;
 }
 
 /* System Group column */
 .draggable-table >>> th:nth-child(4),
 .draggable-table >>> td:nth-child(4) {
+    min-width: 200px !important;
+    width: 200px !important;
+    max-width: 200px !important;
+    flex: 0 0 200px !important;
+}
+
+/* Owner column */
+.draggable-table >>> th:nth-child(5),
+.draggable-table >>> td:nth-child(5) {
     min-width: 160px !important;
     width: 160px !important;
     max-width: 160px !important;
+    flex: 0 0 160px !important;
 }
 
 /* Target Release column */
-.draggable-table >>> th:nth-child(5),
-.draggable-table >>> td:nth-child(5) {
-    min-width: 140px !important;
-    width: 140px !important;
-    max-width: 140px !important;
-}
-
-/* Actual Release column */
 .draggable-table >>> th:nth-child(6),
 .draggable-table >>> td:nth-child(6) {
-    min-width: 140px !important;
-    width: 140px !important;
-    max-width: 140px !important;
-}
-
-/* Critical Release column */
-.draggable-table >>> th:nth-child(7),
-.draggable-table >>> td:nth-child(7) {
-    min-width: 140px !important;
-    width: 140px !important;
-    max-width: 140px !important;
-}
-
-/* State column */
-.draggable-table >>> th:nth-child(8),
-.draggable-table >>> td:nth-child(8) {
-    min-width: 110px !important;
-    width: 110px !important;
-    max-width: 110px !important;
-}
-
-/* Change Action column */
-.draggable-table >>> th:nth-child(9),
-.draggable-table >>> td:nth-child(9) {
     min-width: 160px !important;
     width: 160px !important;
     max-width: 160px !important;
+    flex: 0 0 160px !important;
+}
+
+/* Actual Release column */
+.draggable-table >>> th:nth-child(7),
+.draggable-table >>> td:nth-child(7) {
+    min-width: 160px !important;
+    width: 160px !important;
+    max-width: 160px !important;
+    flex: 0 0 160px !important;
+}
+
+/* Critical Release column */
+.draggable-table >>> th:nth-child(8),
+.draggable-table >>> td:nth-child(8) {
+    min-width: 160px !important;
+    width: 160px !important;
+    max-width: 160px !important;
+    flex: 0 0 160px !important;
+}
+
+/* State column */
+.draggable-table >>> th:nth-child(9),
+.draggable-table >>> td:nth-child(9) {
+    min-width: 140px !important;
+    width: 140px !important;
+    max-width: 140px !important;
+    flex: 0 0 140px !important;
+}
+
+/* Change Action column */
+.draggable-table >>> th:nth-child(10),
+.draggable-table >>> td:nth-child(10) {
+    min-width: 180px !important;
+    width: 180px !important;
+    max-width: 180px !important;
+    flex: 0 0 180px !important;
+}
+
+/* Resp Engr column */
+.draggable-table >>> th:nth-child(11),
+.draggable-table >>> td:nth-child(11) {
+    min-width: 160px !important;
+    width: 160px !important;
+    max-width: 160px !important;
+    flex: 0 0 160px !important;
 }
 
 /* Status Comments column */
-.draggable-table >>> th:nth-child(10),
-.draggable-table >>> td:nth-child(10) {
-    min-width: 220px !important;
-    width: 220px !important;
-    max-width: 220px !important;
+.draggable-table >>> th:nth-child(12),
+.draggable-table >>> td:nth-child(12) {
+    min-width: 250px !important;
+    width: 250px !important;
+    max-width: 250px !important;
+    flex: 0 0 250px !important;
 }
 
 /* Disabled Filter Styling */
@@ -1598,18 +1583,24 @@
 .data-table-container {
   margin-top: 20px;
   border-radius: 8px;
-  max-width: 100%; /* Prevent overflow */
+  width: 100%;
 }
 
 /* Ensure v-card-text allows footer to show */
 .data-table-container .v-card-text {
   overflow: visible !important;
-  width: 100%; /* Ensure card text is responsive */
+  width: 100%;
+}
+
+/* DO NOT add overflow to v-card-text - let the table wrapper handle it */
+.v-card-text.pa-0.position-relative {
+  overflow: visible !important; /* Let the table wrapper handle scrolling */
+  width: 100%;
 }
 
 /* Ensure data table itself is responsive */
 .draggable-table >>> .v-data-table {
-  width: 100% !important; /* Make table fully responsive */
+  width: 100%;
 }
 
 /* Ensure footer follows table width */
@@ -1644,7 +1635,7 @@
 <style>
 /* Global styles for viewport fitting (unscoped) */
 html, body {
-  overflow: hidden;
+  overflow: hidden; /* Restore overflow hidden for page */
   height: 100vh;
   max-height: 100vh;
 }
@@ -1652,14 +1643,14 @@ html, body {
 #app {
   height: 100vh;
   max-height: 100vh;
-  overflow: hidden;
+  overflow: hidden; /* Restore overflow hidden for app */
 }
 
 /* Ensure widget wrapper fills viewport */
 .enhanced-parts-planner {
   height: 100vh !important;
   max-height: 100vh !important;
-  overflow: hidden !important;
+  overflow: hidden !important; /* Restore overflow hidden for container */
 }
 
 /* No custom dropdown overrides - using Vuetify defaults */

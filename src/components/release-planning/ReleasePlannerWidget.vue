@@ -532,40 +532,6 @@
                                 :item-number="currentDataType === 'parts' ? '' : getItemNumberForCell(header, item)"
                                 :item-state="currentDataType === 'parts' ? '' : getItemStateForCell(header, item)"
                                 :phys-id="currentDataType === 'parts' ? '' : (item.physId || item.objId)"
-                                @ca-number-loaded="onCaNumberLoaded"
-                                @cr-number-loaded="onCrNumberLoaded"
-                            />
-                            <!-- Use StatusCommentDisplay component for status comment fields -->
-                            <StatusCommentDisplay
-                                v-else-if="header.component === 'StatusCommentDisplay'"
-                                :key="`comment-${header.value}-${index}`"
-                                :value="getStatusCommentValue(header, item)"
-                                :object-id="item.physId || item.objId || item.id"
-                                :item-type="header.componentProps.itemType || 'parts'"
-                                :can-edit="getCanEditValue(header, item)"
-                                :ca-number="header.componentProps.itemType === 'parts' ? (item.caNumber || '') : ''"
-                                :ca-phys-id="header.componentProps.itemType === 'parts' ? (item.caPhysId || '') : ''"
-                                :ca-link="header.componentProps.itemType === 'parts' ? (item.caLink || '') : ''"
-                                @comment-updated="handleCommentUpdate"
-                                @show-message="showSnackbar"
-                            />
-                        </template>
-                        
-                        <!-- Individual column slots with drag functionality applied to table rows via CSS and events -->
-                        <!-- Custom cell rendering using item slots for specific columns -->
-                        <template v-for="header in tableHeaders.filter(h => h.component)" #[`item.${header.value}`]="{ item, index }">
-                            <!-- Use ChangeActionCell component for CA/CR fields -->
-                            <ChangeActionCell
-                                v-if="header.component === 'ChangeActionCell'"
-                                :key="`ca-${header.value}-${item.uniqueId || item.physId || item.objId || index}-${changeActionRefreshKey}`"
-                                :obj-id="item.physId || item.objId"
-                                :unique-id="item.uniqueId || item.physId || item.objId || `row_${index}`"
-                                :row-index="index"
-                                :field="header.componentProps.field"
-                                :item-type="header.componentProps.itemType || 'ca'"
-                                :item-number="currentDataType === 'parts' ? '' : getItemNumberForCell(header, item)"
-                                :item-state="currentDataType === 'parts' ? '' : getItemStateForCell(header, item)"
-                                :phys-id="currentDataType === 'parts' ? '' : (item.physId || item.objId)"
                                 :filter-context="filterValues"
                                 :current-data-type="currentDataType"
                                 @ca-number-loaded="onCaNumberLoaded"
@@ -801,26 +767,29 @@
 .content-wrapper {
   padding: 24px;
   width: 100%;
-  max-width: 100%; /* STAY WITHIN WINDOW */
-  overflow: visible;
+  max-width: 100vw; /* DON'T EXCEED VIEWPORT */
+  overflow-x: auto; /* ALLOW HORIZONTAL SCROLL IF NEEDED */
+  overflow-y: visible;
+  box-sizing: border-box; /* INCLUDE PADDING IN WIDTH */
 }
 
 .chart-stats-row {
   display: flex;
   gap: 16px;
   margin-bottom: 24px;
-  width: 100%; /* FILL AVAILABLE SPACE */
+  min-width: min-content; /* SHRINK TO FIT CONTENT */
 }
 
 .chart-card {
   flex: 1;
   border-radius: 8px;
-  min-width: 400px;
+  min-width: 400px; /* MINIMUM CHART WIDTH */
+  flex-shrink: 0; /* DON'T COMPRESS BELOW MIN */
 }
 
 .stats-card {
   width: 200px;
-  flex-shrink: 0;
+  flex-shrink: 0; /* DON'T COMPRESS */
   border-radius: 8px;
 }
 
@@ -1165,24 +1134,9 @@
 
 /* Table should size based on content, not wrapper */
 .draggable-table >>> table {
-    min-width: 2400px !important; /* FORCE TABLE TO BE WIDER THAN ANY VIEWPORT */
-    table-layout: fixed !important; /* PREVENT COLUMN COMPRESSION */
-    /* REMOVED width: 2400px - let columns determine width */
-}
-
-/* Force thead and tbody to respect table width */
-.draggable-table >>> thead {
-    min-width: 2400px !important;
-    display: table !important;
-    table-layout: fixed !important;
-    /* REMOVED width: 2400px */
-}
-
-.draggable-table >>> tbody {
-    min-width: 2400px !important;
-    display: table !important;
-    table-layout: fixed !important;
-    /* REMOVED width: 2400px */
+    width: 100% !important; /* FILL WRAPPER WIDTH */
+    table-layout: auto !important; /* AUTO - columns shrink to widest content */
+    /* NO min-width - let columns size naturally based on content */
 }
 
 /* Enable horizontal scrolling when table content exceeds wrapper width */
@@ -1199,10 +1153,10 @@
     overflow: visible; /* Let wrapper handle overflow */
 }
 
-/* Prevent text wrapping in cells so columns stay readable */
+/* Prevent text wrapping in cells - rely on scrollbar */
 .draggable-table >>> td,
 .draggable-table >>> th {
-    white-space: nowrap;
+    white-space: nowrap !important;
 }
 
 .draggable-table >>> .v-data-table {
@@ -1364,113 +1318,8 @@
   white-space: nowrap !important;
 }
 
-/* Part Number / Rev column - fixed width to avoid overlap */
-.draggable-table >>> th:first-child,
-.draggable-table >>> td:first-child {
-    min-width: 280px !important;
-    width: 280px !important;
-    max-width: 280px !important;
-    flex: 0 0 280px !important; /* PREVENT FLEX COMPRESSION */
-}
-
-/* Description column - fixed width to maintain layout */
-.draggable-table >>> th:nth-child(2),
-.draggable-table >>> td:nth-child(2) {
-    min-width: 400px !important;
-    width: 400px !important;
-    max-width: 400px !important;
-    flex: 0 0 400px !important; /* PREVENT FLEX COMPRESSION */
-}
-
-/* Make / Buy column */
-.draggable-table >>> th:nth-child(3),
-.draggable-table >>> td:nth-child(3) {
-    min-width: 140px !important;
-    width: 140px !important;
-    max-width: 140px !important;
-    flex: 0 0 140px !important;
-}
-
-/* System Group column */
-.draggable-table >>> th:nth-child(4),
-.draggable-table >>> td:nth-child(4) {
-    min-width: 200px !important;
-    width: 200px !important;
-    max-width: 200px !important;
-    flex: 0 0 200px !important;
-}
-
-/* Owner column */
-.draggable-table >>> th:nth-child(5),
-.draggable-table >>> td:nth-child(5) {
-    min-width: 160px !important;
-    width: 160px !important;
-    max-width: 160px !important;
-    flex: 0 0 160px !important;
-}
-
-/* Target Release column */
-.draggable-table >>> th:nth-child(6),
-.draggable-table >>> td:nth-child(6) {
-    min-width: 160px !important;
-    width: 160px !important;
-    max-width: 160px !important;
-    flex: 0 0 160px !important;
-}
-
-/* Actual Release column */
-.draggable-table >>> th:nth-child(7),
-.draggable-table >>> td:nth-child(7) {
-    min-width: 160px !important;
-    width: 160px !important;
-    max-width: 160px !important;
-    flex: 0 0 160px !important;
-}
-
-/* Critical Release column */
-.draggable-table >>> th:nth-child(8),
-.draggable-table >>> td:nth-child(8) {
-    min-width: 160px !important;
-    width: 160px !important;
-    max-width: 160px !important;
-    flex: 0 0 160px !important;
-}
-
-/* State column */
-.draggable-table >>> th:nth-child(9),
-.draggable-table >>> td:nth-child(9) {
-    min-width: 140px !important;
-    width: 140px !important;
-    max-width: 140px !important;
-    flex: 0 0 140px !important;
-}
-
-/* Change Action column */
-.draggable-table >>> th:nth-child(10),
-.draggable-table >>> td:nth-child(10) {
-    min-width: 180px !important;
-    width: 180px !important;
-    max-width: 180px !important;
-    flex: 0 0 180px !important;
-}
-
-/* Resp Engr column */
-.draggable-table >>> th:nth-child(11),
-.draggable-table >>> td:nth-child(11) {
-    min-width: 160px !important;
-    width: 160px !important;
-    max-width: 160px !important;
-    flex: 0 0 160px !important;
-}
-
-/* Status Comments column */
-.draggable-table >>> th:nth-child(12),
-.draggable-table >>> td:nth-child(12) {
-    min-width: 250px !important;
-    width: 250px !important;
-    max-width: 250px !important;
-    flex: 0 0 250px !important;
-}
+/* ALL COLUMN WIDTH RULES REMOVED - LET TABLE-LAYOUT AUTO SIZE NATURALLY */
+/* Columns will shrink/grow based on their content */
 
 /* Disabled Filter Styling */
 .v-select.v-input--is-disabled .v-input__slot {

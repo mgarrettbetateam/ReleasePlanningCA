@@ -54,17 +54,6 @@ export class FilterService {
             },
             {
                 type: "select",
-                key: "ataChapterGroup",
-                label: "ATA Chapter",
-                icon: "mdi-book-open-page-variant",
-                value: filterValues.ataChapterGroup,
-                options: ataChapterGroups,
-                clearable: false,
-                placeholder: "Select ATA Chapter",
-                color: "deep-orange"
-            },
-            {
-                type: "select",
                 key: "engSystemGroup",
                 label: "Engineering System",
                 icon: "mdi-cog-outline",
@@ -73,6 +62,17 @@ export class FilterService {
                 clearable: false,
                 placeholder: "Select Engineering System",
                 color: "teal"
+            },
+            {
+                type: "select",
+                key: "ataChapterGroup",
+                label: "ATA Chapter",
+                icon: "mdi-book-open-page-variant",
+                value: filterValues.ataChapterGroup,
+                options: ataChapterGroups,
+                clearable: false,
+                placeholder: "Select ATA Chapter",
+                color: "deep-orange"
             }
         ];
 

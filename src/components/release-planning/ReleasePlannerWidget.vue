@@ -514,7 +514,7 @@
                         :items="isKioskMode ? kioskPagedData : filteredTableData"
                         :loading="loading"
                         :dense="isMobile"
-                        :height="450"
+                        :height="dynamicTableHeight"
                         :fixed-header="true"
                         :items-per-page="currentItemsPerPage"
                         :hide-default-footer="isKioskMode"
@@ -871,9 +871,9 @@
   width: 100%; /* FILL CONTENT WRAPPER */
   max-width: 100%; /* DON'T EXCEED CONTENT WRAPPER */
   overflow: visible; /* Let inner wrapper handle overflow */
-  max-height: 560px; /* Table (450px) + pagination footer (~60px) + padding */
   display: flex;
   flex-direction: column;
+  /* Removed fixed max-height to allow dynamic sizing */
 }
 
 /* Prevent v-card-text from adding extra height */
@@ -1762,6 +1762,9 @@ export default {
             // Settings dialog
             settingsDialog: false,
             defaultProgram: "All",
+            
+            // Dynamic table height
+            dynamicTableHeight: 550,
             
             // Kiosk mode - simple defaults
             kioskCurrentPage: 1,
@@ -3691,6 +3694,9 @@ export default {
         onResponsiveResize(_resizeData) {
             if (typeof window === "undefined") return;
             
+            // Calculate dynamic table height based on window height
+            this.calculateTableHeight();
+            
             // Chart resizes naturally via flex, no calculations needed
             console.log("📐 Natural sizing: Table sizes to content, chart fills container");
             
@@ -3706,9 +3712,35 @@ export default {
         },
         
         /**
+         * Calculate dynamic table height based on available window space
+         */
+        calculateTableHeight() {
+            if (typeof window === "undefined") return;
+            
+            const windowHeight = window.innerHeight;
+            
+            // Reserve space for:
+            // - Header/toolbar: ~120px
+            // - Chart and stats: ~280px
+            // - Table header: ~48px
+            // - Pagination footer: ~60px
+            // - Padding/margins: ~60px
+            const reservedSpace = 120 + 280 + 48 + 60 + 60; // ~568px
+            
+            // Calculate available space for table body
+            const availableHeight = windowHeight - reservedSpace;
+            
+            // Set minimum of 300px and maximum of 800px
+            this.dynamicTableHeight = Math.max(300, Math.min(800, availableHeight));
+            
+            console.log(`📏 Window height: ${windowHeight}px, Table height: ${this.dynamicTableHeight}px`);
+        },
+        
+        /**
          * Initialize responsive dimensions on component mount
          */
         initializeResponsiveDimensions() {
+            this.calculateTableHeight();
             this.onResponsiveResize({});
         },
         

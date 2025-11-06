@@ -158,6 +158,17 @@
                             :disabled="partTypeOptions.length <= 1"
                         />
                     </template>
+                    
+                    <!-- Settings Gear Icon -->
+                    <v-btn
+                        icon
+                        small
+                        color="grey darken-1"
+                        class="ml-2"
+                        @click="settingsDialog = true"
+                    >
+                        <v-icon>mdi-cog</v-icon>
+                    </v-btn>
                 </div>
             </v-card-text>
         </v-card>
@@ -331,8 +342,8 @@
                         </div>
                     </v-card-title>
                     
-                    <v-card-text class="pa-2" :class="isKioskMode ? 'kiosk-chart-content' : ''" style="min-height: 320px;">
-                        <div :style="{ height: currentChartHeight + 'px', width: '100%', minHeight: '320px' }">
+                    <v-card-text class="pa-2" :class="isKioskMode ? 'kiosk-chart-content' : ''">
+                        <div :style="{ height: currentChartHeight + 'px', width: '100%' }">
                             <ReleaseChart
                                 v-if="chartData.labels?.length > 0"
                                 ref="lineChart"
@@ -476,7 +487,7 @@
                     </v-menu>
                 </v-card-title>
                 
-                <v-card-text class="pa-0 position-relative">
+                <v-card-text class="pa-0 position-relative table-content-wrapper">
                     <!-- Loading Overlay for Better Visibility -->
                     <!-- Show getting started message when no data type is selected -->
                     <div v-if="!currentDataType" class="getting-started-message d-flex flex-column align-center justify-center" :style="{ height: `${currentTableHeight}px` }">
@@ -658,7 +669,7 @@
                     </v-card>
                     
                     <!-- Show no data message when data type is selected but no data is available -->
-                    <div v-else-if="currentDataType" class="no-data-message d-flex flex-column align-center justify-center" :style="{ height: `${currentTableHeight}px` }">
+                    <div v-if="currentDataType && filteredTableData.length === 0" class="no-data-message d-flex flex-column align-center justify-center" :style="{ height: `${currentTableHeight}px` }">
                         <!-- Different messages based on whether phase is selected -->
                         <template v-if="!filterValues.phase || filterValues.phase === ''">
                             <v-icon size="48" color="info">mdi-map-marker-question</v-icon>
@@ -739,6 +750,57 @@
             </v-card>
         </v-dialog>
 
+        <!-- Settings Dialog -->
+        <v-dialog v-model="settingsDialog" max-width="600" persistent>
+            <v-card>
+                <v-card-title class="primary white--text">
+                    <v-icon left color="white">mdi-cog</v-icon>
+                    Set Default Program
+                </v-card-title>
+                
+                <v-card-text class="pt-4">
+                    <p class="mb-4">
+                        Set a default program that will be automatically selected when the widget loads.
+                    </p>
+                    
+                    <v-select
+                        v-model="defaultProgram"
+                        :items="programsWithAll"
+                        label="Default Program"
+                        prepend-inner-icon="mdi-briefcase"
+                        outlined
+                        dense
+                        hint="Leave as 'All' to show all programs by default"
+                        persistent-hint
+                    />
+                </v-card-text>
+                
+                <v-card-actions>
+                    <v-btn
+                        text
+                        @click="resetDefaultProgram"
+                    >
+                        <v-icon left>mdi-restore</v-icon>
+                        RESET TO ALL
+                    </v-btn>
+                    <v-spacer />
+                    <v-btn
+                        text
+                        @click="cancelSettings"
+                    >
+                        CANCEL
+                    </v-btn>
+                    <v-btn
+                        color="primary"
+                        @click="saveDefaultProgram"
+                    >
+                        <v-icon left>mdi-content-save</v-icon>
+                        SAVE DEFAULT
+                    </v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+
         <!-- Version Number Display -->
         <div class="version-display">
             <v-chip
@@ -765,7 +827,7 @@
 <style scoped>
 /* Clean Layout Structure */
 .content-wrapper {
-  padding: 24px;
+  padding: 24px 24px 8px 24px; /* Reduced bottom padding from 24px to 8px */
   width: 100%;
   max-width: 100vw; /* DON'T EXCEED VIEWPORT */
   overflow-x: auto; /* ALLOW HORIZONTAL SCROLL IF NEEDED */
@@ -776,7 +838,7 @@
 .chart-stats-row {
   display: flex;
   gap: 16px;
-  margin-bottom: 24px;
+  margin-bottom: 12px;
   min-width: min-content; /* SHRINK TO FIT CONTENT */
 }
 
@@ -798,6 +860,14 @@
   width: 100%; /* FILL CONTENT WRAPPER */
   max-width: 100%; /* DON'T EXCEED CONTENT WRAPPER */
   overflow: visible; /* Let inner wrapper handle overflow */
+}
+
+/* Prevent v-card-text from adding extra height */
+.table-content-wrapper {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  height: auto !important;
 }
 
 /* Position relative for loading overlay */
@@ -1682,27 +1752,31 @@ export default {
             clearingCache: false,
             showClearCacheDialog: false,
             
+            // Settings dialog
+            settingsDialog: false,
+            defaultProgram: "All",
+            
             // Responsive dimensions
-            currentChartHeight: 400,
-            currentTableHeight: 320,
+            currentChartHeight: 220,
+            currentTableHeight: 480,
             
             // Base config for responsive utilities
             baseConfig: {
                 chart: {
-                    height: 400,
+                    height: 220,
                     breakpoints: {
-                        mobile: { height: 300 },
-                        tablet: { height: 350 },
-                        desktop: { height: 400 }
+                        mobile: { height: 200 },
+                        tablet: { height: 250 },
+                        desktop: { height: 280 }
                     }
                 },
                 table: {
-                    height: 320,
+                    height: 480,
                     itemsPerPage: 10,
                     breakpoints: {
-                        mobile: { height: 260, itemsPerPage: 5 },
-                        tablet: { height: 300, itemsPerPage: 8 },
-                        desktop: { height: 320, itemsPerPage: 10 }
+                        mobile: { height: 400, itemsPerPage: 5 },
+                        tablet: { height: 440, itemsPerPage: 8 },
+                        desktop: { height: 480, itemsPerPage: 10 }
                     }
                 }
             },
@@ -2167,6 +2241,11 @@ export default {
         // Show critical release controls only for Parts data type
         showCriticalControls() {
             return this.currentDataType === "parts";
+        },
+        
+        // Programs list with "All" option for settings dialog
+        programsWithAll() {
+            return ["All", ...this.programs];
         },
 
         // Dynamic chart options with current date line
@@ -2668,6 +2747,13 @@ export default {
         console.log("🏷️  Widget title:", this.widgetTitle);
         console.log("🖥️ Kiosk mode:", this.isKioskMode);
         console.log("🔧 USE_MOCK_DATA:", USE_MOCK_DATA);
+        
+        // Load default program from localStorage
+        const savedDefaultProgram = localStorage.getItem("defaultProgram");
+        if (savedDefaultProgram) {
+            this.defaultProgram = savedDefaultProgram;
+            console.log("📌 Loaded default program from settings:", savedDefaultProgram);
+        }
         
         // Check URL for kiosk mode on mount
         if (typeof window !== "undefined") {
@@ -3627,7 +3713,7 @@ export default {
         },
 
         /**
-         * Handle responsive resize events - calculate dimensions to fit viewport without scrolling
+         * Handle responsive resize events - calculate dimensions based on CONTENT not viewport ratios
          */
         onResponsiveResize(_resizeData) {
             if (typeof window === "undefined") return;
@@ -3635,72 +3721,32 @@ export default {
             const viewportHeight = window.innerHeight || 900;
             const viewportWidth = window.innerWidth || 1200;
             
-            // Calculate fixed UI element heights
-            let reservedHeight = 0;
+            // Calculate table height based on CONTENT, not viewport ratios
+            const ROW_HEIGHT = 48; // Standard Vuetify row height
+            const TABLE_HEADER_HEIGHT = 56; // Vuetify table header
+            const PAGINATION_FOOTER_HEIGHT = 64; // Vuetify pagination footer
+            const BUFFER = 8; // Small buffer for borders/padding
             
-            // Header/Title bar (approximate)
-            reservedHeight += 64;
-            
-            // FOOTER HEIGHT FOR PAGINATION - Increased to ensure footer is always visible
-            const PAGINATION_FOOTER_HEIGHT = 120; // Height of v-data-table footer + buffer (increased from 100)
-            
-            if (this.isKioskMode) {
-                // Kiosk mode: badge bar + page indicator + margins
-                reservedHeight += 60;  // Badge bar
-                reservedHeight += 40;  // Page indicator bar
-                reservedHeight += 40;  // Additional margins
-                
-                const availableHeight = Math.max(400, viewportHeight - reservedHeight);
-                
-                // 30% chart, 70% table for maximum data visibility in kiosk
-                this.currentChartHeight = Math.floor(availableHeight * 0.30);
-                // Subtract footer height from table height to ensure pagination is visible
-                this.currentTableHeight = Math.floor(availableHeight * 0.70) - PAGINATION_FOOTER_HEIGHT;
-                
-                console.log("🖥️ Kiosk mode adaptive:", {
-                    viewport: `${viewportWidth}x${viewportHeight}`,
-                    reserved: reservedHeight,
-                    available: availableHeight,
-                    chart: this.currentChartHeight + "px",
-                    table: this.currentTableHeight + "px"
-                });
+            // Chart height based on viewport (charts need consistent visual space)
+            if (viewportHeight < 700) {
+                this.currentChartHeight = 200;
+            } else if (viewportHeight < 900) {
+                this.currentChartHeight = 250;
             } else {
-                // Normal mode: filter bar + spacing
-                reservedHeight += 120; // Filter bar (approximate)
-                reservedHeight += 60;  // Spacing and margins
-                
-                const availableHeight = Math.max(400, viewportHeight - reservedHeight);
-                
-                // Responsive split based on viewport size
-                let chartRatio, tableRatio;
-                
-                if (viewportHeight < 700) {
-                    // Small screens: minimize chart, maximize table
-                    chartRatio = 0.25;
-                    tableRatio = 0.75;
-                } else if (viewportHeight < 900) {
-                    // Medium screens: balanced split
-                    chartRatio = 0.35;
-                    tableRatio = 0.65;
-                } else {
-                    // Large screens: more space for chart
-                    chartRatio = 0.40;
-                    tableRatio = 0.60;
-                }
-                
-                this.currentChartHeight = Math.floor(availableHeight * chartRatio);
-                // Subtract footer height from table height to ensure pagination is visible
-                this.currentTableHeight = Math.floor(availableHeight * tableRatio) - PAGINATION_FOOTER_HEIGHT;
-                
-                console.log("📐 Normal mode adaptive:", {
-                    viewport: `${viewportWidth}x${viewportHeight}`,
-                    reserved: reservedHeight,
-                    available: availableHeight,
-                    ratio: `${Math.round(chartRatio * 100)}/${Math.round(tableRatio * 100)}`,
-                    chart: this.currentChartHeight + "px",
-                    table: this.currentTableHeight + "px"
-                });
+                this.currentChartHeight = 280;
             }
+            
+            // Table height based on ROWS DISPLAYED, not viewport
+            const rowsToShow = this.isKioskMode ? this.kioskRowsPerPage : this.currentItemsPerPage;
+            this.currentTableHeight = TABLE_HEADER_HEIGHT + (rowsToShow * ROW_HEIGHT) + PAGINATION_FOOTER_HEIGHT + BUFFER;
+            
+            console.log("📐 Content-based sizing:", {
+                viewport: `${viewportWidth}x${viewportHeight}`,
+                chart: this.currentChartHeight + "px",
+                table: this.currentTableHeight + "px",
+                rowsToShow: rowsToShow,
+                calculation: `${TABLE_HEADER_HEIGHT} + (${rowsToShow} × ${ROW_HEIGHT}) + ${PAGINATION_FOOTER_HEIGHT} + ${BUFFER}`
+            });
             
             // Force chart resize
             this.$nextTick(() => {
@@ -4016,14 +4062,26 @@ export default {
                 this.programs = programs || [];
                 console.log("✅ Programs loaded:", this.programs.length);
 
-                // Do NOT automatically select a program - wait for user selection
-                console.log("📋 Programs available for user selection:", this.programs);
-                
-                // Clear any existing selections to force user choice
-                this.filterValues.program = "";
-                this.filterValues.phase = "";
-                this.phases = [];
-                this.tableData = [];
+                // Apply default program if set and not in kiosk mode
+                if (this.defaultProgram && this.defaultProgram !== "All" && !this.isKioskMode) {
+                    if (this.programs.includes(this.defaultProgram)) {
+                        this.filterValues.program = this.defaultProgram;
+                        console.log("📌 Applied default program:", this.defaultProgram);
+                        // Fetch phases for the default program
+                        await this.fetchPhases();
+                    } else {
+                        console.warn("⚠️ Default program not found in programs list:", this.defaultProgram);
+                    }
+                } else {
+                    // Do NOT automatically select a program - wait for user selection
+                    console.log("📋 Programs available for user selection:", this.programs);
+                    
+                    // Clear any existing selections to force user choice
+                    this.filterValues.program = "";
+                    this.filterValues.phase = "";
+                    this.phases = [];
+                    this.tableData = [];
+                }
                 
             } catch (err) {
                 console.error("Failed to fetch programs:", err.message);
@@ -4472,6 +4530,51 @@ export default {
                 this.clearingCache = false;
                 this.showClearCacheDialog = false; // Close the dialog
             }
+        },
+
+        /**
+         * Save default program to localStorage
+         */
+        saveDefaultProgram() {
+            try {
+                localStorage.setItem("defaultProgram", this.defaultProgram);
+                this.settingsDialog = false;
+                
+                // Apply the default program immediately
+                this.filterValues.program = this.defaultProgram === "All" ? "" : this.defaultProgram;
+                
+                this.showSnackbar({ 
+                    message: `Default program set to: ${this.defaultProgram}`, 
+                    type: "success" 
+                });
+            } catch (error) {
+                console.error("❌ Error saving default program:", error);
+                this.showSnackbar({ 
+                    message: "Error saving default program: " + error.message, 
+                    type: "error" 
+                });
+            }
+        },
+
+        /**
+         * Reset default program to "All"
+         */
+        resetDefaultProgram() {
+            this.defaultProgram = "All";
+            localStorage.removeItem("defaultProgram");
+            this.showSnackbar({ 
+                message: "Default program reset to 'All'", 
+                type: "info" 
+            });
+        },
+
+        /**
+         * Cancel settings dialog without saving
+         */
+        cancelSettings() {
+            // Restore from localStorage or default to "All"
+            this.defaultProgram = localStorage.getItem("defaultProgram") || "All";
+            this.settingsDialog = false;
         },
 
         /**

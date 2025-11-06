@@ -343,16 +343,16 @@
                     </v-card-title>
                     
                     <v-card-text class="pa-2" :class="isKioskMode ? 'kiosk-chart-content' : ''">
-                        <div :style="{ height: currentChartHeight + 'px', width: '100%' }">
+                        <div style="height: 100%; width: 100%; display: flex; flex-direction: column;">
                             <ReleaseChart
                                 v-if="chartData.labels?.length > 0"
                                 ref="lineChart"
                                 :chart-data="focusedChartData"
                                 :chart-options="dynamicChartOptions"
                                 :extra-plugins="todayLinePlugins"
-                                style="height: 100%; width: 100%;"
+                                style="flex: 1; width: 100%;"
                             />
-                            <div v-else class="no-chart-data d-flex flex-column align-center justify-center" style="height: 100%;">
+                            <div v-else class="no-chart-data d-flex flex-column align-center justify-center" style="flex: 1;">
                                 <v-icon size="64" color="grey lighten-2">mdi-chart-line-variant</v-icon>
                                 <h4 class="mt-4">No Chart Data</h4>
                                 <p class="text-center mt-2">Use the filters above to select data</p>
@@ -490,7 +490,7 @@
                 <v-card-text class="pa-0 position-relative table-content-wrapper">
                     <!-- Loading Overlay for Better Visibility -->
                     <!-- Show getting started message when no data type is selected -->
-                    <div v-if="!currentDataType" class="getting-started-message d-flex flex-column align-center justify-center" :style="{ height: `${currentTableHeight}px` }">
+                    <div v-if="!currentDataType" class="getting-started-message d-flex flex-column align-center justify-center" style="min-height: 300px; padding: 40px;">
                         <v-icon size="64" color="primary" class="mb-4">mdi-format-list-checks</v-icon>
                         <h3 class="text-h5 font-weight-light primary--text mb-2">Welcome to Release Planner</h3>
                         <p class="text-body-1 grey--text text--darken-2 mb-4 text-center">
@@ -514,8 +514,8 @@
                         :items="isKioskMode ? kioskPagedData : filteredTableData"
                         :loading="loading"
                         :dense="isMobile"
-                        :height="currentTableHeight"
-                        :fixed-header="isDesktop"
+                        :height="450"
+                        :fixed-header="true"
                         :items-per-page="currentItemsPerPage"
                         :hide-default-footer="isKioskMode"
                         :footer-props="{
@@ -669,7 +669,7 @@
                     </v-card>
                     
                     <!-- Show no data message when data type is selected but no data is available -->
-                    <div v-if="currentDataType && filteredTableData.length === 0" class="no-data-message d-flex flex-column align-center justify-center" :style="{ height: `${currentTableHeight}px` }">
+                    <div v-if="currentDataType && filteredTableData.length === 0" class="no-data-message d-flex flex-column align-center justify-center" style="min-height: 300px; padding: 40px;">
                         <!-- Different messages based on whether phase is selected -->
                         <template v-if="!filterValues.phase || filterValues.phase === ''">
                             <v-icon size="48" color="info">mdi-map-marker-question</v-icon>
@@ -840,6 +840,7 @@
   gap: 16px;
   margin-bottom: 12px;
   min-width: min-content; /* SHRINK TO FIT CONTENT */
+  align-items: stretch; /* Make both cards same height */
 }
 
 .chart-card {
@@ -847,12 +848,22 @@
   border-radius: 8px;
   min-width: 400px; /* MINIMUM CHART WIDTH */
   flex-shrink: 0; /* DON'T COMPRESS BELOW MIN */
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-card .v-card__text {
+  flex: 1; /* Fill remaining space to match stats card height */
+  display: flex;
+  flex-direction: column;
 }
 
 .stats-card {
   width: 200px;
   flex-shrink: 0; /* DON'T COMPRESS */
   border-radius: 8px;
+  display: flex;
+  flex-direction: column;
 }
 
 .table-card {
@@ -860,6 +871,9 @@
   width: 100%; /* FILL CONTENT WRAPPER */
   max-width: 100%; /* DON'T EXCEED CONTENT WRAPPER */
   overflow: visible; /* Let inner wrapper handle overflow */
+  max-height: 560px; /* Table (450px) + pagination footer (~60px) + padding */
+  display: flex;
+  flex-direction: column;
 }
 
 /* Prevent v-card-text from adding extra height */
@@ -868,6 +882,7 @@
   flex-direction: column !important;
   min-height: 0 !important;
   height: auto !important;
+  overflow: visible !important;
 }
 
 /* Position relative for loading overlay */
@@ -1437,9 +1452,7 @@
 /* Professional UI Improvements */
 .enhanced-parts-planner {
   font-family: 'Roboto', sans-serif;
-  height: 100vh;
-  max-height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
@@ -1566,12 +1579,6 @@ html, body {
 }
 
 /* Ensure widget wrapper fills viewport */
-.enhanced-parts-planner {
-  height: 100vh !important;
-  max-height: 100vh !important;
-  overflow: hidden !important; /* Restore overflow hidden for container */
-}
-
 /* No custom dropdown overrides - using Vuetify defaults */
 </style>
 
@@ -1756,31 +1763,6 @@ export default {
             settingsDialog: false,
             defaultProgram: "All",
             
-            // Responsive dimensions
-            currentChartHeight: 220,
-            currentTableHeight: 480,
-            
-            // Base config for responsive utilities
-            baseConfig: {
-                chart: {
-                    height: 220,
-                    breakpoints: {
-                        mobile: { height: 200 },
-                        tablet: { height: 250 },
-                        desktop: { height: 280 }
-                    }
-                },
-                table: {
-                    height: 480,
-                    itemsPerPage: 10,
-                    breakpoints: {
-                        mobile: { height: 400, itemsPerPage: 5 },
-                        tablet: { height: 440, itemsPerPage: 8 },
-                        desktop: { height: 480, itemsPerPage: 10 }
-                    }
-                }
-            },
-            
             // Kiosk mode - simple defaults
             kioskCurrentPage: 1,
             kioskPageRotationTimer: null,
@@ -1917,17 +1899,8 @@ export default {
                 return this.kioskRowsPerPage;
             }
             
-            // Responsive items per page based on screen size
-            const tableConfig = this.baseConfig.table;
-            if (this.isMobile && tableConfig.breakpoints?.mobile) {
-                return tableConfig.breakpoints.mobile.itemsPerPage;
-            } else if (this.isTablet && tableConfig.breakpoints?.tablet) {
-                return tableConfig.breakpoints.tablet.itemsPerPage;
-            } else if (tableConfig.breakpoints?.desktop) {
-                return tableConfig.breakpoints.desktop.itemsPerPage;
-            }
-            
-            return tableConfig.itemsPerPage;
+            // Default items per page - simple and consistent
+            return 10;
         },
 
         // Kiosk mode refresh countdown display
@@ -3713,40 +3686,13 @@ export default {
         },
 
         /**
-         * Handle responsive resize events - calculate dimensions based on CONTENT not viewport ratios
+         * Handle responsive resize events - simplified for natural table sizing
          */
         onResponsiveResize(_resizeData) {
             if (typeof window === "undefined") return;
             
-            const viewportHeight = window.innerHeight || 900;
-            const viewportWidth = window.innerWidth || 1200;
-            
-            // Calculate table height based on CONTENT, not viewport ratios
-            const ROW_HEIGHT = 48; // Standard Vuetify row height
-            const TABLE_HEADER_HEIGHT = 56; // Vuetify table header
-            const PAGINATION_FOOTER_HEIGHT = 64; // Vuetify pagination footer
-            const BUFFER = 8; // Small buffer for borders/padding
-            
-            // Chart height based on viewport (charts need consistent visual space)
-            if (viewportHeight < 700) {
-                this.currentChartHeight = 200;
-            } else if (viewportHeight < 900) {
-                this.currentChartHeight = 250;
-            } else {
-                this.currentChartHeight = 280;
-            }
-            
-            // Table height based on ROWS DISPLAYED, not viewport
-            const rowsToShow = this.isKioskMode ? this.kioskRowsPerPage : this.currentItemsPerPage;
-            this.currentTableHeight = TABLE_HEADER_HEIGHT + (rowsToShow * ROW_HEIGHT) + PAGINATION_FOOTER_HEIGHT + BUFFER;
-            
-            console.log("📐 Content-based sizing:", {
-                viewport: `${viewportWidth}x${viewportHeight}`,
-                chart: this.currentChartHeight + "px",
-                table: this.currentTableHeight + "px",
-                rowsToShow: rowsToShow,
-                calculation: `${TABLE_HEADER_HEIGHT} + (${rowsToShow} × ${ROW_HEIGHT}) + ${PAGINATION_FOOTER_HEIGHT} + ${BUFFER}`
-            });
+            // Chart resizes naturally via flex, no calculations needed
+            console.log("📐 Natural sizing: Table sizes to content, chart fills container");
             
             // Force chart resize
             this.$nextTick(() => {

@@ -296,7 +296,7 @@
                         <span class="text-subtitle-1 font-weight-medium">Release Timeline</span>
                         <v-spacer />
                         <!-- Legend inline in header -->
-                        <div class="d-flex align-center" style="gap: 8px;">
+                        <div class="d-flex align-center">
                             <!-- Focus 30 Button -->
                             <v-btn
                                 small
@@ -549,8 +549,9 @@
                                 @cr-number-loaded="onCrNumberLoaded"
                             />
                             <!-- Use StatusCommentDisplay component for status comment fields -->
+                            <!-- Only show if there's a CA number (for parts) or always show for CAs/CRs -->
                             <StatusCommentDisplay
-                                v-else-if="header.component === 'StatusCommentDisplay'"
+                                v-else-if="header.component === 'StatusCommentDisplay' && (header.componentProps.itemType !== 'parts' || item.caNumber)"
                                 :key="`comment-${header.value}-${index}`"
                                 :value="getStatusCommentValue(header, item)"
                                 :object-id="item.physId || item.objId || item.id"
@@ -2264,27 +2265,37 @@ export default {
             const plugin = {
                 id: "todayLineV2",
                 afterDraw(chart) {
+                    console.log("🎯 Today line plugin: afterDraw called");
                     const ctx = chart.ctx || (chart.chart && chart.chart.ctx);
                     const chartArea = chart.chartArea || (chart.chart && chart.chart.chartArea);
                     const xScale = chart.scales && (chart.scales["x-axis-0"] || chart.scales.x || chart.scales["xAxis0"]);
+                    console.log("🎯 Today line plugin: ctx=", !!ctx, "chartArea=", !!chartArea, "xScale=", !!xScale);
                     if (!ctx || !chartArea || !xScale) return;
 
                     const labels = (chart.config && chart.config.data && chart.config.data.labels) || chart.data?.labels || [];
+                    console.log("🎯 Today line plugin: labels count=", labels.length);
+                    console.log("🎯 Today line plugin: first few labels=", labels.slice(0, 5));
                     if (!labels || labels.length === 0) return;
 
                     let todayIndex = -1;
+                    
+                    console.log("🎯 Today line plugin: Looking for today's date:", todayAlternatives);
                     
                     // First try exact match
                     for (const f of todayAlternatives) {
                         const idx = labels.indexOf(f);
                         if (idx >= 0) { 
-                            todayIndex = idx; 
+                            todayIndex = idx;
+                            console.log("🎯 Today line plugin: Found exact match at index", idx, "for format:", f);
                             break; 
                         }
                     }
                     
+                    console.log("🎯 Today line plugin: After exact match, todayIndex=", todayIndex);
+                    
                     // If no exact match, try parsing labels as dates and find the closest
                     if (todayIndex < 0) {
+                        console.log("🎯 Today line plugin: No exact match, trying date parsing...");
                         const todayMs = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
                         let closest = { idx: -1, diff: Infinity };
                         labels.forEach((lbl, i) => {
@@ -2298,11 +2309,17 @@ export default {
                         // Only use closest if it's actually today (diff === 0)
                         if (closest.idx >= 0 && closest.diff === 0) {
                             todayIndex = closest.idx;
+                            console.log("🎯 Today line plugin: Found by date parsing at index", closest.idx);
+                        } else {
+                            console.log("🎯 Today line plugin: Closest date had diff=", closest.diff, "at index", closest.idx);
                         }
                     }
                     
+                    console.log("🎯 Today line plugin: After date parsing, todayIndex=", todayIndex);
+                    
                     // If still not found, try to find closest surrounding dates for interpolation
                     if (todayIndex < 0) {
+                        console.log("🎯 Today line plugin: Attempting interpolation...");
                         // Find the index where today would fit in the sorted labels
                         let insertIndex = -1;
                         for (let i = 0; i < labels.length - 1; i++) {
@@ -2312,6 +2329,7 @@ export default {
                             
                             if (today >= currentDate && today <= nextDate) {
                                 insertIndex = i;
+                                console.log("🎯 Today line plugin: Found interpolation spot between", labels[i], "and", labels[i + 1]);
                                 break;
                             }
                         }
@@ -2333,6 +2351,8 @@ export default {
                             const ratio = (todayMs - beforeMs) / (afterMs - beforeMs);
                             const x = beforeX + (ratio * (afterX - beforeX));
                             
+                            console.log("🎯 Today line plugin: Drawing interpolated line at x=", x);
+                            
                             // Draw the line at calculated position
                             chart._todayX = x;
                             chart._todayDateText = today.toLocaleDateString();
@@ -2345,6 +2365,7 @@ export default {
                             ctx.moveTo(x, chartArea.top);
                             ctx.lineTo(x, chartArea.bottom);
                             ctx.stroke();
+                            console.log("🎯 Today line plugin: Line drawn from", chartArea.top, "to", chartArea.bottom);
 
                             // Draw label
                             ctx.setLineDash([]);
@@ -2398,14 +2419,18 @@ export default {
                     }
 
                     // Original code for when todayIndex was found - exact match
-                    const xScale2 = chart.scales.x;
-                    if (!xScale2) return;
-                    const x = (typeof xScale2.getPixelForTick === "function")
-                        ? xScale2.getPixelForTick(todayIndex)
-                        : (typeof xScale2.getPixelForValue === "function")
-                            ? xScale2.getPixelForValue(null, todayIndex)
+                    // Reuse the xScale that was already validated at the top of afterDraw
+                    const x = (typeof xScale.getPixelForTick === "function")
+                        ? xScale.getPixelForTick(todayIndex)
+                        : (typeof xScale.getPixelForValue === "function")
+                            ? xScale.getPixelForValue(null, todayIndex)
                             : null;
-                    if (x === null || x === undefined) return;
+                    if (x === null || x === undefined) {
+                        console.log("🎯 Today line plugin: Could not get x position for index", todayIndex);
+                        return;
+                    }
+                    
+                    console.log("🎯 Today line plugin: Drawing line at x=", x, "for todayIndex=", todayIndex);
 
                     // Store for hover logic
                     chart._todayX = x;

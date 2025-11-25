@@ -549,17 +549,14 @@
                                 @cr-number-loaded="onCrNumberLoaded"
                             />
                             <!-- Use StatusCommentDisplay component for status comment fields -->
-                            <!-- Only show if there's a CA number (for parts) or always show for CAs/CRs -->
+                            <!-- Only used for CAs/CRs, not for parts -->
                             <StatusCommentDisplay
-                                v-else-if="header.component === 'StatusCommentDisplay' && (header.componentProps.itemType !== 'parts' || item.caNumber)"
+                                v-else-if="header.component === 'StatusCommentDisplay'"
                                 :key="`comment-${header.value}-${index}`"
                                 :value="getStatusCommentValue(header, item)"
                                 :object-id="item.physId || item.objId || item.id"
-                                :item-type="header.componentProps.itemType || 'parts'"
+                                :item-type="header.componentProps.itemType"
                                 :can-edit="getCanEditValue(header, item)"
-                                :ca-number="header.componentProps.itemType === 'parts' ? (item.caNumber || '') : ''"
-                                :ca-phys-id="header.componentProps.itemType === 'parts' ? (item.caPhysId || '') : ''"
-                                :ca-link="header.componentProps.itemType === 'parts' ? (item.caLink || '') : ''"
                                 @comment-updated="handleCommentUpdate"
                                 @show-message="showSnackbar"
                             />
@@ -1682,7 +1679,7 @@ export default {
                     { text: "State", value: "currentStateMasked", sortable: true, icon: "mdi-flag" },
                     { text: "Change Action", value: "caNumber", sortable: false, component: "ChangeActionCell", componentProps: { field: "number" } },
                     { text: "Resp Engr", value: "caRespEngr", sortable: true, icon: "mdi-account-hard-hat" },
-                    { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text", component: "StatusCommentDisplay", componentProps: { itemType: "parts", canEdit: true } }
+                    { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text" }
                 ],
                 cas: [
                     { text: "CA Number", value: "caNumber", sortable: true, required: true, icon: "mdi-file-document", component: "ChangeActionCell", componentProps: { field: "number", itemType: "ca" } },

@@ -293,7 +293,25 @@ class DataTransformationService {
 
         tableData.forEach(item => {
             if (item.engSystemGroup && item.engSystemGroup !== "Unknown" && item.engSystemGroup.trim() !== "") {
-                systemSet.add(item.engSystemGroup.trim());
+                const value = item.engSystemGroup.trim();
+                
+                // Filter out values that look like usernames
+                // Valid engineering systems usually contain:
+                // - Parentheses with descriptions: "HRNS (Harnesses)"
+                // - Spaces and special characters: "Power & Distribution"
+                // - Capital letters or numbers: "91 - Harnesses"
+                // Usernames are typically lowercase without spaces or special formatting
+                const MAX_USERNAME_LENGTH = 15;
+                const isLikelyUsername = /^[a-z]+[a-z0-9]*$/i.test(value) && 
+                                       !value.includes("(") && 
+                                       !value.includes(" ") && 
+                                       !value.includes("-") && 
+                                       !value.includes("&") &&
+                                       value.length < MAX_USERNAME_LENGTH;
+                
+                if (!isLikelyUsername) {
+                    systemSet.add(value);
+                }
             }
         });
 

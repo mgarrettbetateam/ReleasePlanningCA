@@ -211,7 +211,7 @@ export default {
             searchTerm: "",
             selectedFilter: null,
             currentHeight: null,
-            currentItemsPerPage: 10
+            currentItemsPerPage: 15
         };
     },
     computed: {

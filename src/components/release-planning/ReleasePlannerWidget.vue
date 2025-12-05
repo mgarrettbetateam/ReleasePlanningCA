@@ -206,6 +206,38 @@
                 Clear Cache
             </v-btn>
             
+            <!-- Dancing Banana Background Preloading Indicator -->
+            <v-tooltip v-if="backgroundPreloadingCA" bottom>
+                <template #activator="{ on, attrs }">
+                    <v-chip 
+                        small
+                        color="warning"
+                        class="mr-2 dancing-banana-chip"
+                        v-bind="attrs"
+                        v-on="on"
+                    >
+                        <span class="dancing-banana-character mr-1"></span>
+                        <span class="font-weight-medium">
+                            {{ preloadingProgress.total > 0 ? 
+                                `Loading CA: ${preloadingProgress.current}/${preloadingProgress.total}` : 
+                                "Preloading CA Data..." }}
+                        </span>
+                    </v-chip>
+                </template>
+                <div style="max-width: 280px; text-align: center;">
+                    <strong>🍌 Background CA Data Gathering</strong><br/>
+                    <span class="text-caption">
+                        Loading Change Action data in the background to make your exports lightning fast! 
+                        This won't slow down the UI and will cache data for all table rows.
+                    </span>
+                    <br/><br/>
+                    <v-chip x-small color="success" outlined>
+                        <v-icon x-small left>mdi-speedometer</v-icon>
+                        Export Optimization Active
+                    </v-chip>
+                </div>
+            </v-tooltip>
+            
             <v-chip 
                 :color="apiEnvironmentChip.color" 
                 small
@@ -1560,6 +1592,79 @@
   transform: scale(1.1);
   background-color: rgba(25, 118, 210, 0.1) !important;
 }
+
+/* Dancing Banana Animation */
+.dancing-banana-chip {
+  animation: bananaChipPulse 2s ease-in-out infinite;
+}
+
+.dancing-banana {
+  display: inline-block;
+  animation: bananaDance 1.5s ease-in-out infinite;
+  font-size: 1.1em;
+}
+
+
+
+@keyframes ridiculousBananaDance {
+  0%, 100% { 
+    transform: translateX(0px) translateY(0px);
+  }
+  25% { 
+    transform: translateX(-2px) translateY(-1px);
+  }
+  50% { 
+    transform: translateX(2px) translateY(0px);
+  }
+  75% { 
+    transform: translateX(-1px) translateY(-1px);
+  }
+}
+
+
+
+
+
+@keyframes lookLeftRight {
+  0%, 100% { 
+    transform: translateX(0px);
+  }
+  25% { 
+    transform: translateX(-1px);
+  }
+  50% { 
+    transform: translateX(1px);
+  }
+  75% { 
+    transform: translateX(-0.5px);
+  }
+}
+
+@keyframes bananaDance {
+  0%, 100% { 
+    transform: rotate(-5deg) translateY(0px); 
+  }
+  25% { 
+    transform: rotate(5deg) translateY(-2px); 
+  }
+  50% { 
+    transform: rotate(-3deg) translateY(-1px); 
+  }
+  75% { 
+    transform: rotate(3deg) translateY(-3px); 
+  }
+}
+
+@keyframes bananaChipPulse {
+  0%, 100% { 
+    background-color: #ff9800 !important; 
+    box-shadow: 0 2px 4px rgba(255, 152, 0, 0.3);
+  }
+  50% { 
+    background-color: #ffb74d !important; 
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.5);
+  }
+}
 </style>
 
 <style>
@@ -1595,7 +1700,7 @@ import ApiService from "@/services/ApiService.js";
 import UniversalDataService from "@/services/UniversalDataService.js";
 import { USE_MOCK_DATA } from "@/config/ApiConfig.js";
 import { getApiBaseUrl, API_CONFIG } from "@/config/ApiConfig.js";
-import { responsiveUtils, ResponsiveMixin } from "@/utils/ResponsiveUtils.js";
+import { ResponsiveMixin } from "@/utils/ResponsiveUtils.js";
 import { useDragAndDrop } from "@/composables/useDragAndDrop.js";
 
 const FOCUS_SCROLL_DELAY = 50;
@@ -1757,6 +1862,14 @@ export default {
             clearingCache: false,
             showClearCacheDialog: false,
             
+            // Background CA preloading state
+            backgroundPreloadingCA: false,
+            preloadingProgress: {
+                current: 0,
+                total: 0,
+                phase: "initializing"
+            },
+            
             // Settings dialog
             settingsDialog: false,
             defaultProgram: "All",
@@ -1901,7 +2014,8 @@ export default {
             }
             
             // Default items per page - simple and consistent
-            return 10;
+            const DEFAULT_ITEMS_PER_PAGE = 15;
+            return DEFAULT_ITEMS_PER_PAGE;
         },
 
         // Kiosk mode refresh countdown display
@@ -3921,11 +4035,13 @@ export default {
                 
                 // Calculate start date: 30 days before today
                 const startDate = new Date(today);
-                startDate.setDate(today.getDate() - 30);
+                const DAYS_BEFORE = 30;
+                startDate.setDate(today.getDate() - DAYS_BEFORE);
                 
                 // Calculate end date: 30 days after today
                 const endDate = new Date(today);
-                endDate.setDate(today.getDate() + 30);
+                const DAYS_AFTER = 30;
+                endDate.setDate(today.getDate() + DAYS_AFTER);
                 
                 this.chartFocusActive = true;
                 this.chartFocusStartDate = startDate;
@@ -4026,18 +4142,284 @@ export default {
         /**
          * Export table data in the specified format using ExportService
          */
-        exportTableData(format) {
-            const options = {
-                fileName: `${this.currentDataType}-table`,
-                documentTitle: `${this.widgetTitle} Export`
-            };
+        async exportTableData(format) {
+            // Show export progress dialog
+            this.setLoadingDialog({
+                headline: "Exporting Data",
+                detail: `Preparing ${format.toUpperCase()} export with complete CA data`,
+                status: "Analyzing data requirements...",
+                progressLabel: "Starting export",
+                percent: 0,
+                targetPercent: 20,
+                progressInterval: 100,
+                phasesCompleted: 0,
+                totalPhases: 3
+            });
             
-            exportService.exportTableData(
-                format, 
-                this.filteredTableData, 
-                this.tableHeaders, 
-                options
+            try {
+                // Ensure all CA data is loaded before exporting using EXPRESS MODE
+                const exportData = await this.ensureCADataForExport();
+                
+                this.updateLoadingDialog({
+                    status: "Generating export file...",
+                    progressLabel: "Creating download",
+                    phasesCompleted: 2,
+                    targetPercent: 95,
+                    progressInterval: 50
+                });
+                
+                const options = {
+                    fileName: `${this.currentDataType}-table`,
+                    documentTitle: `${this.widgetTitle} Export`
+                };
+                
+                exportService.exportTableData(
+                    format, 
+                    exportData, 
+                    this.tableHeaders, 
+                    options
+                );
+                
+                this.completeLoadingDialog({ immediate: false });
+            } catch (error) {
+                console.error("Export failed:", error);
+                // Show error message to user
+                alert("Export failed. Please try again.");
+            } finally {
+                // Hide the dialog after a short delay to show completion
+                const COMPLETION_DELAY = 1000;
+                setTimeout(() => {
+                    this.loading = false;
+                }, COMPLETION_DELAY);
+            }
+        },
+
+        /**
+         * Ensure CA data is loaded for all items before export (optimized with batching)
+         * Includes 30-second timeout with partial export fallback
+         */
+        async ensureCADataForExport() {
+            if (this.currentDataType !== "parts") {
+                return this.tableData; // CA data only relevant for parts
+            }
+            
+            // Wrap the entire process in a timeout
+            const EXPORT_TIMEOUT_MS = 30000; // 30 seconds
+            
+            const exportPromise = this.performCADataExport();
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => {
+                    reject(new Error('CA data loading timeout - exporting available data'));
+                }, EXPORT_TIMEOUT_MS);
+            });
+            
+            try {
+                return await Promise.race([exportPromise, timeoutPromise]);
+            } catch (error) {
+                if (error.message.includes('timeout')) {
+                    console.warn('⏰ CA data loading timed out after 30s - proceeding with partial export');
+                    // Return current table data with whatever CA data we have
+                    const partialCount = this.tableData.filter(item => item.caNumber && item.caNumber !== "").length;
+                    const totalCount = this.tableData.length;
+                    
+                    this.updateLoadingDialog({
+                        status: `Timeout reached - exporting ${partialCount}/${totalCount} items with CA data`,
+                        progressLabel: `${Math.round(partialCount/totalCount*100)}% CA data available`,
+                        targetPercent: 90,
+                        progressInterval: 50
+                    });
+                    
+                    return this.tableData; // Return what we have
+                }
+                throw error;
+            }
+        },
+        
+        /**
+         * Perform the actual CA data export process
+         */
+        async performCADataExport() {
+            // Get all items that don't have CA data loaded
+            const itemsNeedingCAData = this.tableData.filter(item => 
+                item.physId && (!item.caNumber || item.caNumber === "")
             );
+            
+            if (itemsNeedingCAData.length === 0) {
+                console.log("All items already have CA data");
+                const CA_LOADING_START_PERCENT = 30;
+                const CA_LOADING_RANGE = 50;
+                const PROGRESS_UPDATE_INTERVAL = 50;
+                this.updateLoadingDialog({
+                    status: "All CA data already loaded",
+                    progressLabel: "Skipping CA data fetch",
+                    phasesCompleted: 1,
+                    targetPercent: CA_LOADING_START_PERCENT + CA_LOADING_RANGE,
+                    progressInterval: PROGRESS_UPDATE_INTERVAL
+                });
+                return this.tableData;
+            }
+            
+            console.log(`🔄 Loading CA data for ${itemsNeedingCAData.length} items in EXPRESS MODE for export`);
+            
+            const CA_LOADING_START_PERCENT = 30;
+            const CA_LOADING_RANGE = 50;
+            const PROGRESS_UPDATE_INTERVAL = 50;
+            
+            // Update progress to show we're starting CA data loading
+            this.updateLoadingDialog({
+                status: `EXPRESS MODE: Loading CA data for ${itemsNeedingCAData.length} items...`,
+                progressLabel: "Maximum parallel processing active",
+                phasesCompleted: 1,
+                targetPercent: CA_LOADING_START_PERCENT,
+                progressInterval: PROGRESS_UPDATE_INTERVAL
+            });
+            
+            // Use EXPRESS MODE for critical export scenarios
+            const physIdsToLoad = itemsNeedingCAData.map(item => item.physId);
+            
+            try {
+                await ApiService.preloadCADataExpress(physIdsToLoad, (current, total, phase) => {
+                    const progressPercent = Math.round((current / total) * 100);
+                    const overallProgress = CA_LOADING_START_PERCENT + Math.round((current / total) * CA_LOADING_RANGE);
+                    
+                    this.updateLoadingDialog({
+                        status: `EXPRESS: Loading CA data - ${current}/${total} items (${progressPercent}%)`,
+                        progressLabel: `Phase: ${phase}`,
+                        targetPercent: overallProgress,
+                        progressInterval: PROGRESS_UPDATE_INTERVAL
+                    });
+                });
+            } catch (error) {
+                console.warn('⚠️ EXPRESS MODE failed, falling back to standard batching:', error);
+                // Fall back to original batch processing if express mode fails
+                await this.performStandardCADataExport(itemsNeedingCAData);
+            }
+            
+            // Create export data by merging current table data with loaded CA data from cache
+            const exportData = this.tableData.map(item => {
+                if (!item.physId) return item;
+                
+                // Get CA data from ApiService cache
+                const memoryCacheKey = `CA:${item.physId}`;
+                const cachedCAData = ApiService.cache.get(memoryCacheKey);
+                
+                if (cachedCAData && cachedCAData.data) {
+                    return {
+                        ...item,
+                        caNumber: cachedCAData.data.caNumber || item.caNumber || "",
+                        caState: cachedCAData.data.caState || item.caState || "",
+                        caRespEngr: cachedCAData.data.caRespEngr || item.caRespEngr || "",
+                        statusComment: cachedCAData.data.statusComment || item.statusComment || ""
+                    };
+                }
+                
+                return item;
+            });
+            
+            const itemsWithCA = exportData.filter(item => item.caNumber && item.caNumber !== "").length;
+            console.log(`✅ EXPRESS MODE: Successfully loaded CA data. Coverage: ${itemsWithCA}/${exportData.length} items (${Math.round(itemsWithCA/exportData.length*100)}%)`);
+            
+            // Update progress to show CA data loading is complete
+            this.updateLoadingDialog({
+                status: `EXPRESS: CA data loaded for ${itemsWithCA}/${exportData.length} items`,
+                progressLabel: "Export ready",
+                targetPercent: CA_LOADING_START_PERCENT + CA_LOADING_RANGE,
+                progressInterval: PROGRESS_UPDATE_INTERVAL
+            });
+            
+            return exportData;
+        },
+        
+        /**
+         * Fallback method for standard CA data export processing
+         */
+        async performStandardCADataExport(itemsNeedingCAData) {
+            // Use the same constants as main export method
+            const CA_LOADING_START_PERCENT = 30;
+            const CA_LOADING_RANGE = 50;
+            const PROGRESS_UPDATE_INTERVAL = 50;
+            
+            // Configuration for maximum parallel processing
+            const BATCH_SIZE = 100; // Process 100 items at a time for lightning speed
+            const MAX_RETRIES = 2;
+            const RETRY_DELAY_BASE = 50; // Minimal delay for retry attempts
+            
+            // Split items into batches
+            const batches = [];
+            for (let i = 0; i < itemsNeedingCAData.length; i += BATCH_SIZE) {
+                batches.push(itemsNeedingCAData.slice(i, i + BATCH_SIZE));
+            }
+            
+            console.log(`📦 FALLBACK: Processing ${batches.length} batches of ${BATCH_SIZE} items each`);
+            
+            // Process all batches in parallel
+            let completedBatches = 0;
+            
+            const batchPromises = batches.map(async (batch, batchIndex) => {
+                console.log(`🚀 FALLBACK: Starting batch ${batchIndex + 1}/${batches.length}`);
+                
+                // Process all items in this batch in parallel
+                const batchResults = await Promise.all(
+                    batch.map(async (item, itemIndex) => {
+                        const globalIndex = batchIndex * BATCH_SIZE + itemIndex;
+                        
+                        // Retry logic for individual items
+                        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+                            try {
+                                const caData = await ApiService.fetchChangeAction(
+                                    item.physId, 
+                                    item.physId, 
+                                    globalIndex
+                                );
+                                
+                                return {
+                                    physId: item.physId,
+                                    caNumber: caData.caNumber || "",
+                                    caState: caData.caState || "",
+                                    caLink: caData.caLink || "",
+                                    caRespEngr: caData.caRespEngr || "",
+                                    statusComment: caData.statusComment || ""
+                                };
+                            } catch (error) {
+                                if (attempt === MAX_RETRIES) {
+                                    console.warn(`Failed to load CA data for item ${item.physId} after ${MAX_RETRIES} attempts:`, error);
+                                    return {
+                                        physId: item.physId,
+                                        caNumber: "",
+                                        caState: "",
+                                        caLink: "",
+                                        caRespEngr: "",
+                                        statusComment: ""
+                                    };
+                                }
+                                
+                                // Minimal retry delay
+                                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_BASE * attempt));
+                            }
+                        }
+                    })
+                );
+                
+                completedBatches++;
+                console.log(`✅ FALLBACK: Completed batch ${batchIndex + 1}/${batches.length} (${completedBatches}/${batches.length} total)`);
+                
+                // Update progress dialog
+                const batchProgress = Math.round((completedBatches / batches.length) * 100);
+                const overallProgress = CA_LOADING_START_PERCENT + Math.round((completedBatches / batches.length) * CA_LOADING_RANGE);
+                
+                this.updateLoadingDialog({
+                    status: `FALLBACK: Loading CA data: Batch ${completedBatches}/${batches.length} complete`,
+                    progressLabel: `${batchProgress}% of CA requests finished`,
+                    targetPercent: overallProgress,
+                    progressInterval: PROGRESS_UPDATE_INTERVAL
+                });
+                
+                return batchResults;
+            });
+            
+            // Wait for all batches to complete
+            await Promise.all(batchPromises);
+            console.log('✅ FALLBACK: Standard CA data export processing completed');
         },
 
         // ===== EXPORT LOGIC MOVED TO ExportService =====
@@ -4336,6 +4718,9 @@ export default {
                     progressInterval: 70
                 });
 
+                // Trigger background CA data preloading after successful data load
+                this.triggerBackgroundCAPreloading();
+
             } catch (error) {
                 console.error("Error fetching data:", {
                     message: error.message,
@@ -4481,19 +4866,23 @@ export default {
             try {
                 // Clear all cache sources
                 
-                // 1. Clear ApiService cache
+                // 1. Clear ApiService memory cache
                 ApiService.clearCache();
-                console.log("✅ ApiService cache cleared");
+                console.log("✅ ApiService memory cache cleared");
                 
-                // 2. Clear UniversalDataService cache
+                // 2. Clear IndexedDB cache
+                await ApiService.clearIndexedDBCache();
+                console.log("✅ IndexedDB cache cleared");
+                
+                // 3. Clear UniversalDataService cache
                 UniversalDataService.refreshAll();
                 console.log("✅ UniversalDataService cache cleared");
                 
-                // 3. Clear session storage
+                // 4. Clear session storage
                 sessionStorage.clear();
                 console.log("✅ Session storage cleared");
                 
-                // 4. Clear local storage (except user preferences)
+                // 5. Clear local storage (except user preferences)
                 const keysToKeep = ["widget-dev-config"]; // Keep config settings
                 const allKeys = Object.keys(localStorage);
                 allKeys.forEach(key => {
@@ -4503,7 +4892,7 @@ export default {
                 });
                 console.log("✅ Local storage cleared (preserved user preferences)");
                 
-                // 5. Reset component data
+                // 6. Reset component data
                 this.tableData = [];
                 this.chartData = { labels: [], datasets: [] };
                 this.ataChapterGroups = ["All"];
@@ -4511,7 +4900,7 @@ export default {
                 this.makeBuyOptions = ["All"];
                 this.partTypeOptions = ["All"];
                 
-                // 6. Refresh data from API
+                // 7. Refresh data from API
                 if (this.filterValues.phase && this.currentDataType) {
                     console.log("🔄 Refreshing data from API...");
                     await this.fetchData(this.filterValues.phase);
@@ -4575,6 +4964,121 @@ export default {
             // Restore from localStorage or default to "All"
             this.defaultProgram = localStorage.getItem("defaultProgram") || "All";
             this.settingsDialog = false;
+        },
+
+        /**
+         * Start background CA data preloading with dancing banana indicator
+         */
+        async startBackgroundCAPreloading(physIds) {
+            if (!physIds || physIds.length === 0) return;
+            
+            console.log(`🍌 Starting background CA preloading for ${physIds.length} items`);
+            
+            // Constants for timeout delays
+            const COMPLETION_DISPLAY_TIME = 3000; // 3 seconds to show completion
+            const ERROR_DISPLAY_TIME = 2000; // 2 seconds to show error
+            
+            this.backgroundPreloadingCA = true;
+            this.preloadingProgress = {
+                current: 0,
+                total: physIds.length,
+                phase: "starting"
+            };
+            
+            try {
+                // Call ApiService preloading with progress callback
+                await ApiService.preloadCAData(physIds, (current, total, phase) => {
+                    this.preloadingProgress = { 
+                        current: Math.min(current, total), 
+                        total, 
+                        phase 
+                    };
+                });
+                
+                // Show completion status for specified time
+                this.preloadingProgress.phase = "completed";
+                console.log("🍌 Background CA preloading completed successfully");
+                
+                setTimeout(() => {
+                    this.backgroundPreloadingCA = false;
+                }, COMPLETION_DISPLAY_TIME);
+                
+            } catch (error) {
+                console.error("❌ Background CA preloading failed:", error);
+                this.preloadingProgress.phase = "error";
+                
+                setTimeout(() => {
+                    this.backgroundPreloadingCA = false;
+                }, ERROR_DISPLAY_TIME);
+            }
+        },
+
+        /**
+         * Trigger express CA preloading for critical export scenarios
+         */
+        async triggerExpressCAPreloading(physIds) {
+            if (!physIds || physIds.length === 0) return;
+            
+            console.log(`🚀 Starting EXPRESS CA preloading for ${physIds.length} items`);
+            
+            this.backgroundPreloadingCA = true;
+            this.preloadingProgress = {
+                current: 0,
+                total: physIds.length,
+                phase: "express-mode"
+            };
+            
+            try {
+                await ApiService.preloadCADataExpress(physIds, (current, total, phase) => {
+                    this.preloadingProgress = { 
+                        current: Math.min(current, total), 
+                        total, 
+                        phase 
+                    };
+                });
+                
+                this.preloadingProgress.phase = "express-completed";
+                console.log("🚀 EXPRESS CA preloading completed successfully");
+                
+                const EXPRESS_COMPLETION_DISPLAY_TIME = 2000;
+                setTimeout(() => {
+                    this.backgroundPreloadingCA = false;
+                }, EXPRESS_COMPLETION_DISPLAY_TIME);
+                
+            } catch (error) {
+                console.error("❌ EXPRESS CA preloading failed:", error);
+                this.preloadingProgress.phase = "express-error";
+                
+                const EXPRESS_ERROR_DISPLAY_TIME = 3000;
+                setTimeout(() => {
+                    this.backgroundPreloadingCA = false;
+                }, EXPRESS_ERROR_DISPLAY_TIME);
+            }
+        },
+        
+        /**
+         * Extract physIds from table data and trigger background preloading
+         */
+        triggerBackgroundCAPreloading() {
+            if (this.currentDataType !== "parts") {
+                return; // CA data only relevant for parts
+            }
+            
+            // Extract physIds from current table data that don't have CA data
+            const physIdsNeedingCA = this.tableData
+                .filter(item => item.physId && (!item.caNumber || item.caNumber === ""))
+                .map(item => item.physId);
+            
+            if (physIdsNeedingCA.length > 0) {
+                console.log(`🍌 Found ${physIdsNeedingCA.length} items needing CA data preloading`);
+                // Minimal delay for faster startup
+                const PRELOAD_STARTUP_DELAY = 1000;
+                setTimeout(() => {
+                    this.startBackgroundCAPreloading(physIdsNeedingCA);
+                }, PRELOAD_STARTUP_DELAY);
+            } else {
+                console.log("🍌 No CA data preloading needed - all items already have CA data");
+            }
         },
 
         /**

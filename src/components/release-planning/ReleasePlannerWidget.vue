@@ -159,6 +159,39 @@
                         />
                     </template>
                     
+                    <!-- Chart Visibility Controls -->
+                    <div class="chart-controls ml-4 d-flex align-center">
+                        <v-divider vertical class="mr-3" />
+                        <span class="text-caption text--secondary mr-2">Charts:</span>
+                        <v-btn-toggle
+                            multiple
+                            dense
+                            class="chart-toggle-group"
+                        >
+                            <v-btn
+                                small
+                                :value="chartVisibility.releaseChart"
+                                :color="chartVisibility.releaseChart ? 'primary' : 'grey'"
+                                :outlined="!chartVisibility.releaseChart"
+                                @click="chartVisibility.releaseChart = !chartVisibility.releaseChart"
+                            >
+                                <v-icon small left>mdi-chart-line</v-icon>
+                                Release Chart
+                            </v-btn>
+                            <v-btn
+                                v-if="currentDataType === 'parts'"
+                                small
+                                :value="chartVisibility.lateReleaseChart"
+                                :color="chartVisibility.lateReleaseChart ? 'orange' : 'grey'"
+                                :outlined="!chartVisibility.lateReleaseChart"
+                                @click="chartVisibility.lateReleaseChart = !chartVisibility.lateReleaseChart"
+                            >
+                                <v-icon small left>mdi-chart-bar</v-icon>
+                                Late Release Chart
+                            </v-btn>
+                        </v-btn-toggle>
+                    </div>
+                    
                     <!-- Settings Gear Icon -->
                     <v-btn
                         icon
@@ -322,7 +355,7 @@
             <!-- Chart and Stats Row - Clean Horizontal Layout -->
             <div class="chart-stats-row">
                 <!-- Chart Container - Takes most of the space -->
-                <v-card class="chart-card" elevation="2">
+                <v-card v-if="chartVisibility.releaseChart" class="chart-card" elevation="2">
                     <v-card-title v-if="!isKioskMode" class="pa-2" style="border-bottom: 1px solid #e0e0e0;">
                         <v-icon left color="primary" size="20">mdi-chart-line</v-icon>
                         <span class="text-subtitle-1 font-weight-medium">Release Timeline</span>
@@ -398,6 +431,59 @@
                                     <v-icon small left>mdi-filter-variant</v-icon>
                                     Adjust Filters
                                 </v-btn>
+                            </div>
+                        </div>
+                    </v-card-text>
+                </v-card>
+                
+                <!-- Bar Chart Container - Late Release Distribution (Parts Data Only) -->
+                <v-card v-if="currentDataType === 'parts' && chartVisibility.lateReleaseChart" class="chart-card late-release-chart-card" elevation="2">
+                    <v-card-title class="pa-2" style="border-bottom: 1px solid #e0e0e0;">
+                        <v-icon left color="orange" size="20">mdi-chart-bar</v-icon>
+                        <span class="text-subtitle-1 font-weight-medium">Critical Release - Actual Release</span>
+                        <v-spacer />
+                        <!-- Legend inline in header -->
+                        <div class="d-flex align-center">
+                            <v-chip 
+                                small 
+                                :color="showUnreleasedBar ? 'error' : 'grey'"
+                                class="legend-chip"
+                                @click="showUnreleasedBar = !showUnreleasedBar"
+                            >
+                                <v-icon small left>{{ showUnreleasedBar ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
+                                Unreleased
+                            </v-chip>
+                            <v-chip 
+                                small 
+                                :color="showReleasedBar ? 'orange' : 'grey'"
+                                class="legend-chip"
+                                @click="showReleasedBar = !showReleasedBar"
+                            >
+                                <v-icon small left>{{ showReleasedBar ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
+                                Released
+                            </v-chip>
+                            <v-chip 
+                                small 
+                                :color="showNoCriticalBar ? 'grey darken-1' : 'grey'"
+                                class="legend-chip"
+                                @click="showNoCriticalBar = !showNoCriticalBar"
+                            >
+                                <v-icon small left>{{ showNoCriticalBar ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
+                                No Critical
+                            </v-chip>
+                        </div>
+                    </v-card-title>
+                    <v-card-text class="pa-2">
+                        <div style="height: 100%; width: 100%; display: flex; flex-direction: column;">
+                            <UniversalChart
+                                :key="lateReleaseChartKey"
+                                type="bar"
+                                :data="lateReleaseChartData"
+                                :options="lateReleaseChartOptions"
+                                style="flex: 1; width: 100%;"
+                            />
+                            <div v-if="!lateReleaseChartData.labels || lateReleaseChartData.labels.length === 0" class="mt-2 text-caption text--secondary text-center">
+                                Debug: {{ filteredTableData?.length || 0 }} data items loaded
                             </div>
                         </div>
                     </v-card-text>
@@ -561,6 +647,22 @@
                         class="pa-0 draggable-table"
                         @click:row="handleRowClick"
                     >
+                        <!-- Custom header template with tooltips -->
+                        <template #header="{ header }">
+                            <span class="font-weight-medium">
+                                <v-icon v-if="header && header.icon" small class="mr-1">{{ header.icon }}</v-icon>
+                                {{ header ? header.text : '' }}
+                                <v-tooltip v-if="header && header.tooltip" bottom max-width="300">
+                                    <template #activator="{ on, attrs }">
+                                        <v-icon small class="ml-1" v-bind="attrs" v-on="on" color="grey">
+                                            mdi-help-circle-outline
+                                        </v-icon>
+                                    </template>
+                                    <span>{{ header.tooltip }}</span>
+                                </v-tooltip>
+                            </span>
+                        </template>
+                        
                         <!-- Custom cell rendering using item slots for specific columns -->
                         <template v-for="header in tableHeaders.filter(h => h.component)" #[`item.${header.value}`]="{ item, index }">
                             <!-- Use ChangeActionCell component for CA/CR fields -->
@@ -866,26 +968,40 @@
 }
 
 .chart-stats-row {
-  display: flex;
+  display: grid;
   gap: 16px;
   margin-bottom: 12px;
-  min-width: min-content; /* SHRINK TO FIT CONTENT */
-  align-items: stretch; /* Make both cards same height */
+  align-items: stretch;
+}
+
+/* Dynamic grid based on chart visibility */
+.chart-stats-row {
+  grid-template-columns: 1fr 1fr 200px; /* Default: both charts + stats */
+}
+
+/* Only release chart visible (late chart hidden) */
+.chart-stats-row:not(:has(.late-release-chart-card)) {
+  grid-template-columns: 1fr 200px;
+}
+
+/* Only late release chart visible (main chart hidden) - for parts data */
+.chart-stats-row:not(:has(.chart-card:first-child)) .late-release-chart-card {
+  grid-column: 1;
 }
 
 .chart-card {
-  flex: 1;
   border-radius: 8px;
-  min-width: 400px; /* MINIMUM CHART WIDTH */
-  flex-shrink: 0; /* DON'T COMPRESS BELOW MIN */
+  min-width: 350px;
   display: flex;
   flex-direction: column;
+  min-height: 380px; /* Ensure consistent minimum height */
 }
 
 .chart-card .v-card__text {
   flex: 1; /* Fill remaining space to match stats card height */
   display: flex;
   flex-direction: column;
+  min-height: 320px; /* Ensure chart content area has consistent height */
 }
 
 .stats-card {
@@ -894,6 +1010,27 @@
   border-radius: 8px;
   display: flex;
   flex-direction: column;
+}
+
+/* Responsive layout for smaller screens */
+@media (max-width: 1200px) {
+  .chart-stats-row {
+    grid-template-columns: 1fr 200px;
+  }
+  
+  .chart-card:nth-child(2) {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .chart-stats-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .stats-card {
+    width: 100%;
+  }
 }
 
 .table-card {
@@ -1689,6 +1826,7 @@ html, body {
 /* eslint-disable no-console */
 import versionData from "@/static/version.json";
 import ReleaseChart from "@/components/charts/ReleaseChart.vue";
+import UniversalChart from "@/components/universal/UniversalChart.vue";
 import ChangeActionCell from "@/components/release-planning/ChangeActionCell.vue";
 import StatusCommentDisplay from "@/components/common/StatusCommentDisplay.vue";
 import dataService from "@/data/DataServiceBase.js";
@@ -1714,6 +1852,7 @@ export default {
     name: "EnhancedPartsPlannerWidget",
     components: {
         ReleaseChart,
+        UniversalChart,
         ChangeActionCell,
         StatusCommentDisplay
     },
@@ -1778,11 +1917,11 @@ export default {
                     // { text: "Chapter Group", value: "ataChapterGroup", sortable: true, icon: "mdi-book-open-page-variant" },
                     { text: "System Group", value: "engSystemGroupShort", sortable: true, icon: "mdi-cog-outline", truncate: true, fullValueField: "engSystemGroup" },
                     { text: "Owner", value: "owner", sortable: true, icon: "mdi-account" },
-                    { text: "Target Release", value: "tgtRelease", sortable: true, icon: "mdi-calendar-clock" },
-                    { text: "Actual Release", value: "actualRelease", sortable: true, icon: "mdi-calendar-check" },
-                    { text: "Critical Release", value: "criticalRelease", sortable: true, icon: "mdi-calendar-alert" },
+                    { text: "Target Release", value: "tgtRelease", sortable: true, icon: "mdi-calendar-clock", tooltip: "Target release date from engineering schedule. Calculated from project milestones and design completion targets." },
+                    { text: "Actual Release", value: "actualRelease", sortable: true, icon: "mdi-calendar-check", tooltip: "Actual release date when part was completed and released. Updated when release process is finalized." },
+                    { text: "Critical Release", value: "criticalRelease", sortable: true, icon: "mdi-calendar-alert", tooltip: "Critical release deadline for program deliverables. Based on customer requirements and program constraints." },
                     { text: "State", value: "currentStateMasked", sortable: true, icon: "mdi-flag" },
-                    { text: "Change Action", value: "caNumber", sortable: false, component: "ChangeActionCell", componentProps: { field: "number" } },
+                    { text: "Change Action", value: "caNumber", sortable: false, icon: "mdi-file-document-edit", component: "ChangeActionCell", componentProps: { field: "number" } },
                     { text: "Resp Engr", value: "caRespEngr", sortable: true, icon: "mdi-account-hard-hat" },
                     { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text" }
                 ],
@@ -1791,9 +1930,9 @@ export default {
                     { text: "Description", value: "changeDescription", sortable: true, icon: "mdi-text", truncate: true },
                     { text: "Resp Engr", value: "resEngr", sortable: true, icon: "mdi-account" },
                     { text: "Status", value: "currentStateMasked", sortable: true, icon: "mdi-flag" },
-                    { text: "Target Complete", value: "targetReleaseDate", sortable: true, icon: "mdi-calendar-clock" },
-                    { text: "Actual Approved", value: "approvedDate", sortable: true, icon: "mdi-calendar-check" },
-                    { text: "Actual Complete", value: "actualReleaseDate", sortable: true, icon: "mdi-calendar-check" },
+                    { text: "Target Complete", value: "targetReleaseDate", sortable: true, icon: "mdi-calendar-clock", tooltip: "Target completion date for change action. Based on engineering schedule and project timelines." },
+                    { text: "Actual Approved", value: "approvedDate", sortable: true, icon: "mdi-calendar-check", tooltip: "Date when change action was approved by stakeholders." },
+                    { text: "Actual Complete", value: "actualReleaseDate", sortable: true, icon: "mdi-calendar-check", tooltip: "Actual completion date when change action was finalized and closed." },
                     { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text", component: "StatusCommentDisplay", componentProps: { itemType: "cas", canEdit: true } }
                 ],
                 crs: [
@@ -1801,8 +1940,8 @@ export default {
                     { text: "Description", value: "changeDescription", sortable: true, icon: "mdi-format-title", truncate: true },
                     { text: "Resp Engr", value: "owner", sortable: true, icon: "mdi-account" },
                     { text: "Status", value: "currentStateMasked", sortable: true, icon: "mdi-flag" },
-                    { text: "Target Complete", value: "targetReleaseDate", sortable: true, icon: "mdi-calendar-plus" },
-                    { text: "Actual Complete", value: "actualCompleteDate", sortable: true, icon: "mdi-calendar-check" },
+                    { text: "Target Complete", value: "targetReleaseDate", sortable: true, icon: "mdi-calendar-plus", tooltip: "Target completion date for change request. Based on requirements analysis and development timeline." },
+                    { text: "Actual Complete", value: "actualCompleteDate", sortable: true, icon: "mdi-calendar-check", tooltip: "Actual completion date when change request was implemented and delivered." },
                     { text: "Status Comments", value: "statusComment", sortable: false, icon: "mdi-comment-text", component: "StatusCommentDisplay", componentProps: { itemType: "crs", canEdit: true } }
                 ]
             },
@@ -1827,6 +1966,51 @@ export default {
             },
             loadingProgressTimer: null,
             loadingProgressTarget: 0,
+            
+            // Chart visibility controls
+            chartVisibility: {
+                releaseChart: true,
+                lateReleaseChart: true
+            },
+            
+            // Bar chart legend visibility controls
+            showUnreleasedBar: true,
+            showReleasedBar: true,
+            showNoCriticalBar: true,
+            
+            // Force chart reactivity
+            lateReleaseChartKey: 0,
+            
+            // Cache parts data to prevent CA data loading from affecting late release chart
+            cachedPartsData: null,
+            
+            // Independent chart data that doesn't react to other changes
+            lateReleaseChartDataCache: {
+                labels: ["On-Time", "1 wks", "2 wks", "3 wks", ">4 wks", "No Critical"],
+                datasets: [
+                    {
+                        label: "Unreleased: Today's Date - Critical Date >4wks",
+                        data: [0, 0, 0, 0, 0, 0],
+                        backgroundColor: "rgba(244, 67, 54, 0.8)",
+                        borderColor: "#d32f2f",
+                        borderWidth: 1
+                    },
+                    {
+                        label: "Released: Actual - Critical Date >4wks",
+                        data: [0, 0, 0, 0, 0, 0],
+                        backgroundColor: "rgba(255, 152, 0, 0.8)",
+                        borderColor: "#f57c00",
+                        borderWidth: 1
+                    },
+                    {
+                        label: "Parts with Deliverable for, but no Critical Date",
+                        data: [0, 0, 0, 0, 0, 0],
+                        backgroundColor: "rgba(158, 158, 158, 0.8)",
+                        borderColor: "#757575",
+                        borderWidth: 1
+                    }
+                ]
+            },
             loadingProgressStep: LOADING_PROGRESS_DEFAULT_STEP,
             loadingProgressInterval: LOADING_PROGRESS_DEFAULT_INTERVAL,
             lastUpdated: new Date().toLocaleTimeString(),
@@ -2309,6 +2493,209 @@ export default {
             return chartDataService.getChartLegendLabel(this.currentDataType);
         },
 
+        // Parts data for late release chart (isolated from CA data loading)
+        partsDataForChart() {
+            if (this.currentDataType === "parts" && this.filteredTableData && this.filteredTableData.length > 0) {
+                return this.filteredTableData;
+            }
+            // Return cached data if available, otherwise empty
+            return this.cachedPartsData || [];
+        },
+        
+        // Late release bar chart data - only computes when chart is visible and on parts data
+        lateReleaseChartData() {
+            console.log('📊 BAR CHART DEBUG: Method called!', {
+                chartVisible: this.chartVisibility.lateReleaseChart,
+                dataType: this.currentDataType,
+                dataLength: this.filteredTableData?.length || 0,
+                showUnreleased: this.showUnreleasedBar,
+                showReleased: this.showReleasedBar,
+                showNoCritical: this.showNoCriticalBar
+            });
+            // Only compute if chart is visible and we have parts data  
+            if (!this.chartVisibility.lateReleaseChart || this.currentDataType !== "parts" || !this.filteredTableData || this.filteredTableData.length === 0) {
+                return {
+                    labels: ["On-Time", "1 wks", "2 wks", "3 wks", ">4 wks", "No Critical"],
+                    datasets: [
+                        {
+                            label: "Unreleased: Today's Date - Critical Date >4wks",
+                            data: [0, 0, 0, 0, 0, 0],
+                            backgroundColor: "rgba(244, 67, 54, 0.8)",
+                            borderColor: "#d32f2f",
+                            borderWidth: 1
+                        },
+                        {
+                            label: "Released: Actual - Critical Date >4wks", 
+                            data: [0, 0, 0, 0, 0, 0],
+                            backgroundColor: "rgba(255, 152, 0, 0.8)",
+                            borderColor: "#f57c00",
+                            borderWidth: 1
+                        },
+                        {
+                            label: "Parts with Deliverable for, but no Critical Date",
+                            data: [0, 0, 0, 0, 0, 0],
+                            backgroundColor: "rgba(158, 158, 158, 0.8)",
+                            borderColor: "#757575", 
+                            borderWidth: 1
+                        }
+                    ]
+                };
+            }
+
+            // Use cached parts data if available, otherwise current filtered data
+            const dataToUse = this.cachedPartsData || this.filteredTableData;
+            
+            console.log("🔄 Computing late release chart with", dataToUse.length, "parts");
+            console.log("📈 First few parts:", dataToUse.slice(0, 3));
+            
+            const buckets = ["On-Time", "1 wks", "2 wks", "3 wks", ">4 wks", "No Critical"];
+            const today = new Date();
+            console.log("📅 Today's date:", today.toDateString());
+            const MS_PER_DAY = 1000 * 60 * 60 * 24;
+            const DAYS_PER_WEEK = 7;
+            
+            // Initialize data structure
+            const data = {};
+            buckets.forEach(bucket => {
+                data[bucket] = {
+                    unreleased: 0,
+                    released: 0,
+                    noDeliverable: 0
+                };
+            });
+            
+            dataToUse.forEach(item => {
+                const criticalDate = item.criticalRelease || item.criticalReleaseDate || item["Critical Release"];
+                const actualDate = item.actualRelease || item.actualReleaseDate || item["Actual Release"];
+                const systemGroup = item.engSystem || item.systemGroup || item.engSystemGroup || item["System Group"];
+                
+                const hasDeliverable = systemGroup && systemGroup !== "N/A";
+                
+                if (!criticalDate) {
+                    if (hasDeliverable) {
+                        data["No Critical"].noDeliverable++;
+                    }
+                    return;
+                }
+
+                const critical = new Date(criticalDate);
+                const isReleased = actualDate && actualDate !== "";
+                
+                let diffDays;
+                if (isReleased) {
+                    const actual = new Date(actualDate);
+                    diffDays = Math.ceil((actual - critical) / MS_PER_DAY);
+                } else {
+                    diffDays = Math.ceil((today - critical) / MS_PER_DAY);
+                }
+
+                let bucket;
+                if (diffDays <= 0) {
+                    bucket = "On-Time";
+                } else if (diffDays <= DAYS_PER_WEEK) {
+                    bucket = "1 wks";
+                } else if (diffDays <= DAYS_PER_WEEK * 2) {
+                    bucket = "2 wks";
+                } else if (diffDays <= DAYS_PER_WEEK * 3) {
+                    bucket = "3 wks";
+                } else {
+                    bucket = ">4 wks";
+                }
+
+                if (isReleased) {
+                    data[bucket].released++;
+                    console.log("✅ RELEASED item in bucket", bucket, "- Critical:", criticalDate, "Actual:", actualDate);
+                } else {
+                    data[bucket].unreleased++;
+                    console.log("⏰ UNRELEASED item in bucket", bucket, "- Critical:", criticalDate, "No actual date");
+                }
+            });
+
+            const unreleasedData = buckets.map(bucket => data[bucket].unreleased);
+            const releasedData = buckets.map(bucket => data[bucket].released);
+            const noCriticalData = buckets.map(bucket => data[bucket].noDeliverable);
+            
+            console.log("📊 FINAL BAR DATA:", {
+                unreleased: unreleasedData,
+                released: releasedData,
+                noCritical: noCriticalData,
+                bucketCounts: buckets.map(bucket => ({ 
+                    bucket, 
+                    unreleased: data[bucket].unreleased, 
+                    released: data[bucket].released, 
+                    noCritical: data[bucket].noDeliverable 
+                }))
+            });
+            
+            const allDatasets = [
+                {
+                    label: "Unreleased: Today's Date - Critical Date >4wks",
+                    data: unreleasedData,
+                    backgroundColor: "rgba(244, 67, 54, 0.8)",
+                    borderColor: "#d32f2f",
+                    borderWidth: 1,
+                    hidden: !this.showUnreleasedBar
+                },
+                {
+                    label: "Released: Actual - Critical Date >4wks",
+                    data: releasedData,
+                    backgroundColor: "rgba(255, 152, 0, 0.8)",
+                    borderColor: "#f57c00",
+                    borderWidth: 1,
+                    hidden: !this.showReleasedBar
+                },
+                {
+                    label: "Parts with Deliverable for, but no Critical Date", 
+                    data: noCriticalData,
+                    backgroundColor: "rgba(158, 158, 158, 0.8)",
+                    borderColor: "#757575",
+                    borderWidth: 1,
+                    hidden: !this.showNoCriticalBar
+                }
+            ];
+
+            return {
+                labels: buckets,
+                datasets: allDatasets
+            };
+        },
+
+        // Bar chart options
+        lateReleaseChartOptions() {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                legend: {
+                    display: false // Chart.js v2 syntax
+                },
+                plugins: {
+                    legend: {
+                        display: false // Chart.js v3+ syntax - Hide legend since we show it in title bar
+                    },
+                    title: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: true,
+                        title: {
+                            display: true,
+                            text: "Time Buckets"
+                        }
+                    },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: "Number of Parts"
+                        }
+                    }
+                }
+            };
+        },
+
         // API environment indicator for header chip
         apiEnvironmentChip() {
             // Force reactivity by including environmentChangeKey
@@ -2349,8 +2736,8 @@ export default {
             }
             
             return options;
-        }
-        ,
+        },
+        
         // Provide Chart.js v2 plugin(s) to draw a vertical dashed line at today's date
         todayLinePlugins() {
             // Use FilterService's currentDate for consistency
@@ -2655,11 +3042,9 @@ export default {
             return [plugin];
         }
     },
-    
-    // Watch for changes that should trigger chart updates
+
     watch: {
-        // Reset kiosk pagination when in kiosk mode and filters change
-        "isKioskMode": {
+        isKioskMode: {
             handler(isKiosk) {
                 if (isKiosk) {
                     this.resetKioskPagination();
@@ -2676,8 +3061,16 @@ export default {
         },
 
         // Smart watcher: Only update chart if data count changes, not content edits
-        "filteredTableData": {
+        filteredTableData: {
             handler(newData, oldData) {
+                // Cache parts data and manually compute chart data to avoid reactivity issues
+                if (this.currentDataType === "parts" && newData && newData.length > 0) {
+                    this.cachedPartsData = [...newData];
+                    console.log("💾 Cached parts data for late release chart:", newData.length, "items");
+                    
+                    console.log("💾 Parts data cached - chart will use cached data to avoid reactive updates");
+                }
+                
                 // Only update chart if the data count changed or it's the initial load
                 const newLength = newData?.length || 0;
                 const oldLength = oldData?.length || 0;
@@ -2686,6 +3079,10 @@ export default {
                     console.log("👀 CHART WATCH: Data count changed", oldLength, "→", newLength);
                     this.$nextTick(() => {
                         this.updateChartFromFiltered();
+                        // Force update for late release chart reactivity
+                        if (this.currentDataType === "parts") {
+                            this.lateReleaseChartKey++;
+                        }
                     });
                     
                     // Reset kiosk pagination when data changes
@@ -2703,7 +3100,7 @@ export default {
         },
         
         // Debug watcher for tableData to track CA-00000268
-        "tableData": {
+        tableData: {
             handler(newData) {
                 if (newData && Array.isArray(newData)) {
                     console.log("🔍 Table data updated:", {
@@ -2818,7 +3215,7 @@ export default {
         },
         
         // Watch selectedStatFilter changes
-        "selectedStatFilter": {
+        selectedStatFilter: {
             handler(newFilter, oldFilter) {
                 console.log("👀 CHART WATCH: Stat filter changed from", oldFilter, "to", newFilter);
                 this.$nextTick(() => {
@@ -2829,7 +3226,7 @@ export default {
         },
         
         // Watch currentDataType changes
-        "currentDataType": {
+        currentDataType: {
             handler(newType, oldType) {
                 console.log("👀 CHART WATCH: Data type changed from", oldType, "to", newType);
                 this.changeActionRefreshKey++; // Refresh Change Action links
@@ -2837,18 +3234,39 @@ export default {
                     this.updateChartFromFiltered();
                     // Re-setup drag listeners when data type changes
                     this.setupTableDragListeners();
+                    // Force chart reactivity
+                    this.lateReleaseChartKey++;
                 });
                 this.scheduleUrlSync();
             }
         },
         
+
+        
         // Watch tableHeaders changes to re-setup drag listeners
-        "tableHeaders": {
+        tableHeaders: {
             handler() {
                 console.log("👀 TABLE WATCH: Headers changed, re-setting up drag listeners");
                 this.$nextTick(() => {
                     this.setupTableDragListeners();
                 });
+            }
+        },
+
+        // Force chart refresh when bar chart legend toggles change
+        showUnreleasedBar: {
+            handler() {
+                this.lateReleaseChartKey++;
+            }
+        },
+        showReleasedBar: {
+            handler() {
+                this.lateReleaseChartKey++;
+            }
+        },
+        showNoCriticalBar: {
+            handler() {
+                this.lateReleaseChartKey++;
             }
         }
     },

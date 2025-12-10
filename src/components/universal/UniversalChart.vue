@@ -337,7 +337,15 @@ export default {
                 this.chart = new Chart(ctx, {
                     type: this.type,
                     data: this.data,
-                    options: this.chartOptions
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        },
+                        ...this.chartOptions
+                    }
                 });
             } catch (error) {
                 console.error("Error creating chart:", error);

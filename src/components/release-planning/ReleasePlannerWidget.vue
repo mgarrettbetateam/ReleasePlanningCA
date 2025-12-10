@@ -442,30 +442,39 @@
                         <v-icon left color="orange" size="20">mdi-chart-bar</v-icon>
                         <span class="text-subtitle-1 font-weight-medium">Critical Release - Actual Release</span>
                         <v-spacer />
-                        <!-- Legend inline in header -->
+                        <!-- Enhanced Legend inline in header -->
                         <div class="d-flex align-center">
                             <v-chip 
                                 small 
-                                :color="showUnreleasedBar ? 'error' : 'grey'"
+                                :color="showUnreleasedBar ? 'primary' : 'grey'"
                                 class="legend-chip"
+                                :outlined="!showUnreleasedBar"
+                                dark
                                 @click="showUnreleasedBar = !showUnreleasedBar"
                             >
                                 <v-icon small left>{{ showUnreleasedBar ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
-                                Unreleased
+                                <span class="font-weight-bold">
+                                    Unreleased
+                                </span>
                             </v-chip>
                             <v-chip 
                                 small 
-                                :color="showReleasedBar ? 'orange' : 'grey'"
+                                :color="showReleasedBar ? 'primary' : 'grey'"
                                 class="legend-chip"
+                                :outlined="!showReleasedBar"
+                                dark
                                 @click="showReleasedBar = !showReleasedBar"
                             >
                                 <v-icon small left>{{ showReleasedBar ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
-                                Released
+                                <span class="font-weight-bold">
+                                    Released
+                                </span>
                             </v-chip>
                             <v-chip 
                                 small 
                                 :color="showNoCriticalBar ? 'grey darken-1' : 'grey'"
                                 class="legend-chip"
+                                dark
                                 @click="showNoCriticalBar = !showNoCriticalBar"
                             >
                                 <v-icon small left>{{ showNoCriticalBar ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
@@ -1841,6 +1850,28 @@ import { getApiBaseUrl, API_CONFIG } from "@/config/ApiConfig.js";
 import { ResponsiveMixin } from "@/utils/ResponsiveUtils.js";
 import { useDragAndDrop } from "@/composables/useDragAndDrop.js";
 
+// Custom Chart.js plugin for alternating background bars
+const alternatingBackgroundPlugin = {
+    id: "alternatingBackground",
+    beforeDraw: chart => {
+        const { ctx, chartArea: { left, right, top, bottom }, scales: { x } } = chart;
+        
+        ctx.save();
+        const barWidth = (right - left) / x.ticks.length;
+        
+        x.ticks.forEach((tick, index) => {
+            if (index % 2 === 1) { // Every other bar
+                const barLeft = left + (index * barWidth);
+                
+                ctx.fillStyle = "rgba(0, 0, 0, 0.03)"; // Very subtle gray
+                ctx.fillRect(barLeft, top, barWidth, bottom - top);
+            }
+        });
+        
+        ctx.restore();
+    }
+};
+
 const FOCUS_SCROLL_DELAY = 50;
 const LOADING_PROGRESS_DEFAULT_STEP = 1;
 const LOADING_PROGRESS_DEFAULT_INTERVAL = 120;
@@ -2504,7 +2535,7 @@ export default {
         
         // Late release bar chart data - only computes when chart is visible and on parts data
         lateReleaseChartData() {
-            console.log('📊 BAR CHART DEBUG: Method called!', {
+            console.log("📊 BAR CHART DEBUG: Method called!", {
                 chartVisible: this.chartVisibility.lateReleaseChart,
                 dataType: this.currentDataType,
                 dataLength: this.filteredTableData?.length || 0,
@@ -2567,14 +2598,15 @@ export default {
             dataToUse.forEach(item => {
                 const criticalDate = item.criticalRelease || item.criticalReleaseDate || item["Critical Release"];
                 const actualDate = item.actualRelease || item.actualReleaseDate || item["Actual Release"];
-                const systemGroup = item.engSystem || item.systemGroup || item.engSystemGroup || item["System Group"];
                 
-                const hasDeliverable = systemGroup && systemGroup !== "N/A";
-                
-                if (!criticalDate) {
-                    if (hasDeliverable) {
-                        data["No Critical"].noDeliverable++;
-                    }
+                // Check for parts with Phase but no Critical Date (N/A values)
+                if (!criticalDate || criticalDate === "N/A" || criticalDate === "" || criticalDate === null) {
+                    data["No Critical"].noDeliverable++;
+                    console.log("📊 NO CRITICAL DATE found for item:", {
+                        criticalDate,
+                        actualDate,
+                        owner: item.owner || item.Owner
+                    });
                     return;
                 }
 
@@ -2629,25 +2661,43 @@ export default {
             
             const allDatasets = [
                 {
-                    label: "Unreleased: Today's Date - Critical Date >4wks",
+                    label: "Unreleased: Today's Date – Critical Date >X wks",
                     data: unreleasedData,
-                    backgroundColor: "rgba(244, 67, 54, 0.8)",
-                    borderColor: "#d32f2f",
+                    backgroundColor: [
+                        "#81C784", // On-Time (light green)
+                        "#FFB74D", // 1 wks (light orange)
+                        "#FF8A65", // 2 wks (light deep orange)
+                        "#EF5350", // 3 wks (light red)
+                        "#E57373", // >4 wks (light dark red)
+                        "#BDBDBD"  // No Critical (light gray)
+                    ],
+                    borderColor: [
+                        "#4CAF50", "#FF9800", "#FF7043", "#F44336", "#D32F2F", "#757575"
+                    ],
                     borderWidth: 1,
                     hidden: !this.showUnreleasedBar
                 },
                 {
-                    label: "Released: Actual - Critical Date >4wks",
+                    label: "Released: Actual – Critical Date >X wks",
                     data: releasedData,
-                    backgroundColor: "rgba(255, 152, 0, 0.8)",
-                    borderColor: "#f57c00",
+                    backgroundColor: [
+                        "#388E3C", // On-Time (dark green)
+                        "#F57C00", // 1 wks (dark orange)
+                        "#E64A19", // 2 wks (dark deep orange)
+                        "#C62828", // 3 wks (dark red)
+                        "#B71C1C", // >4 wks (dark dark red)
+                        "#757575"  // No Critical (dark gray)
+                    ],
+                    borderColor: [
+                        "#4CAF50", "#FF9800", "#FF7043", "#F44336", "#D32F2F", "#757575"
+                    ],
                     borderWidth: 1,
                     hidden: !this.showReleasedBar
                 },
                 {
-                    label: "Parts with Deliverable for, but no Critical Date", 
+                    label: "Parts with Phase, but no Critical Date", 
                     data: noCriticalData,
-                    backgroundColor: "rgba(158, 158, 158, 0.8)",
+                    backgroundColor: "#9E9E9E", // Single gray color for non-stacked
                     borderColor: "#757575",
                     borderWidth: 1,
                     hidden: !this.showNoCriticalBar
@@ -2660,36 +2710,81 @@ export default {
             };
         },
 
-        // Bar chart options
+        // Bar chart options - Enhanced Late Material Release Burner Chart
         lateReleaseChartOptions() {
+            console.log("🎨 Building enhanced late release chart options");
             return {
                 responsive: true,
                 maintainAspectRatio: false,
                 legend: {
-                    display: false // Chart.js v2 syntax
+                    display: false
                 },
                 plugins: {
                     legend: {
-                        display: false // Chart.js v3+ syntax - Hide legend since we show it in title bar
+                        display: false // Hide legend since we show it in title bar
                     },
                     title: {
                         display: false
                     }
                 },
                 scales: {
-                    x: {
+                    xAxes: [{
                         stacked: true,
-                        title: {
+                        gridLines: {
+                            display: false
+                        },
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 0
+                        },
+                        scaleLabel: {
                             display: true,
-                            text: "Time Buckets"
+                            labelString: "Time Buckets"
                         }
-                    },
-                    y: {
+                    }],
+                    yAxes: [{
                         stacked: true,
-                        beginAtZero: true,
-                        title: {
+                        gridLines: {
+                            color: "#e0e0e0"
+                        },
+                        ticks: {
+                            beginAtZero: true
+                        },
+                        scaleLabel: {
                             display: true,
-                            text: "Number of Parts"
+                            labelString: "Number of Parts"
+                        }
+                    }]
+                },
+                tooltips: {
+                    mode: "index",
+                    intersect: false,
+                    backgroundColor: "rgba(0, 0, 0, 0.8)",
+                    titleFontColor: "#ffffff",
+                    bodyFontColor: "#ffffff",
+                    borderColor: "#666666",
+                    borderWidth: 1,
+                    cornerRadius: 6,
+                    displayColors: true,
+                    callbacks: {
+                        title: function(tooltipItem, data) {
+                            const label = tooltipItem[0].label;
+                            if (label === "No Critical") {
+                                return "Parts with Phase, No Critical Date";
+                            }
+                            return "Time Bucket: " + label;
+                        },
+                        label: function(tooltipItem, data) {
+                            const datasetLabel = data.datasets[tooltipItem.datasetIndex].label;
+                            const value = tooltipItem.yLabel;
+                            return datasetLabel + ": " + value + " parts";
+                        },
+                        afterBody: function(tooltipItems, data) {
+                            const label = tooltipItems[0].label;
+                            if (label !== "No Critical") {
+                                return ["", "Light shade = Unreleased items", "Dark shade = Released items"];
+                            }
+                            return "";
                         }
                     }
                 }
@@ -3277,6 +3372,9 @@ export default {
         console.log("🏷️  Widget title:", this.widgetTitle);
         console.log("🖥️ Kiosk mode:", this.isKioskMode);
         console.log("🔧 USE_MOCK_DATA:", USE_MOCK_DATA);
+        
+        // Initialize Late Material Release Burner chart enhancements
+        console.log("🎨 Loading Late Material Release Burner chart with enhanced visuals");
         
         // Load default program from localStorage
         const savedDefaultProgram = localStorage.getItem("defaultProgram");

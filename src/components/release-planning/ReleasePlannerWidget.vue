@@ -178,17 +178,6 @@
                                 <v-icon small left>mdi-chart-line</v-icon>
                                 Release Chart
                             </v-btn>
-                            <v-btn
-                                v-if="currentDataType === 'parts'"
-                                small
-                                :value="chartVisibility.lateReleaseChart"
-                                :color="chartVisibility.lateReleaseChart ? 'orange' : 'grey'"
-                                :outlined="!chartVisibility.lateReleaseChart"
-                                @click="chartVisibility.lateReleaseChart = !chartVisibility.lateReleaseChart"
-                            >
-                                <v-icon small left>mdi-chart-bar</v-icon>
-                                Late Release Chart
-                            </v-btn>
                         </v-btn-toggle>
                     </div>
                     
@@ -437,7 +426,7 @@
                 </v-card>
                 
                 <!-- Bar Chart Container - Late Release Distribution (Parts Data Only) -->
-                <v-card v-if="currentDataType === 'parts' && chartVisibility.lateReleaseChart" class="chart-card late-release-chart-card" elevation="2">
+                <v-card v-if="currentDataType === 'parts'" class="chart-card late-release-chart-card" elevation="2">
                     <v-card-title class="pa-2" style="border-bottom: 1px solid #e0e0e0;">
                         <v-icon left color="orange" size="20">mdi-chart-bar</v-icon>
                         <span class="text-subtitle-1 font-weight-medium">Critical Release - Actual Release</span>
@@ -483,18 +472,12 @@
                         </div>
                     </v-card-title>
                     <v-card-text class="pa-2">
-                        <div style="height: 100%; width: 100%; display: flex; flex-direction: column;">
-                            <UniversalChart
-                                :key="lateReleaseChartKey"
-                                type="bar"
-                                :data="lateReleaseChartData"
-                                :options="lateReleaseChartOptions"
-                                :showExportButton="false"
-                                style="flex: 1; width: 100%;"
-                            />
-                            <div v-if="!lateReleaseChartData.labels || lateReleaseChartData.labels.length === 0" class="mt-2 text-caption text--secondary text-center">
-                                Debug: {{ filteredTableData?.length || 0 }} data items loaded
-                            </div>
+                        <div style="height: 100%; width: 100%; position: relative;">
+                            <!-- Direct Chart.js v4 canvas - following candle bar pattern -->
+                            <canvas 
+                                ref="lateReleaseChartCanvas"
+                                style="width: 100%; height: 100%; display: block;"
+                            ></canvas>
                         </div>
                     </v-card-text>
                 </v-card>
@@ -1836,7 +1819,6 @@ html, body {
 /* eslint-disable no-console */
 import versionData from "@/static/version.json";
 import ReleaseChart from "@/components/charts/ReleaseChart.vue";
-import UniversalChart from "@/components/universal/UniversalChart.vue";
 import ChangeActionCell from "@/components/release-planning/ChangeActionCell.vue";
 import StatusCommentDisplay from "@/components/common/StatusCommentDisplay.vue";
 import dataService from "@/data/DataServiceBase.js";
@@ -1850,8 +1832,10 @@ import { USE_MOCK_DATA } from "@/config/ApiConfig.js";
 import { getApiBaseUrl, API_CONFIG } from "@/config/ApiConfig.js";
 import { ResponsiveMixin } from "@/utils/ResponsiveUtils.js";
 import { useDragAndDrop } from "@/composables/useDragAndDrop.js";
+import Chart from "chart.js";
 
 // Custom Chart.js plugin for alternating background bars
+// eslint-disable-next-line no-unused-vars
 const alternatingBackgroundPlugin = {
     id: "alternatingBackground",
     beforeDraw: chart => {
@@ -1884,7 +1868,6 @@ export default {
     name: "EnhancedPartsPlannerWidget",
     components: {
         ReleaseChart,
-        UniversalChart,
         ChangeActionCell,
         StatusCommentDisplay
     },
@@ -2001,8 +1984,7 @@ export default {
             
             // Chart visibility controls
             chartVisibility: {
-                releaseChart: true,
-                lateReleaseChart: true
+                releaseChart: true
             },
             
             // Bar chart legend visibility controls
@@ -2073,6 +2055,9 @@ export default {
             
             // Change Action refresh key to force CA link updates when filters change
             changeActionRefreshKey: 0,
+            
+            // Chart.js instance for late release bar chart
+            lateReleaseChart: null,
             
             // Cache clearing state
             clearingCache: false,
@@ -2620,7 +2605,7 @@ export default {
         // Late release bar chart data - only computes when chart is visible and on parts data
         lateReleaseChartData() {
             console.log("📊 BAR CHART DEBUG: lateReleaseChartData() called!", {
-                chartVisible: this.chartVisibility.lateReleaseChart,
+                chartVisible: true,
                 dataType: this.currentDataType,
                 baseFilteredDataLength: this.baseFilteredData?.length || 0,
                 filteredTableDataLength: this.filteredTableData?.length || 0,
@@ -2636,14 +2621,15 @@ export default {
             const hasData = this.baseFilteredData && this.baseFilteredData.length > 0;
             
             console.log("📊 BAR CHART DEBUG: Checking conditions:", {
-                chartVisible: this.chartVisibility.lateReleaseChart,
+                chartVisible: true,
                 isPartsType: this.currentDataType === "parts",
                 hasData: hasData,
-                willReturnEmpty: !this.chartVisibility.lateReleaseChart || this.currentDataType !== "parts" || !hasData
+                willReturnEmpty: this.currentDataType !== "parts" || !hasData
             });
             
-            // Only compute if chart is visible and we have parts data (using baseFilteredData)
-            if (!this.chartVisibility.lateReleaseChart || this.currentDataType !== "parts" || !hasData) {
+            // Compute whenever we have parts data (visibility is template-only, not computation gate)
+            // This ensures bar chart is ready without needing visibility toggle
+            if (this.currentDataType !== "parts" || !hasData) {
                 console.log("⚠️ BAR CHART: Returning empty chart data due to conditions not met");
                 return {
                     labels: ["On-Time", "1 wks", "2 wks", "3 wks", ">4 wks", "No Critical"],
@@ -2881,13 +2867,6 @@ export default {
                             const datasetLabel = data.datasets[tooltipItem.datasetIndex].label;
                             const value = tooltipItem.yLabel;
                             return datasetLabel + ": " + value + " parts";
-                        },
-                        afterBody: function(tooltipItems, data) {
-                            const label = tooltipItems[0].label;
-                            if (label !== "No Critical") {
-                                return ["", "Light shade = Unreleased items", "Dark shade = Released items"];
-                            }
-                            return "";
                         }
                     }
                 },
@@ -3283,11 +3262,9 @@ export default {
                         this.updateChartFromFiltered();
                         // Force update for late release chart reactivity
                         // BUT only if we're NOT filtering by chart click (to prevent circular updates)
-                        if (this.currentDataType === "parts" && !this.selectedTimeBucket) {
-                            console.log("👀 CHART WATCH: Incrementing lateReleaseChartKey (no chart filter active)");
+                        if (this.currentDataType === "parts") {
+                            console.log("👀 CHART WATCH: Incrementing lateReleaseChartKey to ensure initial render");
                             this.lateReleaseChartKey++;
-                        } else {
-                            console.log("👀 CHART WATCH: NOT incrementing lateReleaseChartKey (chart filter active or not parts)");
                         }
                     });
                     
@@ -3476,6 +3453,22 @@ export default {
             }
         },
 
+        // Watch baseFilteredData to refresh bar chart when dropdown filters change
+        baseFilteredData: {
+            handler(newData, oldData) {
+                const newLength = newData?.length || 0;
+                const oldLength = oldData?.length || 0;
+                
+                if (newLength !== oldLength && this.currentDataType === "parts") {
+                    console.log("👀 baseFilteredData changed:", oldLength, "→", newLength, "- refreshing bar chart");
+                    this.$nextTick(() => {
+                        this.lateReleaseChartKey++;
+                    });
+                }
+            },
+            deep: false
+        },
+
         targetReleaseDateRange() {
             const dates = this.filteredTableData.map(item => item["tgtRelease"]);
             return this.calculateDateRange(dates);
@@ -3489,6 +3482,12 @@ export default {
         criticalReleaseDateRange() {
             const dates = this.filteredTableData.map(item => item["criticalRelease"]);
             return this.calculateDateRange(dates);
+        },
+
+        // Watch for chart key changes to trigger re-initialization
+        lateReleaseChartKey() {
+            console.log("👀 lateReleaseChartKey changed, initializing chart with key:", this.lateReleaseChartKey);
+            this.initializeLateReleaseChart();
         }
     },
     
@@ -3615,6 +3614,13 @@ export default {
                     index,
                     allDatasets: this.lateReleaseChartData.datasets.map(d => d.label)
                 });
+
+                // Do nothing when clicking the grey "No Critical" bar
+                if (timeBucket === "No Critical" || (datasetType && datasetType.toLowerCase().includes("no critical"))) {
+                    console.log("⛔ Ignoring click on No Critical (grey) bar");
+                    console.log("🖱️ ====== CHART BAR CLICK END ======");
+                    return;
+                }
                 
                 // If clicking the same bar, clear selection (toggle off)
                 if (this.selectedTimeBucket === timeBucket && this.selectedDatasetType === datasetType) {
@@ -3793,6 +3799,69 @@ export default {
             });
 
             return timeFilteredResults;
+        },
+
+        // Initialize Late Release Chart using Chart.js directly
+        initializeLateReleaseChart() {
+            try {
+                console.log("📊 initializeLateReleaseChart called");
+                
+                // Get canvas element
+                const canvas = this.$refs.lateReleaseChartCanvas;
+                if (!canvas) {
+                    console.error("❌ Canvas element not found - ref 'lateReleaseChartCanvas' not accessible");
+                    return;
+                }
+
+                // Wait for DOM to settle
+                this.$nextTick(() => {
+                    try {
+                        // Validate chart data
+                        if (!this.lateReleaseChartData || !this.lateReleaseChartData.datasets) {
+                            console.warn("⚠️ lateReleaseChartData not ready yet");
+                            return;
+                        }
+
+                        // Destroy existing chart if present
+                        if (this.lateReleaseChart) {
+                            console.log("🔄 Destroying existing chart instance");
+                            this.lateReleaseChart.destroy();
+                            this.lateReleaseChart = null;
+                        }
+
+                        // Set explicit canvas dimensions
+                        canvas.width = 800;
+                        canvas.height = 400;
+
+                        // Get 2D context
+                        const ctx = canvas.getContext("2d");
+                        if (!ctx) {
+                            console.error("❌ Failed to get 2D context from canvas");
+                            return;
+                        }
+
+                        console.log("✅ Canvas ready, creating Chart.js instance with data:", {
+                            labels: this.lateReleaseChartData.labels,
+                            datasetCount: this.lateReleaseChartData.datasets.length,
+                            firstDataset: this.lateReleaseChartData.datasets[0]?.label,
+                            firstDatasetData: this.lateReleaseChartData.datasets[0]?.data
+                        });
+
+                        // Create Chart.js instance with our data and options
+                        this.lateReleaseChart = new Chart(ctx, {
+                            type: "bar",
+                            data: this.lateReleaseChartData,
+                            options: this.lateReleaseChartOptions
+                        });
+
+                        console.log("✅ Chart initialized successfully");
+                    } catch (innerError) {
+                        console.error("❌ Error in Chart.js initialization:", innerError);
+                    }
+                });
+            } catch (error) {
+                console.error("❌ Error initializing late release chart:", error);
+            }
         },
 
         // Calculate dynamic width for dropdown based on selected value
@@ -5595,6 +5664,14 @@ export default {
 
                 // Update chart data from the filtered table data
                 this.updateChartFromFiltered();
+
+                // Force chart recreate if we're on parts data - this ensures chart renders with valid data
+                if (this.currentDataType === "parts") {
+                    this.$nextTick(() => {
+                        console.log("📊 fetchData complete - bumping lateReleaseChartKey for parts");
+                        this.lateReleaseChartKey++;
+                    });
+                }
 
                 this.updateLoadingDialog({
                     progressLabel: "Finalizing dashboard",

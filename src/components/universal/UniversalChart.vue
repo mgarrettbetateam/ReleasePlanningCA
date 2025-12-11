@@ -67,6 +67,7 @@
             v-else
             ref="chartCanvas" 
             :height="height"
+            :style="{ width: '100%', height: (typeof currentHeight === 'number' ? currentHeight + 'px' : currentHeight) }"
         ></canvas>
     </div>
 </template>
@@ -283,10 +284,18 @@ export default {
         }
     },
     mounted() {
+        // Compute height first to ensure non-zero size before chart init
         this.$nextTick(() => {
+            this.calculateInitialHeight();
             this.initChart();
             this.setupResizeObserver();
-            this.calculateInitialHeight();
+            // Force a post-init resize/update to stabilize initial render
+            this.$nextTick(() => {
+                if (this.chart) {
+                    this.chart.resize();
+                    this.chart.update();
+                }
+            });
         });
     },
     beforeDestroy() {
@@ -411,7 +420,11 @@ export default {
                         this.chart.resize();
                     }
                 });
-                this.resizeObserver.observe(this.$refs.chartCanvas);
+                // Observe the container to catch parent layout changes
+                const target = this.$el || this.$refs.chartCanvas;
+                if (target) {
+                    this.resizeObserver.observe(target);
+                }
             }
         },
         

@@ -810,8 +810,8 @@
                         </v-card-text>
                     </v-card>
                     
-                    <!-- Show no data message when data type is selected but no data is available -->
-                    <div v-if="currentDataType && filteredTableData.length === 0" class="no-data-message d-flex flex-column align-center justify-center" style="min-height: 300px; padding: 40px;">
+                    <!-- Show no data message when data type is selected but no data is available (and not loading or clearing cache) -->
+                    <div v-if="currentDataType && filteredTableData.length === 0 && !loading && !clearingCache" class="no-data-message d-flex flex-column align-center justify-center" style="min-height: 300px; padding: 40px;">
                         <!-- Different messages based on whether phase is selected -->
                         <template v-if="!filterValues.phase || filterValues.phase === ''">
                             <v-icon size="48" color="info">mdi-map-marker-question</v-icon>
@@ -2106,7 +2106,11 @@ export default {
             kioskRefreshInterval: 60000, // Fixed: 60 seconds refresh
             kioskLastRefreshTime: null,
             kioskNextRefreshTime: null,
-            kioskCountdownUpdateTimer: null
+            kioskCountdownUpdateTimer: null,
+            
+            // Chart click functionality
+            selectedTimeBucket: null, // Store selected time bucket for filtering
+            selectedDatasetType: null // Store selected dataset type for filtering
         };
     },
     
@@ -2520,18 +2524,79 @@ export default {
             ];
         },
 
-        // Filter table data using FilterService
-        filteredTableData() {
-            // Return empty array if no data type is selected
+        // Base filtered data BEFORE chart click filtering - used by bar chart
+        // This ensures the bar chart always shows counts from dropdown filters only
+        baseFilteredData() {
+            console.log("🔵 baseFilteredData: Computing...", {
+                currentDataType: this.currentDataType,
+                tableDataLength: this.tableData?.length || 0,
+                filterValues: this.filterValues,
+                selectedStatFilter: this.selectedStatFilter
+            });
+            
             if (!this.currentDataType) {
+                console.log("🔵 baseFilteredData: No currentDataType, returning empty");
                 return [];
             }
             
-            return filterService.applyAllFilters(
+            const result = filterService.applyAllFilters(
                 this.tableData,
                 this.filterValues,
                 this.selectedStatFilter
             );
+            
+            console.log("🔵 baseFilteredData: Result:", {
+                resultLength: result?.length || 0,
+                sampleItems: result?.slice(0, 2).map(item => item.partNoWithRev) || []
+            });
+            
+            return result;
+        },
+
+        // Filter table data using FilterService
+        filteredTableData() {
+            // Return empty array if no data type is selected
+            if (!this.currentDataType) {
+                console.log("🔍 filteredTableData: No currentDataType, returning empty array");
+                return [];
+            }
+            
+            // Start with base filtered data (from dropdown filters)
+            let filtered = this.baseFilteredData;
+            
+            console.log("🔍 filteredTableData: After filterService:", {
+                originalTableData: this.tableData?.length || 0,
+                afterFilterService: filtered.length,
+                selectedTimeBucket: this.selectedTimeBucket,
+                selectedDatasetType: this.selectedDatasetType
+            });
+            
+            // Apply chart click filtering if a time bucket is selected
+            if (this.selectedTimeBucket && this.selectedDatasetType && this.currentDataType === "parts") {
+                console.log("🎯 Applying chart click filter:", {
+                    timeBucket: this.selectedTimeBucket,
+                    datasetType: this.selectedDatasetType,
+                    originalCount: filtered.length
+                });
+                
+                filtered = this.filterByTimeBucket(filtered, this.selectedTimeBucket, this.selectedDatasetType);
+                
+                console.log("📊 Chart filtered results:", {
+                    filteredCount: filtered.length,
+                    timeBucket: this.selectedTimeBucket
+                });
+            }
+            
+            console.log("🔍 filteredTableData: FINAL RESULT:", {
+                finalCount: filtered.length,
+                sampleItems: filtered.slice(0, 2).map(item => ({
+                    partNo: item.partNoWithRev,
+                    phase: item.phase,
+                    criticalRelease: item.criticalRelease
+                }))
+            });
+            
+            return filtered;
         },
 
         // Release statistics using FilterService
@@ -2546,25 +2611,40 @@ export default {
 
         // Parts data for late release chart (isolated from CA data loading)
         partsDataForChart() {
-            if (this.currentDataType === "parts" && this.filteredTableData && this.filteredTableData.length > 0) {
-                return this.filteredTableData;
+            if (this.currentDataType === "parts" && this.baseFilteredData && this.baseFilteredData.length > 0) {
+                return this.baseFilteredData;
             }
-            // Return cached data if available, otherwise empty
-            return this.cachedPartsData || [];
+            return [];
         },
         
         // Late release bar chart data - only computes when chart is visible and on parts data
         lateReleaseChartData() {
-            console.log("📊 BAR CHART DEBUG: Method called!", {
+            console.log("📊 BAR CHART DEBUG: lateReleaseChartData() called!", {
                 chartVisible: this.chartVisibility.lateReleaseChart,
                 dataType: this.currentDataType,
-                dataLength: this.filteredTableData?.length || 0,
+                baseFilteredDataLength: this.baseFilteredData?.length || 0,
+                filteredTableDataLength: this.filteredTableData?.length || 0,
+                selectedTimeBucket: this.selectedTimeBucket,
+                selectedDatasetType: this.selectedDatasetType,
                 showUnreleased: this.showUnreleasedBar,
                 showReleased: this.showReleasedBar,
                 showNoCritical: this.showNoCriticalBar
             });
-            // Only compute if chart is visible and we have parts data  
-            if (!this.chartVisibility.lateReleaseChart || this.currentDataType !== "parts" || !this.filteredTableData || this.filteredTableData.length === 0) {
+            
+            // IMPORTANT: Check baseFilteredData (not filteredTableData) because filteredTableData
+            // shrinks when a chart bar is clicked for filtering
+            const hasData = this.baseFilteredData && this.baseFilteredData.length > 0;
+            
+            console.log("📊 BAR CHART DEBUG: Checking conditions:", {
+                chartVisible: this.chartVisibility.lateReleaseChart,
+                isPartsType: this.currentDataType === "parts",
+                hasData: hasData,
+                willReturnEmpty: !this.chartVisibility.lateReleaseChart || this.currentDataType !== "parts" || !hasData
+            });
+            
+            // Only compute if chart is visible and we have parts data (using baseFilteredData)
+            if (!this.chartVisibility.lateReleaseChart || this.currentDataType !== "parts" || !hasData) {
+                console.log("⚠️ BAR CHART: Returning empty chart data due to conditions not met");
                 return {
                     labels: ["On-Time", "1 wks", "2 wks", "3 wks", ">4 wks", "No Critical"],
                     datasets: [
@@ -2592,11 +2672,14 @@ export default {
                     ]
                 };
             }
-
-            // Use cached parts data if available, otherwise current filtered data
-            const dataToUse = this.cachedPartsData || this.filteredTableData;
             
-            console.log("🔄 Computing late release chart with", dataToUse.length, "parts");
+            console.log("✅ BAR CHART: Proceeding with chart data calculation");
+
+            // IMPORTANT: Use baseFilteredData (before chart click filtering) so bar chart stays stable
+            // This ensures clicking a bar doesn't cause the bar chart to recalculate and lose data
+            const dataToUse = this.baseFilteredData;
+            
+            console.log("🔄 Computing late release chart with", dataToUse.length, "parts (using baseFilteredData)");
             console.log("📈 First few parts:", dataToUse.slice(0, 3));
             
             const buckets = ["On-Time", "1 wks", "2 wks", "3 wks", ">4 wks", "No Critical"];
@@ -2631,7 +2714,7 @@ export default {
                 }
 
                 const critical = new Date(criticalDate);
-                const isReleased = actualDate && actualDate !== "";
+                const isReleased = !!(actualDate && actualDate.toString().trim() !== "" && actualDate.toString().toUpperCase() !== "N/A");
                 
                 let diffDays;
                 if (isReleased) {
@@ -2807,6 +2890,9 @@ export default {
                             return "";
                         }
                     }
+                },
+                onClick: (event, elements) => {
+                    this.handleChartBarClick(event, elements);
                 }
             };
         },
@@ -3178,25 +3264,30 @@ export default {
         // Smart watcher: Only update chart if data count changes, not content edits
         filteredTableData: {
             handler(newData, oldData) {
-                // Cache parts data and manually compute chart data to avoid reactivity issues
-                if (this.currentDataType === "parts" && newData && newData.length > 0) {
-                    this.cachedPartsData = [...newData];
-                    console.log("💾 Cached parts data for late release chart:", newData.length, "items");
-                    
-                    console.log("💾 Parts data cached - chart will use cached data to avoid reactive updates");
-                }
-                
                 // Only update chart if the data count changed or it's the initial load
                 const newLength = newData?.length || 0;
                 const oldLength = oldData?.length || 0;
                 
+                console.log("👀 WATCH filteredTableData: Handler called", {
+                    oldLength,
+                    newLength,
+                    selectedTimeBucket: this.selectedTimeBucket,
+                    selectedDatasetType: this.selectedDatasetType,
+                    baseFilteredDataLength: this.baseFilteredData?.length || 0
+                });
+                
                 if (newLength !== oldLength || oldLength === 0) {
                     console.log("👀 CHART WATCH: Data count changed", oldLength, "→", newLength);
                     this.$nextTick(() => {
+                        console.log("👀 CHART WATCH: In $nextTick, about to update charts");
                         this.updateChartFromFiltered();
                         // Force update for late release chart reactivity
-                        if (this.currentDataType === "parts") {
+                        // BUT only if we're NOT filtering by chart click (to prevent circular updates)
+                        if (this.currentDataType === "parts" && !this.selectedTimeBucket) {
+                            console.log("👀 CHART WATCH: Incrementing lateReleaseChartKey (no chart filter active)");
                             this.lateReleaseChartKey++;
+                        } else {
+                            console.log("👀 CHART WATCH: NOT incrementing lateReleaseChartKey (chart filter active or not parts)");
                         }
                     });
                     
@@ -3492,6 +3583,218 @@ export default {
     },
     
     methods: {
+        // Handle chart bar click for filtering table data
+        handleChartBarClick(event, elements) {
+            console.log("🖱️ ====== CHART BAR CLICK START ======");
+            console.log("🖱️ Chart bar clicked!", { event, elements });
+            console.log("🖱️ Current state BEFORE click:", {
+                selectedTimeBucket: this.selectedTimeBucket,
+                selectedDatasetType: this.selectedDatasetType,
+                baseFilteredDataLength: this.baseFilteredData?.length || 0,
+                filteredTableDataLength: this.filteredTableData?.length || 0,
+                lateReleaseChartLabels: this.lateReleaseChartData?.labels || [],
+                lateReleaseChartDatasetsCount: this.lateReleaseChartData?.datasets?.length || 0
+            });
+            
+            if (elements && elements.length > 0) {
+                const element = elements[0];
+                const datasetIndex = element._datasetIndex;
+                const index = element._index;
+                
+                // Get the time bucket label
+                const timeBucket = this.lateReleaseChartData.labels[index];
+                
+                // Get the dataset type
+                const dataset = this.lateReleaseChartData.datasets[datasetIndex];
+                const datasetType = dataset.label;
+                
+                console.log("📊 Chart click details:", {
+                    timeBucket,
+                    datasetType,
+                    datasetIndex,
+                    index,
+                    allDatasets: this.lateReleaseChartData.datasets.map(d => d.label)
+                });
+                
+                // If clicking the same bar, clear selection (toggle off)
+                if (this.selectedTimeBucket === timeBucket && this.selectedDatasetType === datasetType) {
+                    console.log("🔄 TOGGLING OFF - same bar clicked");
+                    this.selectedTimeBucket = null;
+                    this.selectedDatasetType = null;
+                    console.log("🔄 Cleared chart selection - showing all data");
+                } else {
+                    console.log("🎯 SETTING NEW SELECTION");
+                    // Set new selection
+                    this.selectedTimeBucket = timeBucket;
+                    this.selectedDatasetType = datasetType;
+                    console.log("🎯 New chart selection:", {
+                        timeBucket: this.selectedTimeBucket,
+                        datasetType: this.selectedDatasetType
+                    });
+                }
+            } else {
+                // Clear selection if clicking empty area
+                console.log("🔄 CLEARING - empty area clicked");
+                this.selectedTimeBucket = null;
+                this.selectedDatasetType = null;
+                console.log("🔄 Cleared chart selection - clicked empty area");
+            }
+            
+            console.log("🖱️ State AFTER click:", {
+                selectedTimeBucket: this.selectedTimeBucket,
+                selectedDatasetType: this.selectedDatasetType
+            });
+            
+            // Force Vue to update
+            this.$nextTick(() => {
+                console.log("🖱️ After $nextTick:", {
+                    baseFilteredDataLength: this.baseFilteredData?.length || 0,
+                    filteredTableDataLength: this.filteredTableData?.length || 0,
+                    lateReleaseChartLabels: this.lateReleaseChartData?.labels?.length || 0,
+                    lateReleaseChartDatasetsCount: this.lateReleaseChartData?.datasets?.length || 0,
+                    firstDatasetData: this.lateReleaseChartData?.datasets?.[0]?.data || []
+                });
+                console.log("🖱️ ====== CHART BAR CLICK END ======");
+            });
+        },
+
+        // Filter data by selected time bucket from chart click
+        filterByTimeBucket(data, timeBucket, datasetType) {
+            console.log("🔍 filterByTimeBucket called with:", {
+                dataCount: data.length,
+                timeBucket,
+                datasetType
+            });
+
+            // Special handling for "No Critical" bucket
+            if (timeBucket === "No Critical" || datasetType.toLowerCase().includes("parts with deliverable")) {
+                console.log("🎯 Handling No Critical bucket");
+                
+                const noCriticalResults = data.filter(item => {
+                    // For "No Critical", we want parts that have a phase but no critical release date
+                    const hasPhase = item.phase && item.phase.trim() !== "";
+                    const hasCriticalDate = item.criticalRelease && item.criticalRelease.trim() !== "" && item.criticalRelease !== "N/A";
+                    const result = hasPhase && !hasCriticalDate;
+                    
+                    if (hasPhase) {
+                        console.log(result ? "✅" : "❌", "No Critical check:", {
+                            partNo: item.partNoWithRev,
+                            phase: item.phase,
+                            criticalRelease: item.criticalRelease,
+                            hasCriticalDate,
+                            result
+                        });
+                    }
+                    
+                    return result;
+                });
+                
+                console.log("📊 No Critical filtering results:", {
+                    originalCount: data.length,
+                    filteredCount: noCriticalResults.length,
+                    sampleResults: noCriticalResults.slice(0, 3).map(item => ({
+                        partNo: item.partNoWithRev,
+                        phase: item.phase,
+                        criticalRelease: item.criticalRelease
+                    }))
+                });
+                
+                return noCriticalResults;
+            }
+
+            // Handle time-based buckets (On-Time, 1 wks, 2 wks, etc.)
+            console.log("⏰ Handling time-based bucket:", timeBucket);
+
+            // Parse time bucket to get weeks
+            let weeksLate;
+            if (timeBucket === "On-Time") {
+                weeksLate = 0;
+            } else if (timeBucket.includes(">4")) {
+                weeksLate = 5; // Represent >4 weeks as 5+ weeks  
+            } else {
+                const match = timeBucket.match(/(\d+)\s*wks?/);
+                weeksLate = match ? parseInt(match[1]) : 0;
+            }
+
+            console.log("⏰ Time bucket parsing:", { timeBucket, weeksLate });
+
+            // Filter by both dataset type and time bucket
+            const timeFilteredResults = data.filter(item => {
+                // First, must have a critical date for time-based filtering
+                const criticalDate = item.criticalRelease;
+                if (!criticalDate || criticalDate.trim() === "" || criticalDate === "N/A") {
+                    return false; // No critical date means it can't be in a time bucket
+                }
+
+                // Check dataset type (released vs unreleased)
+                const isReleased = !!(item.actualRelease && item.actualRelease.trim() !== "" && item.actualRelease.toUpperCase() !== "N/A");
+                let matchesDatasetType = false;
+                
+                if (datasetType.toLowerCase().includes("unreleased")) {
+                    matchesDatasetType = !isReleased;
+                } else if (datasetType.toLowerCase().includes("released")) {
+                    matchesDatasetType = isReleased;
+                } else {
+                    // If dataset type is unclear, accept both
+                    matchesDatasetType = true;
+                }
+                
+                if (!matchesDatasetType) {
+                    return false;
+                }
+
+                // Calculate weeks late for this item
+                try {
+                    const critical = new Date(criticalDate);
+                    const compareDate = isReleased ? new Date(item.actualRelease) : new Date();
+                    
+                    const timeDiff = compareDate - critical;
+                    const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+                    const itemWeeksLate = Math.max(0, Math.ceil(daysDiff / 7));
+
+                    // Match the time bucket
+                    let matches = false;
+                    if (timeBucket === "On-Time") {
+                        matches = itemWeeksLate === 0 || daysDiff < 0; // On-time or early
+                    } else if (timeBucket.includes(">4")) {
+                        matches = itemWeeksLate > 4;
+                    } else {
+                        matches = itemWeeksLate === weeksLate;
+                    }
+
+                    if (matches) {
+                        console.log("✅ Time bucket match:", {
+                            partNo: item.partNoWithRev,
+                            itemWeeksLate,
+                            expectedWeeks: weeksLate,
+                            timeBucket,
+                            daysDiff,
+                            isReleased
+                        });
+                    }
+
+                    return matches;
+                } catch (error) {
+                    console.error("❌ Date calculation error:", {
+                        partNo: item.partNoWithRev,
+                        criticalDate,
+                        actualRelease: item.actualRelease,
+                        error: error.message
+                    });
+                    return false;
+                }
+            });
+
+            console.log("📊 Time bucket filtering results:", {
+                originalCount: data.length,
+                filteredCount: timeFilteredResults.length,
+                timeBucket,
+                datasetType
+            });
+
+            return timeFilteredResults;
+        },
+
         // Calculate dynamic width for dropdown based on selected value
         getDropdownWidth(value, label) {
             if (!value && !label) return "140px"; // Default minimum width
@@ -5446,6 +5749,10 @@ export default {
             console.log("🗑️ Clearing all caches and refreshing data...");
             this.clearingCache = true;
             
+            // Store current data to display during reload
+            const previousTableData = [...this.tableData];
+            const previousChartData = { ...this.chartData };
+            
             try {
                 // Clear all cache sources
                 
@@ -5475,9 +5782,8 @@ export default {
                 });
                 console.log("✅ Local storage cleared (preserved user preferences)");
                 
-                // 6. Reset component data
-                this.tableData = [];
-                this.chartData = { labels: [], datasets: [] };
+                // 6. DON'T clear component data immediately - keep displaying old data during reload
+                // Reset filter options but keep data displaying
                 this.ataChapterGroups = ["All"];
                 this.engSystemGroups = ["All"];
                 this.makeBuyOptions = ["All"];
@@ -5486,21 +5792,49 @@ export default {
                 // 7. Refresh data from API
                 if (this.filterValues.phase && this.currentDataType) {
                     console.log("🔄 Refreshing data from API...");
+                    
+                    // Set loading state to show we're refreshing
+                    this.setLoadingDialog({
+                        headline: "Refreshing Data",
+                        detail: "Cache cleared - reloading fresh data",
+                        status: "Fetching updated data from API...",
+                        progressLabel: "Clearing cache and refreshing",
+                        percent: 25,
+                        targetPercent: 90,
+                        progressInterval: 100
+                    });
+                    
+                    // Fetch new data 
                     await this.fetchData(this.filterValues.phase);
                     console.log("✅ Data refreshed from API");
+                    
+                    // Clear cached parts data to ensure chart uses fresh data
+                    this.cachedPartsData = null;
+                    
                 } else {
-                    console.log("ℹ️ No phase or data type selected, skipping data refresh");
+                    console.log("ℹ️ No phase or data type selected, clearing data display");
+                    // Only clear data if no phase/type is selected
+                    this.tableData = [];
+                    this.chartData = { labels: [], datasets: [] };
                 }
                 
                 // Show success message
-                this.showSnackbar({ message: "Cache cleared and data refreshed successfully!", type: "success" });
+                this.$nextTick(() => {
+                    this.showSnackbar({ message: "Cache cleared and data refreshed successfully!", type: "success" });
+                });
                 
             } catch (error) {
                 console.error("❌ Error clearing cache:", error);
+                
+                // Restore previous data on error
+                this.tableData = previousTableData;
+                this.chartData = previousChartData;
+                
                 this.showSnackbar({ message: "Error clearing cache: " + error.message, type: "error" });
             } finally {
                 this.clearingCache = false;
                 this.showClearCacheDialog = false; // Close the dialog
+                this.loading = false; // Ensure loading state is cleared
             }
         },
 
@@ -5792,6 +6126,19 @@ export default {
          */
         updateChartFromFiltered() {
             console.log("🔄 Updating chart from filtered data using ChartDataService...");
+            
+            // Debug: Check what data we're passing to ChartDataService
+            console.log("🔍 DEBUG - updateChartFromFiltered data check:", {
+                filteredTableDataLength: this.filteredTableData?.length || 0,
+                currentDataType: this.currentDataType,
+                selectedTimeBucket: this.selectedTimeBucket,
+                selectedDatasetType: this.selectedDatasetType,
+                firstFewItems: this.filteredTableData?.slice(0, 3).map(item => ({
+                    partNo: item.partNoWithRev,
+                    phase: item.phase,
+                    criticalRelease: item.criticalRelease
+                })) || []
+            });
             
             // Use ChartDataService to create complete chart data
             this.chartData = chartDataService.createChartData(

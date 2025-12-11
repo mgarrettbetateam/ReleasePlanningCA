@@ -442,8 +442,8 @@
                         <v-icon left color="orange" size="20">mdi-chart-bar</v-icon>
                         <span class="text-subtitle-1 font-weight-medium">Critical Release - Actual Release</span>
                         <v-spacer />
-                        <!-- Enhanced Legend inline in header -->
-                        <div class="d-flex align-center">
+                        <!-- Enhanced Legend inline in header (hidden) -->
+                        <div v-if="false" class="d-flex align-center">
                             <v-chip 
                                 small 
                                 :color="showUnreleasedBar ? 'primary' : 'grey'"
@@ -489,6 +489,7 @@
                                 type="bar"
                                 :data="lateReleaseChartData"
                                 :options="lateReleaseChartOptions"
+                                :showExportButton="false"
                                 style="flex: 1; width: 100%;"
                             />
                             <div v-if="!lateReleaseChartData.labels || lateReleaseChartData.labels.length === 0" class="mt-2 text-caption text--secondary text-center">
@@ -2398,7 +2399,26 @@ export default {
                 });
             }
 
-            return filteredHeaders;
+            // Enhance tooltips for date columns with date range information
+            return filteredHeaders.map(header => {
+                if (header.value === "tgtRelease") {
+                    return {
+                        ...header,
+                        tooltip: header.tooltip ? `${header.tooltip}\n\n${this.targetReleaseDateRange}` : `Target Release Date\n\n${this.targetReleaseDateRange}`
+                    };
+                } else if (header.value === "actualRelease") {
+                    return {
+                        ...header,
+                        tooltip: header.tooltip ? `${header.tooltip}\n\n${this.actualReleaseDateRange}` : `Actual Release Date\n\n${this.actualReleaseDateRange}`
+                    };
+                } else if (header.value === "criticalRelease") {
+                    return {
+                        ...header,
+                        tooltip: header.tooltip ? `${header.tooltip}\n\n${this.criticalReleaseDateRange}` : `Critical Release Date\n\n${this.criticalReleaseDateRange}`
+                    };
+                }
+                return header;
+            });
         },
 
         // Filter configuration using FilterService
@@ -3363,6 +3383,21 @@ export default {
             handler() {
                 this.lateReleaseChartKey++;
             }
+        },
+
+        targetReleaseDateRange() {
+            const dates = this.filteredTableData.map(item => item["tgtRelease"]);
+            return this.calculateDateRange(dates);
+        },
+
+        actualReleaseDateRange() {
+            const dates = this.filteredTableData.map(item => item["actualRelease"]);
+            return this.calculateDateRange(dates);
+        },
+
+        criticalReleaseDateRange() {
+            const dates = this.filteredTableData.map(item => item["criticalRelease"]);
+            return this.calculateDateRange(dates);
         }
     },
     
@@ -3472,6 +3507,38 @@ export default {
             const finalWidth = Math.max(140, calculatedWidth + 8);
             
             return `${finalWidth}px`;
+        },
+
+        calculateDateRange(dateArray) {
+            if (!dateArray || dateArray.length === 0) {
+                return "No dates available";
+            }
+            
+            const validDates = dateArray.filter(date => {
+                return date && date !== "N/A" && date !== "" && !isNaN(new Date(date).getTime());
+            });
+            
+            if (validDates.length === 0) {
+                return "No valid dates";
+            }
+            
+            const dates = validDates.map(date => new Date(date)).sort((a, b) => a - b);
+            const minDate = dates[0];
+            const maxDate = dates[dates.length - 1];
+            
+            const formatDate = date => {
+                return date.toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric"
+                });
+            };
+            
+            if (minDate.getTime() === maxDate.getTime()) {
+                return `Date: ${formatDate(minDate)}`;
+            } else {
+                return `Range: ${formatDate(minDate)} → ${formatDate(maxDate)}`;
+            }
         },
         
         // Kiosk Mode Pagination Methods

@@ -410,8 +410,24 @@
                     <v-card-text class="pa-2" :class="isKioskMode ? 'kiosk-chart-content' : ''">
                         <!-- Reduce chart height by 25% -->
                         <div style="height: 285px; width: 100%; display: flex; flex-direction: column;">
+                            <!-- Show message when viewing No Critical items -->
+                            <div v-if="isViewingNoCriticalItems" class="no-chart-data d-flex flex-column align-center justify-center" style="flex: 1;">
+                                <v-icon size="64" color="grey lighten-2">mdi-calendar-remove</v-icon>
+                                <h4 class="mt-4">No Timeline Data</h4>
+                                <p class="text-center mt-2 mx-4">Items without critical dates cannot be displayed on a timeline chart.<br>View the table below for details.</p>
+                                <v-btn
+                                    color="primary"
+                                    outlined
+                                    small
+                                    class="mt-3"
+                                    @click="resetLateReleaseChart()"
+                                >
+                                    <v-icon small left>mdi-filter-remove-outline</v-icon>
+                                    Clear Filter
+                                </v-btn>
+                            </div>
                             <ReleaseChart
-                                v-if="chartData.labels?.length > 0"
+                                v-else-if="chartData.labels?.length > 0"
                                 ref="lineChart"
                                 :chart-data="focusedChartData"
                                 :chart-options="dynamicChartOptions"
@@ -580,10 +596,10 @@
                         {{ filteredTableData.length }} Items
                     </v-chip>
                     <!-- Export menu -->
-                    <v-menu v-if="filteredTableData.length > 0" bottom left>
+                    <v-menu v-if="filteredTableData.length > 0" bottom left :disabled="loadingExport">
                         <template #activator="{ on, attrs }">
-                            <v-btn icon small v-bind="attrs" v-on="on">
-                                <v-icon>mdi-download</v-icon>
+                            <v-btn icon small v-bind="attrs" v-on="on" :loading="loadingExport" :disabled="loadingExport">
+                                <v-icon v-if="!loadingExport">mdi-download</v-icon>
                             </v-btn>
                         </template>
                         <v-list>
@@ -2084,6 +2100,9 @@ export default {
                 phase: "initializing"
             },
             
+            // Export loading state
+            loadingExport: false,
+            
             // Settings dialog
             settingsDialog: false,
             defaultProgram: "All",
@@ -2201,6 +2220,11 @@ export default {
             }
             
             return labels;
+        },
+
+        // Check if we're currently viewing "No Critical" items
+        isViewingNoCriticalItems() {
+            return this.selectedTimeBucket === "No Critical" || this.zoomedTimeBucket === "No Critical";
         },
 
         // Kiosk mode pagination computed properties
@@ -3815,17 +3839,25 @@ export default {
                 console.log("🎯 Handling No Critical bucket");
                 
                 const noCriticalResults = data.filter(item => {
-                    // For "No Critical", we want parts that have a phase but no critical release date
-                    const hasPhase = item.phase && item.phase.trim() !== "";
-                    const hasCriticalDate = item.criticalRelease && item.criticalRelease.trim() !== "" && item.criticalRelease !== "N/A";
-                    const result = hasPhase && !hasCriticalDate;
+                    // Match bar chart logic: check multiple field names for critical date
+                    const criticalDate = item.criticalRelease || item.criticalReleaseDate || item["Critical Release"];
                     
-                    if (hasPhase) {
+                    // Match bar chart logic: treat null, empty, "N/A" as no critical date
+                    const hasNoCriticalDate = !criticalDate || criticalDate === "N/A" || criticalDate === "" || criticalDate === null;
+                    
+                    // For "No Critical", we want parts from the filtered phase that have no critical release date
+                    const hasPhase = item.phase && item.phase.trim() !== "";
+                    const result = hasPhase && hasNoCriticalDate;
+                    
+                    if (hasPhase || hasNoCriticalDate) {
                         console.log(result ? "✅" : "❌", "No Critical check:", {
                             partNo: item.partNoWithRev,
                             phase: item.phase,
                             criticalRelease: item.criticalRelease,
-                            hasCriticalDate,
+                            criticalReleaseDate: item.criticalReleaseDate,
+                            criticalDateFound: criticalDate,
+                            hasNoCriticalDate,
+                            hasPhase,
                             result
                         });
                     }
@@ -3839,7 +3871,9 @@ export default {
                     sampleResults: noCriticalResults.slice(0, 3).map(item => ({
                         partNo: item.partNoWithRev,
                         phase: item.phase,
-                        criticalRelease: item.criticalRelease
+                        criticalRelease: item.criticalRelease,
+                        criticalReleaseDate: item.criticalReleaseDate,
+                        criticalDateAlt: item["Critical Release"]
                     }))
                 });
                 
@@ -5344,6 +5378,9 @@ export default {
          * Export table data in the specified format using ExportService
          */
         async exportTableData(format) {
+            // Set export loading state to show spinner on export button
+            this.loadingExport = true;
+            
             // Show export progress dialog
             this.setLoadingDialog({
                 headline: "Exporting Data",
@@ -5387,10 +5424,11 @@ export default {
                 // Show error message to user
                 alert("Export failed. Please try again.");
             } finally {
-                // Hide the dialog after a short delay to show completion
+                // Hide the dialog and reset export loading state after a short delay
                 const COMPLETION_DELAY = 1000;
                 setTimeout(() => {
                     this.loading = false;
+                    this.loadingExport = false;
                 }, COMPLETION_DELAY);
             }
         },

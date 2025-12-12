@@ -472,18 +472,6 @@
                             />
                         </v-overlay>
                         
-                        <!-- Under Construction Overlay -->
-                        <div class="under-construction-overlay">
-                            <v-chip
-                                color="warning"
-                                text-color="white"
-                                class="under-construction-chip"
-                            >
-                                <v-icon small left>mdi-hammer-wrench</v-icon>
-                                Under Construction
-                            </v-chip>
-                        </div>
-                        
                         <!-- Reduce chart height by 25% -->
                         <div style="height: 285px; width: 100%; position: relative;">
                             <!-- Direct Chart.js v4 canvas - following candle bar pattern -->
@@ -1807,24 +1795,6 @@
     background-color: #ffb74d !important; 
     box-shadow: 0 4px 12px rgba(255, 152, 0, 0.5);
   }
-}
-
-/* Under Construction Overlay for Bar Chart */
-.under-construction-overlay {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 5;
-  pointer-events: none;
-}
-
-.under-construction-chip {
-  opacity: 0.85;
-  font-weight: 600;
-  font-size: 0.9rem !important;
-  padding: 8px 16px !important;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
 }
 </style>
 
@@ -3783,6 +3753,9 @@ export default {
                         datasets: this.lateReleaseChartData.datasets.map(ds => ({
                             ...ds,
                             data: [ds.data[bucketIndex]],
+                            // Preserve the same bar color by extracting from array if needed
+                            backgroundColor: Array.isArray(ds.backgroundColor) ? ds.backgroundColor[bucketIndex] : ds.backgroundColor,
+                            borderColor: Array.isArray(ds.borderColor) ? ds.borderColor[bucketIndex] : ds.borderColor,
                             hidden: false // Ensure all datasets are visible when zoomed
                         }))
                     };

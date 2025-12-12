@@ -3529,17 +3529,15 @@ export default {
 
         // Watch baseFilteredData to refresh bar chart when dropdown filters change
         baseFilteredData: {
-            handler(newData, oldData) {
-                const newLength = newData?.length || 0;
-                const oldLength = oldData?.length || 0;
-                
-                if (newLength !== oldLength && this.currentDataType === "parts") {
-                    console.log("👀 baseFilteredData changed:", oldLength, "→", newLength, "- refreshing bar chart");
+            handler(newData) {
+                // Always regenerate when filters change (computed property handles reactivity)
+                if (newData && this.currentDataType === "parts") {
+                    console.log("👀 baseFilteredData changed - refreshing bar chart");
                     
                     // Only regenerate chart data if NOT zoomed
                     if (!this.isLateReleaseChartZoomed) {
-                        console.log("📄 Generating new chart data...");
-                        this.lateReleaseChartData = this.generateLateReleaseChartData();
+                        console.log("📄 Generating new chart data from computed property...");
+                        this.lateReleaseChartData = this.generateLateReleaseChartData;
                         console.log("✅ Chart data generated:", {
                             labels: this.lateReleaseChartData?.labels,
                             datasetCount: this.lateReleaseChartData?.datasets?.length
@@ -3730,7 +3728,18 @@ export default {
                         if (!this.lateReleaseChartData) {
                             this.lateReleaseChartData = this.generateLateReleaseChartData;
                         }
-                        this.originalLateReleaseChartData = JSON.parse(JSON.stringify(this.lateReleaseChartData));
+                        // Manual shallow clone to avoid circular reference from Chart.js
+                        this.originalLateReleaseChartData = {
+                            labels: [...this.lateReleaseChartData.labels],
+                            datasets: this.lateReleaseChartData.datasets.map(ds => ({
+                                label: ds.label,
+                                data: [...ds.data],
+                                backgroundColor: Array.isArray(ds.backgroundColor) ? [...ds.backgroundColor] : ds.backgroundColor,
+                                borderColor: Array.isArray(ds.borderColor) ? [...ds.borderColor] : ds.borderColor,
+                                borderWidth: ds.borderWidth,
+                                hidden: ds.hidden
+                            }))
+                        };
                         console.log("💾 Stored original chart data", this.originalLateReleaseChartData.labels);
                     }
                     

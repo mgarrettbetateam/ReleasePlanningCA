@@ -30,6 +30,10 @@ export class ChartDataService {
             critical: {
                 border: "#f44336",
                 background: "rgba(244, 67, 54, 0.1)"
+            },
+            missingCritical: {
+                border: "#9e9e9e",
+                background: "rgba(158, 158, 158, 0.1)"
             }
         };
 
@@ -118,10 +122,35 @@ export class ChartDataService {
         
         let criticalDate = null;
         
-        // For parts data type, use criticalRelease field
-        criticalDate = item.criticalRelease;
+        // For parts data type, check multiple possible field names
+        criticalDate = item.criticalRelease || item.criticalReleaseDate || item["Critical Release"];
         
         return this.validateDate(criticalDate);
+    }
+    
+    /**
+     * Check if item is missing a critical date
+     * @param {Object} item - Data item
+     * @param {string} dataType - Current data type (parts, cas, crs)
+     * @returns {boolean} True if item should have but is missing critical date
+     */
+    isMissingCriticalDate(item, dataType = "parts") {
+        // Only check for Parts with a phase
+        if (dataType !== "parts") {
+            return false;
+        }
+        
+        // Check if has phase (should have critical date)
+        const hasPhase = item.phase && item.phase.trim() !== "";
+        if (!hasPhase) {
+            return false;
+        }
+        
+        // Check all critical date fields (match bar chart logic)
+        const criticalDate = item.criticalRelease || item.criticalReleaseDate || item["Critical Release"];
+        const hasNoCriticalDate = !criticalDate || criticalDate === "N/A" || criticalDate === "NA" || criticalDate === "" || criticalDate === null;
+        
+        return hasNoCriticalDate;
     }
 
     /**
@@ -154,18 +183,20 @@ export class ChartDataService {
         console.log("  - Input data length:", filteredData?.length || 0);
 
         if (!filteredData || filteredData.length === 0) {
-            return { targetDates: [], actualDates: [], criticalDates: [] };
+            return { targetDates: [], actualDates: [], criticalDates: [], missingCriticalDates: [] };
         }
 
         const targetDates = [];
         const actualDates = [];
         const criticalDates = [];
+        const missingCriticalDates = [];
         
         // Process each item to extract dates
         filteredData.forEach(item => {
             const targetDate = this.extractTargetDate(item, dataType);
             const actualDate = this.extractActualDate(item, dataType);
             const criticalDate = this.extractCriticalDate(item, dataType);
+            const isMissingCritical = this.isMissingCriticalDate(item, dataType);
             
             if (targetDate) {
                 targetDates.push({
@@ -190,13 +221,24 @@ export class ChartDataService {
                     item
                 });
             }
+            
+            // For items missing critical date, use target date as approximation
+            if (isMissingCritical && targetDate) {
+                missingCriticalDates.push({
+                    date: targetDate,
+                    dateString: targetDate.toLocaleDateString(),
+                    item,
+                    isMissingCritical: true
+                });
+            }
         });
 
         console.log("  - Target dates found:", targetDates.length);
         console.log("  - Actual dates found:", actualDates.length);
         console.log("  - Critical dates found:", criticalDates.length);
+        console.log("  - Missing critical dates (using target):", missingCriticalDates.length);
 
-        return { targetDates, actualDates, criticalDates };
+        return { targetDates, actualDates, criticalDates, missingCriticalDates };
     }
 
     /**
@@ -206,12 +248,13 @@ export class ChartDataService {
      * @param {Array} criticalDates - Array of critical date objects
      * @returns {Array} Sorted array of unique date strings
      */
-    createUnifiedTimeline(targetDates, actualDates, criticalDates = []) {
+    createUnifiedTimeline(targetDates, actualDates, criticalDates = [], missingCriticalDates = []) {
         const allDates = new Set();
         
         targetDates.forEach(item => allDates.add(item.dateString));
         actualDates.forEach(item => allDates.add(item.dateString));
         criticalDates.forEach(item => allDates.add(item.dateString));
+        missingCriticalDates.forEach(item => allDates.add(item.dateString));
         
         const sortedDates = Array.from(allDates).sort((a, b) => new Date(a) - new Date(b));
         
@@ -316,15 +359,15 @@ export class ChartDataService {
         }
 
         // Build chart data using helper methods
-        const { targetDates, actualDates, criticalDates } = this.buildChartData(filteredData, dataType);
+        const { targetDates, actualDates, criticalDates, missingCriticalDates } = this.buildChartData(filteredData, dataType);
         
-        if (targetDates.length === 0 && actualDates.length === 0 && criticalDates.length === 0) {
+        if (targetDates.length === 0 && actualDates.length === 0 && criticalDates.length === 0 && missingCriticalDates.length === 0) {
             console.log("❌ ChartDataService: No valid release dates found");
             return { labels: [], datasets: [] };
         }
 
         // Create unified timeline and get labels
-        const sortedDates = this.createUnifiedTimeline(targetDates, actualDates, criticalDates);
+        const sortedDates = this.createUnifiedTimeline(targetDates, actualDates, criticalDates, missingCriticalDates);
         const labels = this.getDataTypeLabels(dataType);
 
         // Build datasets based on visibility options
@@ -359,6 +402,17 @@ export class ChartDataService {
                 sortedDates
             );
             datasets.push(criticalDataset);
+        }
+        
+        // Add grey line for items missing critical dates
+        if (missingCriticalDates.length > 0 && showCriticalLine) {
+            const missingCriticalDataset = this.createDataset(
+                missingCriticalDates, 
+                "Missing Critical Date (Approx.)", 
+                "missingCritical", 
+                sortedDates
+            );
+            datasets.push(missingCriticalDataset);
         }
 
         const chartData = { labels: sortedDates, datasets };

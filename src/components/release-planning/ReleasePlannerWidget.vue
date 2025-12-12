@@ -438,7 +438,7 @@
                 </v-card>
                 
                 <!-- Bar Chart Container - Late Release Distribution (Parts Data Only) -->
-                <v-card v-if="currentDataType === 'parts' && chartVisibility.lateReleaseChart" class="chart-card late-release-chart-card" elevation="2">
+                <v-card v-if="currentDataType === 'parts' && chartVisibility.lateReleaseChart" :key="'bar-chart-' + lateReleaseChartKey" class="chart-card late-release-chart-card" elevation="2">
                     <v-card-title class="pa-2" style="border-bottom: 1px solid #e0e0e0;">
                         <v-icon left color="orange" size="20">mdi-chart-bar</v-icon>
                         <span class="text-subtitle-1 font-weight-medium">
@@ -990,9 +990,9 @@
   grid-template-columns: 1fr 200px;
 }
 
-/* Only late release chart visible (main chart hidden) - for parts data */
-.chart-stats-row:not(:has(.chart-card:first-child)) .late-release-chart-card {
-  grid-column: 1;
+/* Only late release chart visible (main chart hidden) - bar chart expands to take full space */
+.chart-stats-row:has(.late-release-chart-card):not(:has(.chart-card:not(.late-release-chart-card))) {
+  grid-template-columns: 1fr 200px;
 }
 
 .chart-card {
@@ -3507,6 +3507,19 @@ export default {
                 this.$nextTick(() => {
                     this.setupTableDragListeners();
                 });
+            }
+        },
+
+        // Watch bar chart visibility toggle to regenerate data when turned back on
+        'chartVisibility.lateReleaseChart': {
+            handler(isVisible) {
+                if (isVisible && this.currentDataType === "parts" && this.baseFilteredData?.length > 0) {
+                    console.log("👀 Bar chart toggled ON - regenerating data");
+                    this.lateReleaseChartData = this.generateLateReleaseChartData;
+                    this.$nextTick(() => {
+                        this.lateReleaseChartKey++;
+                    });
+                }
             }
         },
 

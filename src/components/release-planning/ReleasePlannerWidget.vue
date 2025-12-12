@@ -469,7 +469,7 @@
                                 indeterminate
                                 size="64"
                                 color="primary"
-                            ></v-progress-circular>
+                            />
                         </v-overlay>
                         
                         <!-- Under Construction Overlay -->
@@ -660,7 +660,7 @@
                                 {{ header ? header.text : '' }}
                                 <v-tooltip v-if="header && header.tooltip" bottom max-width="300">
                                     <template #activator="{ on, attrs }">
-                                        <v-icon small class="ml-1" v-bind="attrs" v-on="on" color="grey">
+                                        <v-icon small class="ml-1" color="grey" v-bind="attrs" v-on="on">
                                             mdi-help-circle-outline
                                         </v-icon>
                                     </template>
@@ -2666,7 +2666,7 @@ export default {
             console.log("📊 BAR CHART DEBUG: Checking conditions:", {
                 chartVisible: true,
                 isPartsType: this.currentDataType === "parts",
-                hasData: hasData,
+                hasData,
                 willReturnEmpty: this.currentDataType !== "parts" || !hasData
             });
             

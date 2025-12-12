@@ -178,6 +178,17 @@
                                 <v-icon small left>mdi-chart-line</v-icon>
                                 Release Chart
                             </v-btn>
+                            <v-btn
+                                small
+                                :value="chartVisibility.lateReleaseChart"
+                                :color="chartVisibility.lateReleaseChart ? 'orange' : 'grey'"
+                                :outlined="!chartVisibility.lateReleaseChart"
+                                :dark="chartVisibility.lateReleaseChart"
+                                @click="chartVisibility.lateReleaseChart = !chartVisibility.lateReleaseChart"
+                            >
+                                <v-icon small left>mdi-chart-bar</v-icon>
+                                Critical Release
+                            </v-btn>
                         </v-btn-toggle>
                     </div>
                     
@@ -397,7 +408,8 @@
                     </v-card-title>
                     
                     <v-card-text class="pa-2" :class="isKioskMode ? 'kiosk-chart-content' : ''">
-                        <div style="height: 100%; width: 100%; display: flex; flex-direction: column;">
+                        <!-- Reduce chart height by 25% -->
+                        <div style="height: 285px; width: 100%; display: flex; flex-direction: column;">
                             <ReleaseChart
                                 v-if="chartData.labels?.length > 0"
                                 ref="lineChart"
@@ -426,53 +438,54 @@
                 </v-card>
                 
                 <!-- Bar Chart Container - Late Release Distribution (Parts Data Only) -->
-                <v-card v-if="currentDataType === 'parts'" class="chart-card late-release-chart-card" elevation="2">
+                <v-card v-if="currentDataType === 'parts' && chartVisibility.lateReleaseChart" class="chart-card late-release-chart-card" elevation="2">
                     <v-card-title class="pa-2" style="border-bottom: 1px solid #e0e0e0;">
                         <v-icon left color="orange" size="20">mdi-chart-bar</v-icon>
-                        <span class="text-subtitle-1 font-weight-medium">Critical Release - Actual Release</span>
+                        <span class="text-subtitle-1 font-weight-medium">
+                            Critical Release - Actual Release
+                            <v-chip v-if="isLateReleaseChartZoomed" x-small color="orange" class="ml-2">
+                                Zoomed: {{ zoomedTimeBucket }}
+                            </v-chip>
+                        </span>
                         <v-spacer />
-                        <!-- Enhanced Legend inline in header (hidden) -->
-                        <div v-if="false" class="d-flex align-center">
-                            <v-chip 
-                                small 
-                                :color="showUnreleasedBar ? 'primary' : 'grey'"
-                                class="legend-chip"
-                                :outlined="!showUnreleasedBar"
-                                dark
-                                @click="showUnreleasedBar = !showUnreleasedBar"
-                            >
-                                <v-icon small left>{{ showUnreleasedBar ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
-                                <span class="font-weight-bold">
-                                    Unreleased
-                                </span>
-                            </v-chip>
-                            <v-chip 
-                                small 
-                                :color="showReleasedBar ? 'primary' : 'grey'"
-                                class="legend-chip"
-                                :outlined="!showReleasedBar"
-                                dark
-                                @click="showReleasedBar = !showReleasedBar"
-                            >
-                                <v-icon small left>{{ showReleasedBar ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
-                                <span class="font-weight-bold">
-                                    Released
-                                </span>
-                            </v-chip>
-                            <v-chip 
-                                small 
-                                :color="showNoCriticalBar ? 'grey darken-1' : 'grey'"
-                                class="legend-chip"
-                                dark
-                                @click="showNoCriticalBar = !showNoCriticalBar"
-                            >
-                                <v-icon small left>{{ showNoCriticalBar ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
-                                No Critical
-                            </v-chip>
-                        </div>
+                        <!-- Reset Selection Button -->
+                        <v-btn
+                            small
+                            outlined
+                            color="grey"
+                            class="ml-2"
+                            :title="isLateReleaseChartZoomed ? 'Reset zoom and clear filter' : 'Clear chart selection'"
+                            :loading="chartInteractionLoading"
+                            @click="resetLateReleaseChart()"
+                        >
+                            <v-icon small left>{{ isLateReleaseChartZoomed ? 'mdi-magnify-minus' : 'mdi-filter-remove-outline' }}</v-icon>
+                            {{ isLateReleaseChartZoomed ? 'Reset Zoom' : 'Clear Selection' }}
+                        </v-btn>
                     </v-card-title>
                     <v-card-text class="pa-2">
-                        <div style="height: 100%; width: 100%; position: relative;">
+                        <!-- Loading Overlay -->
+                        <v-overlay :value="chartInteractionLoading" absolute>
+                            <v-progress-circular
+                                indeterminate
+                                size="64"
+                                color="primary"
+                            ></v-progress-circular>
+                        </v-overlay>
+                        
+                        <!-- Under Construction Overlay -->
+                        <div class="under-construction-overlay">
+                            <v-chip
+                                color="warning"
+                                text-color="white"
+                                class="under-construction-chip"
+                            >
+                                <v-icon small left>mdi-hammer-wrench</v-icon>
+                                Under Construction
+                            </v-chip>
+                        </div>
+                        
+                        <!-- Reduce chart height by 25% -->
+                        <div style="height: 285px; width: 100%; position: relative;">
                             <!-- Direct Chart.js v4 canvas - following candle bar pattern -->
                             <canvas 
                                 ref="lateReleaseChartCanvas"
@@ -1008,10 +1021,10 @@
 /* Responsive layout for smaller screens */
 @media (max-width: 1200px) {
   .chart-stats-row {
-    grid-template-columns: 1fr 200px;
+    grid-template-columns: 1fr;
   }
   
-  .chart-card:nth-child(2) {
+  .stats-card {
     display: none;
   }
 }
@@ -1795,6 +1808,24 @@
     box-shadow: 0 4px 12px rgba(255, 152, 0, 0.5);
   }
 }
+
+/* Under Construction Overlay for Bar Chart */
+.under-construction-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  pointer-events: none;
+}
+
+.under-construction-chip {
+  opacity: 0.85;
+  font-weight: 600;
+  font-size: 0.9rem !important;
+  padding: 8px 16px !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+}
 </style>
 
 <style>
@@ -1893,6 +1924,17 @@ export default {
             urlSyncDelay: 400,
             isApplyingQuery: false,
             
+            // Loading state for chart interactions
+            chartInteractionLoading: false,
+            
+            // Zoom state for late release chart
+            originalLateReleaseChartData: null,
+            isLateReleaseChartZoomed: false,
+            zoomedTimeBucket: null,
+            
+            // Late release chart data (was computed, now data for zoom support)
+            lateReleaseChartData: null,
+            
             // Filter values - consolidated object for UniversalFilterControls
             filterValues: {
                 program: "",
@@ -1984,7 +2026,8 @@ export default {
             
             // Chart visibility controls
             chartVisibility: {
-                releaseChart: true
+                releaseChart: true,
+                lateReleaseChart: false
             },
             
             // Bar chart legend visibility controls
@@ -2603,7 +2646,7 @@ export default {
         },
         
         // Late release bar chart data - only computes when chart is visible and on parts data
-        lateReleaseChartData() {
+        generateLateReleaseChartData() {
             console.log("📊 BAR CHART DEBUG: lateReleaseChartData() called!", {
                 chartVisible: true,
                 dataType: this.currentDataType,
@@ -2855,6 +2898,24 @@ export default {
                     borderWidth: 1,
                     cornerRadius: 6,
                     displayColors: true,
+                    filter: function(tooltipItem, data) {
+                        const dataset = data.datasets[tooltipItem.datasetIndex];
+                        const xLabel = tooltipItem.xLabel;
+                        const value = tooltipItem.yLabel;
+                        
+                        // Hide the grey "No Critical" dataset from tooltips on the first 5 bars
+                        if (dataset.label === "Parts with Phase, but no Critical Date" && 
+                            xLabel !== "No Critical") {
+                            return false;
+                        }
+                        
+                        // On "No Critical" bar, only show datasets with non-zero values
+                        if (xLabel === "No Critical" && value === 0) {
+                            return false;
+                        }
+                        
+                        return true;
+                    },
                     callbacks: {
                         title: function(tooltipItem, data) {
                             const label = tooltipItem[0].label;
@@ -3224,6 +3285,19 @@ export default {
     },
 
     watch: {
+        // Watch for chart key changes to trigger re-initialization
+        lateReleaseChartKey(newKey, oldKey) {
+            console.log("🔑 ====== LATE RELEASE CHART KEY CHANGED ======");
+            console.log("🔑 Key changed from", oldKey, "to", newKey);
+            console.log("🔑 isZoomed:", this.isLateReleaseChartZoomed);
+            console.log("🔑 chartData exists:", !!this.lateReleaseChartData);
+            console.log("🔑 chart instance exists:", !!this.lateReleaseChart);
+            this.$nextTick(() => {
+                console.log("🔑 In $nextTick, calling initializeLateReleaseChart");
+                this.initializeLateReleaseChart();
+            });
+        },
+
         isKioskMode: {
             handler(isKiosk) {
                 if (isKiosk) {
@@ -3461,7 +3535,20 @@ export default {
                 
                 if (newLength !== oldLength && this.currentDataType === "parts") {
                     console.log("👀 baseFilteredData changed:", oldLength, "→", newLength, "- refreshing bar chart");
+                    
+                    // Only regenerate chart data if NOT zoomed
+                    if (!this.isLateReleaseChartZoomed) {
+                        console.log("📄 Generating new chart data...");
+                        this.lateReleaseChartData = this.generateLateReleaseChartData();
+                        console.log("✅ Chart data generated:", {
+                            labels: this.lateReleaseChartData?.labels,
+                            datasetCount: this.lateReleaseChartData?.datasets?.length
+                        });
+                    }
+                    
+                    // Increment key in nextTick to ensure data is set first
                     this.$nextTick(() => {
+                        console.log("🔑 Incrementing lateReleaseChartKey to trigger render");
                         this.lateReleaseChartKey++;
                     });
                 }
@@ -3482,12 +3569,6 @@ export default {
         criticalReleaseDateRange() {
             const dates = this.filteredTableData.map(item => item["criticalRelease"]);
             return this.calculateDateRange(dates);
-        },
-
-        // Watch for chart key changes to trigger re-initialization
-        lateReleaseChartKey() {
-            console.log("👀 lateReleaseChartKey changed, initializing chart with key:", this.lateReleaseChartKey);
-            this.initializeLateReleaseChart();
         }
     },
     
@@ -3583,16 +3664,17 @@ export default {
     
     methods: {
         // Handle chart bar click for filtering table data
-        handleChartBarClick(event, elements) {
-            console.log("🖱️ ====== CHART BAR CLICK START ======");
-            console.log("🖱️ Chart bar clicked!", { event, elements });
+        async handleChartBarClick(event, elements) {
+            this.chartInteractionLoading = true;
+            
+            try {
+                console.log("🖱️ ====== CHART BAR CLICK START ======");
+                console.log("🖱️ Chart bar clicked!", { event, elements });
             console.log("🖱️ Current state BEFORE click:", {
                 selectedTimeBucket: this.selectedTimeBucket,
                 selectedDatasetType: this.selectedDatasetType,
-                baseFilteredDataLength: this.baseFilteredData?.length || 0,
-                filteredTableDataLength: this.filteredTableData?.length || 0,
-                lateReleaseChartLabels: this.lateReleaseChartData?.labels || [],
-                lateReleaseChartDatasetsCount: this.lateReleaseChartData?.datasets?.length || 0
+                isZoomed: this.isLateReleaseChartZoomed,
+                zoomedBucket: this.zoomedTimeBucket
             });
             
             if (elements && elements.length > 0) {
@@ -3611,57 +3693,118 @@ export default {
                     timeBucket,
                     datasetType,
                     datasetIndex,
-                    index,
-                    allDatasets: this.lateReleaseChartData.datasets.map(d => d.label)
+                    index
                 });
-
-                // Do nothing when clicking the grey "No Critical" bar
-                if (timeBucket === "No Critical" || (datasetType && datasetType.toLowerCase().includes("no critical"))) {
-                    console.log("⛔ Ignoring click on No Critical (grey) bar");
-                    console.log("🖱️ ====== CHART BAR CLICK END ======");
-                    return;
-                }
                 
-                // If clicking the same bar, clear selection (toggle off)
-                if (this.selectedTimeBucket === timeBucket && this.selectedDatasetType === datasetType) {
-                    console.log("🔄 TOGGLING OFF - same bar clicked");
+                // If clicking the same bar, toggle off (zoom out AND clear filter)
+                if (this.selectedTimeBucket === timeBucket && 
+                    this.selectedDatasetType === datasetType &&
+                    this.isLateReleaseChartZoomed) {
+                    console.log("🔄 TOGGLING OFF - same bar clicked, resetting zoom and filter");
+                    
+                    // Clear both zoom and filter state
                     this.selectedTimeBucket = null;
                     this.selectedDatasetType = null;
-                    console.log("🔄 Cleared chart selection - showing all data");
+                    this.isLateReleaseChartZoomed = false;
+                    this.zoomedTimeBucket = null;
+                    
+                    // Restore original chart data
+                    if (this.originalLateReleaseChartData) {
+                        this.lateReleaseChartData = this.originalLateReleaseChartData;
+                        this.originalLateReleaseChartData = null;
+                        
+                        // Reinitialize chart with full data
+                        if (this.lateReleaseChart) {
+                            this.lateReleaseChart.destroy();
+                            this.lateReleaseChart = null;
+                        }
+                        this.initializeLateReleaseChart();
+                    }
                 } else {
-                    console.log("🎯 SETTING NEW SELECTION");
-                    // Set new selection
+                    // New bar clicked - zoom in AND filter
+                    console.log("🔍 ZOOMING IN and FILTERING to:", timeBucket, datasetType);
+                    
+                    // Store original chart data on first zoom
+                    if (!this.isLateReleaseChartZoomed) {
+                        // Ensure we have full data before storing
+                        if (!this.lateReleaseChartData) {
+                            this.lateReleaseChartData = this.generateLateReleaseChartData;
+                        }
+                        this.originalLateReleaseChartData = JSON.parse(JSON.stringify(this.lateReleaseChartData));
+                        console.log("💾 Stored original chart data", this.originalLateReleaseChartData.labels);
+                    }
+                    
+                    // Set zoom state
+                    this.isLateReleaseChartZoomed = true;
+                    this.zoomedTimeBucket = timeBucket;
+                    
+                    // Set filter state (for table filtering)
                     this.selectedTimeBucket = timeBucket;
-                    this.selectedDatasetType = datasetType;
-                    console.log("🎯 New chart selection:", {
-                        timeBucket: this.selectedTimeBucket,
-                        datasetType: this.selectedDatasetType
+                    this.selectedDatasetType = "BOTH";
+                    
+                    // Create zoomed chart data with only the clicked bucket
+                    const bucketIndex = this.lateReleaseChartData.labels.indexOf(timeBucket);
+                    
+                    console.log("🔍 Creating zoomed data:", {
+                        timeBucket,
+                        bucketIndex,
+                        originalLabels: this.lateReleaseChartData.labels,
+                        originalDatasets: this.lateReleaseChartData.datasets.map(ds => ({
+                            label: ds.label,
+                            data: ds.data,
+                            hidden: ds.hidden
+                        }))
                     });
+                    
+                    const zoomedData = {
+                        labels: [timeBucket],
+                        datasets: this.lateReleaseChartData.datasets.map(ds => ({
+                            ...ds,
+                            data: [ds.data[bucketIndex]],
+                            hidden: false // Ensure all datasets are visible when zoomed
+                        }))
+                    };
+                    
+                    console.log("🔍 Zoomed data created:", {
+                        labels: zoomedData.labels,
+                        datasets: zoomedData.datasets.map(ds => ({
+                            label: ds.label,
+                            data: ds.data,
+                            hidden: ds.hidden
+                        }))
+                    });
+                    
+                    this.lateReleaseChartData = zoomedData;
+                    
+                    // ALWAYS use key increment for reliable chart recreation
+                    console.log("🔄 Force re-initializing chart with key increment");
+                    this.$nextTick(() => {
+                        this.lateReleaseChartKey++;
+                    });
+                    
+                    console.log("✅ Zoomed to bucket:", timeBucket);
                 }
-            } else {
-                // Clear selection if clicking empty area
-                console.log("🔄 CLEARING - empty area clicked");
-                this.selectedTimeBucket = null;
-                this.selectedDatasetType = null;
-                console.log("🔄 Cleared chart selection - clicked empty area");
             }
             
-            console.log("🖱️ State AFTER click:", {
-                selectedTimeBucket: this.selectedTimeBucket,
-                selectedDatasetType: this.selectedDatasetType
-            });
+            await this.$nextTick();
             
-            // Force Vue to update
-            this.$nextTick(() => {
-                console.log("🖱️ After $nextTick:", {
-                    baseFilteredDataLength: this.baseFilteredData?.length || 0,
-                    filteredTableDataLength: this.filteredTableData?.length || 0,
-                    lateReleaseChartLabels: this.lateReleaseChartData?.labels?.length || 0,
-                    lateReleaseChartDatasetsCount: this.lateReleaseChartData?.datasets?.length || 0,
-                    firstDatasetData: this.lateReleaseChartData?.datasets?.[0]?.data || []
-                });
-                console.log("🖱️ ====== CHART BAR CLICK END ======");
+            console.log("🖱️ Current state AFTER click:", {
+                selectedTimeBucket: this.selectedTimeBucket,
+                selectedDatasetType: this.selectedDatasetType,
+                isZoomed: this.isLateReleaseChartZoomed,
+                zoomedBucket: this.zoomedTimeBucket,
+                baseFilteredDataLength: this.baseFilteredData?.length || 0,
+                filteredTableDataLength: this.filteredTableData?.length || 0
             });
+            console.log("🖱️ ====== CHART BAR CLICK END ======");
+            
+            // CA data is already cached from initial load - no preload needed
+            } finally {
+                // Small delay to show spinner briefly
+                setTimeout(() => {
+                    this.chartInteractionLoading = false;
+                }, 300);
+            }
         },
 
         // Filter data by selected time bucket from chart click
@@ -3709,25 +3852,28 @@ export default {
             }
 
             // Handle time-based buckets (On-Time, 1 wks, 2 wks, etc.)
+            // Use SAME logic as chart creation for bucket boundaries
             console.log("⏰ Handling time-based bucket:", timeBucket);
 
-            // Parse time bucket to get weeks
-            let weeksLate;
-            if (timeBucket === "On-Time") {
-                weeksLate = 0;
-            } else if (timeBucket.includes(">4")) {
-                weeksLate = 5; // Represent >4 weeks as 5+ weeks  
-            } else {
-                const match = timeBucket.match(/(\d+)\s*wks?/);
-                weeksLate = match ? parseInt(match[1]) : 0;
-            }
-
-            console.log("⏰ Time bucket parsing:", { timeBucket, weeksLate });
+            const DAYS_PER_WEEK = 7;
 
             // Filter by both dataset type and time bucket
             const timeFilteredResults = data.filter(item => {
                 // First, must have a critical date for time-based filtering
                 const criticalDate = item.criticalRelease;
+                
+                // DEBUG: Log first few items to see actual data structure
+                if (data.indexOf(item) < 5) {
+                    console.log("🔍 DEBUG - Item structure:", {
+                        index: data.indexOf(item),
+                        partNo: item.partNoWithRev,
+                        criticalRelease: item.criticalRelease,
+                        actualRelease: item.actualRelease,
+                        criticalFields: Object.keys(item).filter(k => k.toLowerCase().includes("critical")),
+                        releaseFields: Object.keys(item).filter(k => k.toLowerCase().includes("release"))
+                    });
+                }
+                
                 if (!criticalDate || criticalDate.trim() === "" || criticalDate === "N/A") {
                     return false; // No critical date means it can't be in a time bucket
                 }
@@ -3736,7 +3882,9 @@ export default {
                 const isReleased = !!(item.actualRelease && item.actualRelease.trim() !== "" && item.actualRelease.toUpperCase() !== "N/A");
                 let matchesDatasetType = false;
                 
-                if (datasetType.toLowerCase().includes("unreleased")) {
+                if (datasetType === "BOTH") {
+                    matchesDatasetType = true; // Accept all items
+                } else if (datasetType.toLowerCase().includes("unreleased")) {
                     matchesDatasetType = !isReleased;
                 } else if (datasetType.toLowerCase().includes("released")) {
                     matchesDatasetType = isReleased;
@@ -3749,32 +3897,60 @@ export default {
                     return false;
                 }
 
-                // Calculate weeks late for this item
+                // Calculate days late for this item - SAME as chart logic
                 try {
                     const critical = new Date(criticalDate);
                     const compareDate = isReleased ? new Date(item.actualRelease) : new Date();
                     
                     const timeDiff = compareDate - critical;
                     const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
-                    const itemWeeksLate = Math.max(0, Math.ceil(daysDiff / 7));
 
-                    // Match the time bucket
+                    // Match the time bucket using SAME logic as chart creation
                     let matches = false;
+                    
                     if (timeBucket === "On-Time") {
-                        matches = itemWeeksLate === 0 || daysDiff < 0; // On-time or early
-                    } else if (timeBucket.includes(">4")) {
-                        matches = itemWeeksLate > 4;
+                        // On-time or early (not late)
+                        matches = daysDiff <= 0;
+                    } else if (daysDiff <= 0) {
+                        // Item is not late, skip other buckets
+                        return false;
                     } else {
-                        matches = itemWeeksLate === weeksLate;
+                        // Item is late - use absolute days for bucket matching
+                        const diffDays = Math.abs(daysDiff);
+                        
+                        // DEBUG: Log calculation for first few late items
+                        if (data.indexOf(item) < 5 && daysDiff > 0) {
+                            console.log("🔍 DEBUG - Late item calculation:", {
+                                partNo: item.partNoWithRev,
+                                daysDiff,
+                                diffDays,
+                                timeBucket,
+                                bucketCheck: {
+                                    "1wks": diffDays <= DAYS_PER_WEEK,
+                                    "2wks": diffDays > DAYS_PER_WEEK && diffDays <= DAYS_PER_WEEK * 2,
+                                    "3wks": diffDays > DAYS_PER_WEEK * 2 && diffDays <= DAYS_PER_WEEK * 3,
+                                    ">4wks": diffDays > DAYS_PER_WEEK * 3
+                                }
+                            });
+                        }
+                        
+                        if (timeBucket === "1 wks") {
+                            matches = diffDays <= DAYS_PER_WEEK;
+                        } else if (timeBucket === "2 wks") {
+                            matches = diffDays > DAYS_PER_WEEK && diffDays <= DAYS_PER_WEEK * 2;
+                        } else if (timeBucket === "3 wks") {
+                            matches = diffDays > DAYS_PER_WEEK * 2 && diffDays <= DAYS_PER_WEEK * 3;
+                        } else if (timeBucket.includes(">4")) {
+                            matches = diffDays > DAYS_PER_WEEK * 3;
+                        }
                     }
 
                     if (matches) {
                         console.log("✅ Time bucket match:", {
                             partNo: item.partNoWithRev,
-                            itemWeeksLate,
-                            expectedWeeks: weeksLate,
-                            timeBucket,
                             daysDiff,
+                            diffDays: Math.abs(daysDiff),
+                            timeBucket,
                             isReleased
                         });
                     }
@@ -3803,6 +3979,21 @@ export default {
 
         // Initialize Late Release Chart using Chart.js directly
         initializeLateReleaseChart() {
+            console.log("🎨 ====== INITIALIZE LATE RELEASE CHART START ======");
+            console.log("🎨 Current state:", {
+                hasChartData: !!this.lateReleaseChartData,
+                isZoomed: this.isLateReleaseChartZoomed,
+                zoomedBucket: this.zoomedTimeBucket,
+                chartKey: this.lateReleaseChartKey,
+                hasExistingChart: !!this.lateReleaseChart
+            });
+            
+            // Defensive check: Skip initialization if no data available yet
+            if (!this.baseFilteredData || this.baseFilteredData.length === 0) {
+                console.warn("⚠️ No data available yet, skipping chart initialization");
+                return;
+            }
+            
             try {
                 console.log("📊 initializeLateReleaseChart called");
                 
@@ -3816,10 +4007,15 @@ export default {
                 // Wait for DOM to settle
                 this.$nextTick(() => {
                     try {
-                        // Validate chart data
+                        // Validate OR GENERATE chart data to avoid early aborts
                         if (!this.lateReleaseChartData || !this.lateReleaseChartData.datasets) {
-                            console.warn("⚠️ lateReleaseChartData not ready yet");
-                            return;
+                            console.warn("⚠️ lateReleaseChartData not ready, generating now...");
+                            this.lateReleaseChartData = this.generateLateReleaseChartData;
+
+                            if (!this.lateReleaseChartData || !this.lateReleaseChartData.datasets) {
+                                console.error("❌ Still no chart data after generation, aborting initialization");
+                                return;
+                            }
                         }
 
                         // Destroy existing chart if present
@@ -3840,11 +4036,17 @@ export default {
                             return;
                         }
 
+                        // Ensure we have chart data
+                        if (!this.lateReleaseChartData) {
+                            this.lateReleaseChartData = this.generateLateReleaseChartData;
+                        }
+                        
                         console.log("✅ Canvas ready, creating Chart.js instance with data:", {
                             labels: this.lateReleaseChartData.labels,
                             datasetCount: this.lateReleaseChartData.datasets.length,
                             firstDataset: this.lateReleaseChartData.datasets[0]?.label,
-                            firstDatasetData: this.lateReleaseChartData.datasets[0]?.data
+                            firstDatasetData: this.lateReleaseChartData.datasets[0]?.data,
+                            isZoomed: this.isLateReleaseChartZoomed
                         });
 
                         // Create Chart.js instance with our data and options
@@ -3861,6 +4063,55 @@ export default {
                 });
             } catch (error) {
                 console.error("❌ Error initializing late release chart:", error);
+            }
+        },
+
+        // Reset any selection/zoom on late release chart
+        async resetLateReleaseChart() {
+            this.chartInteractionLoading = true;
+            
+            try {
+                console.log("🔄 Resetting late release chart selection and zoom...");
+                
+                // Clear filter selection
+                this.selectedTimeBucket = null;
+                this.selectedDatasetType = null;
+                
+                // Clear zoom state and restore original data
+                if (this.isLateReleaseChartZoomed && this.originalLateReleaseChartData) {
+                    console.log("🔍 Restoring original chart data from zoom");
+                    this.lateReleaseChartData = this.originalLateReleaseChartData;
+                    this.originalLateReleaseChartData = null;
+                }
+                
+                this.isLateReleaseChartZoomed = false;
+                this.zoomedTimeBucket = null;
+                
+                // Wait for Vue to update
+                await this.$nextTick();
+                
+                // Update existing chart instead of destroying/recreating
+                if (this.lateReleaseChart) {
+                    console.log("🔄 Updating chart with full data");
+                    this.lateReleaseChart.data = this.lateReleaseChartData;
+                    this.lateReleaseChart.update();
+                    console.log("✅ Chart updated with full data");
+                } else {
+                    console.log("⚠️ No existing chart found! Force re-initializing...");
+                    // Force chart recreation by incrementing key
+                    this.$nextTick(() => {
+                        this.lateReleaseChartKey++;
+                    });
+                }
+                
+                console.log("✅ Chart zoom and selection reset complete");
+            } catch (e) {
+                console.error("❌ Error resetting late release chart:", e);
+            } finally {
+                // Small delay to show spinner
+                setTimeout(() => {
+                    this.chartInteractionLoading = false;
+                }, 300);
             }
         },
 

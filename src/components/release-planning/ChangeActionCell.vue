@@ -250,7 +250,21 @@ export default {
         
         // Only fetch data if we don't have direct props (PARTS case)
         if (!this.itemNumber) {
-            console.log("📡 PARTS item detected, making API call for Change Action data");
+            console.log("📡 PARTS item detected, checking cache for Change Action data");
+            
+            // Check synchronous memory cache first to avoid showing spinner for cached data
+            const cacheIdentifier = this.uniqueId || this.objId;
+            const cachedData = ApiService.getCachedChangeActionSync(cacheIdentifier);
+            
+            if (cachedData) {
+                // Data is in memory cache - use it immediately without spinner
+                console.log("✅ Using cached CA data (no spinner)");
+                this.setCAData(cachedData);
+                return;
+            }
+            
+            // Data not in memory cache - show spinner and fetch
+            console.log("📡 Cache miss, fetching from API");
             this.loading = true;
             
             try {

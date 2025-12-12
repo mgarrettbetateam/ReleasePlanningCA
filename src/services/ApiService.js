@@ -675,6 +675,21 @@ class ApiService {
     }
   }
 
+  /**
+   * Get cached change action data synchronously from memory cache only.
+   * @param {string} cacheIdentifier - The physical ID or unique ID
+   * @returns {Object|null} Cached data or null if not found or expired
+   */
+  getCachedChangeActionSync(cacheIdentifier) {
+    if (!cacheIdentifier) return null;
+    const memoryCacheKey = `CA:${cacheIdentifier}`;
+    const memoryCached = this.cache.get(memoryCacheKey);
+    if (memoryCached && Date.now() < memoryCached.timestamp + memoryCached.ttl) {
+      return memoryCached.data;
+    }
+    return null;
+  }
+
   // Change Action specific method with 3-tier caching (memory, IndexedDB, API)
   async fetchChangeAction(objectId, uniqueId = null, rowIndex = 0) {
     // Use unique identifier for caching if provided, otherwise fall back to objectId

@@ -5385,8 +5385,8 @@ export default {
             });
             
             try {
-                // Ensure all CA data is loaded before exporting using EXPRESS MODE
-                const exportData = await this.ensureCADataForExport();
+                // Enrich all table data with CA data from cache and API
+                const exportData = await this.enrichAllTableDataWithCA();
                 
                 this.updateLoadingDialog({
                     status: "Generating export file...",
@@ -5423,10 +5423,10 @@ export default {
         },
 
         /**
-         * Ensure CA data is loaded for all items before export (optimized with batching)
+         * Enrich all table data with CA data from cache and API
          * Includes 30-second timeout with partial export fallback
          */
-        async ensureCADataForExport() {
+        async enrichAllTableDataWithCA() {
             if (this.currentDataType !== "parts") {
                 return this.tableData; // CA data only relevant for parts
             }
@@ -5434,7 +5434,7 @@ export default {
             // Wrap the entire process in a timeout
             const EXPORT_TIMEOUT_MS = 30000; // 30 seconds
             
-            const exportPromise = this.performCADataExport();
+            const exportPromise = this.fetchAllCADataForExport();
             const timeoutPromise = new Promise((_, reject) => {
                 setTimeout(() => {
                     reject(new Error('CA data loading timeout - exporting available data'));
@@ -5446,63 +5446,98 @@ export default {
             } catch (error) {
                 if (error.message.includes('timeout')) {
                     console.warn('⏰ CA data loading timed out after 30s - proceeding with partial export');
-                    // Return current table data with whatever CA data we have
-                    const partialCount = this.tableData.filter(item => item.caNumber && item.caNumber !== "").length;
-                    const totalCount = this.tableData.length;
+                    // Merge whatever CA data we have and return
+                    const exportData = this.mergeCADataIntoExport();
+                    const itemsWithCA = exportData.filter(item => item.caNumber && item.caNumber !== "").length;
                     
                     this.updateLoadingDialog({
-                        status: `Timeout reached - exporting ${partialCount}/${totalCount} items with CA data`,
-                        progressLabel: `${Math.round(partialCount/totalCount*100)}% CA data available`,
+                        status: `Timeout - exporting ${itemsWithCA}/${exportData.length} items with CA data`,
+                        progressLabel: `${Math.round(itemsWithCA/exportData.length*100)}% CA data available`,
                         targetPercent: 90,
                         progressInterval: 50
                     });
                     
-                    return this.tableData; // Return what we have
+                    return exportData;
                 }
                 throw error;
             }
         },
         
         /**
-         * Perform the actual CA data export process
+         * Fetch all CA data for export - checks cache first, then fetches missing data
          */
-        async performCADataExport() {
-            // Get all items that don't have CA data loaded
-            const itemsNeedingCAData = this.tableData.filter(item => 
-                item.physId && (!item.caNumber || item.caNumber === "")
-            );
-            
-            if (itemsNeedingCAData.length === 0) {
-                console.log("All items already have CA data");
-                const CA_LOADING_START_PERCENT = 30;
-                const CA_LOADING_RANGE = 50;
-                const PROGRESS_UPDATE_INTERVAL = 50;
-                this.updateLoadingDialog({
-                    status: "All CA data already loaded",
-                    progressLabel: "Skipping CA data fetch",
-                    phasesCompleted: 1,
-                    targetPercent: CA_LOADING_START_PERCENT + CA_LOADING_RANGE,
-                    progressInterval: PROGRESS_UPDATE_INTERVAL
-                });
-                return this.tableData;
-            }
-            
-            console.log(`🔄 Loading CA data for ${itemsNeedingCAData.length} items in EXPRESS MODE for export`);
-            
+        async fetchAllCADataForExport() {
             const CA_LOADING_START_PERCENT = 30;
             const CA_LOADING_RANGE = 50;
             const PROGRESS_UPDATE_INTERVAL = 50;
             
-            // Update progress to show we're starting CA data loading
+            // Check cache for all items
+            let cacheHits = 0;
+            let cacheMisses = 0;
+            const itemsNeedingCAData = [];
+            
             this.updateLoadingDialog({
-                status: `EXPRESS MODE: Loading CA data for ${itemsNeedingCAData.length} items...`,
-                progressLabel: "Maximum parallel processing active",
+                status: "Checking cache for CA data...",
+                progressLabel: "Analyzing cache coverage",
                 phasesCompleted: 1,
                 targetPercent: CA_LOADING_START_PERCENT,
                 progressInterval: PROGRESS_UPDATE_INTERVAL
             });
             
-            // Use EXPRESS MODE for critical export scenarios
+            for (const item of this.tableData) {
+                if (!item.physId) continue;
+                
+                // Check memory cache first (fast)
+                const cachedData = ApiService.getCachedChangeActionSync(item.physId);
+                if (cachedData) {
+                    cacheHits++;
+                    continue;
+                }
+                
+                // Check IndexedDB cache (slower)
+                const indexedDBData = await ApiService.getCachedCAData(item.physId);
+                if (indexedDBData) {
+                    // Store in memory cache for merge later
+                    ApiService.cache.set(`CA:${item.physId}`, {
+                        data: indexedDBData,
+                        timestamp: Date.now(),
+                        ttl: 300000
+                    });
+                    cacheHits++;
+                    continue;
+                }
+                
+                // Not in cache - needs to be fetched
+                cacheMisses++;
+                itemsNeedingCAData.push(item);
+            }
+            
+            console.log(`📊 Cache Statistics: Hits: ${cacheHits}/${this.tableData.length}, Fetching: ${cacheMisses} items`);
+            
+            // If all data is cached, skip API calls
+            if (itemsNeedingCAData.length === 0) {
+                console.log("✅ All CA data found in cache");
+                this.updateLoadingDialog({
+                    status: "All CA data cached - no API calls needed",
+                    progressLabel: `Cache coverage: 100%`,
+                    phasesCompleted: 1,
+                    targetPercent: CA_LOADING_START_PERCENT + CA_LOADING_RANGE,
+                    progressInterval: PROGRESS_UPDATE_INTERVAL
+                });
+                return this.mergeCADataIntoExport();
+            }
+            
+            // Fetch missing CA data
+            console.log(`🔄 Fetching ${itemsNeedingCAData.length} missing CA items in EXPRESS MODE`);
+            
+            this.updateLoadingDialog({
+                status: `Loading CA data for ${itemsNeedingCAData.length} items...`,
+                progressLabel: `Cache hits: ${cacheHits}, Fetching: ${cacheMisses}`,
+                phasesCompleted: 1,
+                targetPercent: CA_LOADING_START_PERCENT,
+                progressInterval: PROGRESS_UPDATE_INTERVAL
+            });
+            
             const physIdsToLoad = itemsNeedingCAData.map(item => item.physId);
             
             try {
@@ -5511,7 +5546,7 @@ export default {
                     const overallProgress = CA_LOADING_START_PERCENT + Math.round((current / total) * CA_LOADING_RANGE);
                     
                     this.updateLoadingDialog({
-                        status: `EXPRESS: Loading CA data - ${current}/${total} items (${progressPercent}%)`,
+                        status: `Loading CA data ${current}/${total} (${progressPercent}%)`,
                         progressLabel: `Phase: ${phase}`,
                         targetPercent: overallProgress,
                         progressInterval: PROGRESS_UPDATE_INTERVAL
@@ -5519,11 +5554,30 @@ export default {
                 });
             } catch (error) {
                 console.warn('⚠️ EXPRESS MODE failed, falling back to standard batching:', error);
-                // Fall back to original batch processing if express mode fails
                 await this.performStandardCADataExport(itemsNeedingCAData);
             }
             
-            // Create export data by merging current table data with loaded CA data from cache
+            // Merge all cached CA data into export
+            const exportData = this.mergeCADataIntoExport();
+            const itemsWithCA = exportData.filter(item => item.caNumber && item.caNumber !== "").length;
+            
+            console.log(`✅ CA data loaded. Final coverage: ${itemsWithCA}/${exportData.length} items (${Math.round(itemsWithCA/exportData.length*100)}%)`);
+            console.log(`📊 Final Statistics: Cache hits: ${cacheHits}, API fetches: ${cacheMisses}, Success rate: ${Math.round(itemsWithCA/this.tableData.length*100)}%`);
+            
+            this.updateLoadingDialog({
+                status: `CA data ready: ${itemsWithCA}/${exportData.length} items`,
+                progressLabel: "Export ready",
+                targetPercent: CA_LOADING_START_PERCENT + CA_LOADING_RANGE,
+                progressInterval: PROGRESS_UPDATE_INTERVAL
+            });
+            
+            return exportData;
+        },
+        
+        /**
+         * Merge CA data from ApiService cache into table data for export
+         */
+        mergeCADataIntoExport() {
             const exportData = this.tableData.map(item => {
                 if (!item.physId) return item;
                 
@@ -5534,25 +5588,25 @@ export default {
                 if (cachedCAData && cachedCAData.data) {
                     return {
                         ...item,
-                        caNumber: cachedCAData.data.caNumber || item.caNumber || "",
-                        caState: cachedCAData.data.caState || item.caState || "",
-                        caRespEngr: cachedCAData.data.caRespEngr || item.caRespEngr || "",
-                        statusComment: cachedCAData.data.statusComment || item.statusComment || ""
+                        caNumber: cachedCAData.data.caNumber || "",
+                        caState: cachedCAData.data.caState || "",
+                        caRespEngr: cachedCAData.data.caRespEngr || "",
+                        statusComment: cachedCAData.data.statusComment || ""
                     };
                 }
                 
-                return item;
-            });
-            
-            const itemsWithCA = exportData.filter(item => item.caNumber && item.caNumber !== "").length;
-            console.log(`✅ EXPRESS MODE: Successfully loaded CA data. Coverage: ${itemsWithCA}/${exportData.length} items (${Math.round(itemsWithCA/exportData.length*100)}%)`);
-            
-            // Update progress to show CA data loading is complete
-            this.updateLoadingDialog({
-                status: `EXPRESS: CA data loaded for ${itemsWithCA}/${exportData.length} items`,
-                progressLabel: "Export ready",
-                targetPercent: CA_LOADING_START_PERCENT + CA_LOADING_RANGE,
-                progressInterval: PROGRESS_UPDATE_INTERVAL
+                // No cached data - log warning and return with empty CA fields
+                if (item.physId) {
+                    console.warn(`⚠️ No cached CA data for physId: ${item.physId}`);
+                }
+                
+                return {
+                    ...item,
+                    caNumber: item.caNumber || "",
+                    caState: item.caState || "",
+                    caRespEngr: item.caRespEngr || "",
+                    statusComment: item.statusComment || ""
+                };
             });
             
             return exportData;

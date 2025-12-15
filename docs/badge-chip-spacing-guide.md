@@ -102,6 +102,7 @@ This document describes the exact spacing and styling for the Target/Actual/Crit
 - **Border radius**: 16px (Vuetify default for chips)
 
 ### Spacing Between Chips
+
 | Location | Distance | Method |
 |----------|----------|--------|
 | Button → First chip | **8px** | `mr-2` on button |

@@ -251,10 +251,19 @@
                     >
                         <span class="dancing-banana-character mr-1"></span>
                         <span class="font-weight-medium">
-                            {{ preloadingProgress.total > 0 ? 
-                                `Loading CA: ${preloadingProgress.current}/${preloadingProgress.total}` : 
-                                "Preloading CA Data..." }}
+                            {{ caPreloadLabel }}
                         </span>
+                        <span v-if="preloadingProgress.total > 0" class="ml-2 font-weight-medium">{{ caPreloadPercent }}%</span>
+                        <v-progress-linear
+                            v-if="preloadingProgress.total > 0"
+                            :value="caPreloadPercent"
+                            color="black"
+                            background-color="rgba(0,0,0,0.12)"
+                            height="6"
+                            class="ml-2"
+                            style="min-width: 96px;"
+                            rounded
+                        />
                     </v-chip>
                 </template>
                 <div style="max-width: 280px; text-align: center;">
@@ -414,7 +423,7 @@
                             <div v-if="isViewingNoCriticalItems" class="no-chart-data d-flex flex-column align-center justify-center" style="flex: 1;">
                                 <v-icon size="64" color="grey lighten-2">mdi-calendar-remove</v-icon>
                                 <h4 class="mt-4">No Timeline Data</h4>
-                                <p class="text-center mt-2 mx-4">Items without critical dates cannot be displayed on a timeline chart.<br>View the table below for details.</p>
+                                <p class="text-center mt-2 mx-4">Items without critical dates cannot be displayed on a timeline chart.<br/>View the table below for details.</p>
                                 <v-btn
                                     color="primary"
                                     outlined
@@ -596,10 +605,10 @@
                         {{ filteredTableData.length }} Items
                     </v-chip>
                     <!-- Export menu -->
-                    <v-menu v-if="filteredTableData.length > 0" bottom left :disabled="loadingExport">
+                    <v-menu v-if="filteredTableData.length > 0" bottom left :disabled="loadingExport || backgroundPreloadingCA">
                         <template #activator="{ on, attrs }">
-                            <v-btn icon small v-bind="attrs" v-on="on" :loading="loadingExport" :disabled="loadingExport">
-                                <v-icon v-if="!loadingExport">mdi-download</v-icon>
+                            <v-btn icon small :loading="loadingExport || backgroundPreloadingCA" :disabled="loadingExport || backgroundPreloadingCA" v-bind="attrs" v-on="on">
+                                <v-icon v-if="!loadingExport && !backgroundPreloadingCA">mdi-download</v-icon>
                             </v-btn>
                         </template>
                         <v-list>
@@ -1834,6 +1843,9 @@ html, body {
 
 <script>
 /* eslint-disable no-console */
+/* eslint-disable no-magic-numbers */
+/* eslint-disable quote-props */
+/* eslint-disable object-shorthand */
 import versionData from "@/static/version.json";
 import ReleaseChart from "@/components/charts/ReleaseChart.vue";
 import ChangeActionCell from "@/components/release-planning/ChangeActionCell.vue";
@@ -1909,6 +1921,9 @@ export default {
             urlSyncTimeout: null,
             urlSyncDelay: 400,
             isApplyingQuery: false,
+
+            // Debounce handle for bar chart regeneration during CA streaming
+            barChartDebounceTimeout: null,
             
             // Loading state for chart interactions
             chartInteractionLoading: false,
@@ -2132,6 +2147,39 @@ export default {
     },
     
     computed: {
+        // CA preload progress percent for badge progress bar
+        caPreloadPercent() {
+            const current = Math.max(0, Math.round(this.preloadingProgress?.current || 0));
+            const total = Math.max(0, Math.round(this.preloadingProgress?.total || 0));
+            if (!this.backgroundPreloadingCA || total <= 0) return 0;
+            const percent = total > 0 ? Math.round((current / total) * 100) : 0;
+            return Math.min(100, Math.max(0, percent));
+        },
+
+        // CA preload label reflecting current phase
+        caPreloadLabel() {
+            const current = Math.max(0, Math.round(this.preloadingProgress?.current || 0));
+            const total = Math.max(0, Math.round(this.preloadingProgress?.total || 0));
+            const phase = this.preloadingProgress?.phase || "";
+
+            if (!this.backgroundPreloadingCA) {
+                return "Preloading CA Data...";
+            }
+
+            if (phase.includes("error")) {
+                return "CA preload error";
+            }
+
+            if (phase === "finalizing") {
+                return total > 0 ? `Finalizing cache: ${current}/${total}` : "Finalizing cache...";
+            }
+
+            if (phase.includes("completed")) {
+                return total > 0 ? `CA cache ready: ${current}/${total}` : "CA cache ready";
+            }
+
+            return total > 0 ? `Loading CA: ${current}/${total}` : "Preloading CA Data...";
+        },
         // App version from version.json (single source of truth)
         appVersion() {
             return versionData.stable.replace("v", ""); // Remove 'v' prefix if present
@@ -2911,7 +2959,7 @@ export default {
                         return true;
                     },
                     callbacks: {
-                        title: function(tooltipItem, data) {
+                        title: function(tooltipItem, _data) {
                             const label = tooltipItem[0].label;
                             if (label === "No Critical") {
                                 return "Parts with Phase, No Critical Date";
@@ -3505,7 +3553,7 @@ export default {
         },
 
         // Watch bar chart visibility toggle to regenerate data when turned back on
-        'chartVisibility.lateReleaseChart': {
+        "chartVisibility.lateReleaseChart": {
             handler(isVisible) {
                 if (isVisible && this.currentDataType === "parts" && this.baseFilteredData?.length > 0) {
                     console.log("👀 Bar chart toggled ON - regenerating data");
@@ -3539,23 +3587,31 @@ export default {
             handler(newData) {
                 // Always regenerate when filters change (computed property handles reactivity)
                 if (newData && this.currentDataType === "parts") {
-                    console.log("👀 baseFilteredData changed - refreshing bar chart");
-                    
-                    // Only regenerate chart data if NOT zoomed
-                    if (!this.isLateReleaseChartZoomed) {
-                        console.log("📄 Generating new chart data from computed property...");
-                        this.lateReleaseChartData = this.generateLateReleaseChartData;
-                        console.log("✅ Chart data generated:", {
-                            labels: this.lateReleaseChartData?.labels,
-                            datasetCount: this.lateReleaseChartData?.datasets?.length
-                        });
+                    // Debounce chart refresh so CA streaming does not re-render on every row
+                    if (this.barChartDebounceTimeout) {
+                        clearTimeout(this.barChartDebounceTimeout);
                     }
-                    
-                    // Increment key in nextTick to ensure data is set first
-                    this.$nextTick(() => {
-                        console.log("🔑 Incrementing lateReleaseChartKey to trigger render");
-                        this.lateReleaseChartKey++;
-                    });
+
+                    const debounceDelay = 300; // matches CA load debounce for smoothness
+                    this.barChartDebounceTimeout = setTimeout(() => {
+                        console.log("👀 baseFilteredData changed - refreshing bar chart (debounced)");
+
+                        // Only regenerate chart data if NOT zoomed
+                        if (!this.isLateReleaseChartZoomed) {
+                            console.log("📄 Generating new chart data from computed property...");
+                            this.lateReleaseChartData = this.generateLateReleaseChartData;
+                            console.log("✅ Chart data generated:", {
+                                labels: this.lateReleaseChartData?.labels,
+                                datasetCount: this.lateReleaseChartData?.datasets?.length
+                            });
+                        }
+                        
+                        // Increment key in nextTick to ensure data is set first
+                        this.$nextTick(() => {
+                            console.log("🔑 Incrementing lateReleaseChartKey to trigger render");
+                            this.lateReleaseChartKey++;
+                        });
+                    }, debounceDelay);
                 }
             },
             deep: false
@@ -5448,15 +5504,15 @@ export default {
             const exportPromise = this.fetchAllCADataForExport();
             const timeoutPromise = new Promise((_, reject) => {
                 setTimeout(() => {
-                    reject(new Error('CA data loading timeout - exporting available data'));
+                    reject(new Error("CA data loading timeout - exporting available data"));
                 }, EXPORT_TIMEOUT_MS);
             });
             
             try {
                 return await Promise.race([exportPromise, timeoutPromise]);
             } catch (error) {
-                if (error.message.includes('timeout')) {
-                    console.warn('⏰ CA data loading timed out after 30s - proceeding with partial export');
+                if (error.message.includes("timeout")) {
+                    console.warn("⏰ CA data loading timed out after 30s - proceeding with partial export");
                     // Merge whatever CA data we have and return
                     const exportData = this.mergeCADataIntoExport();
                     const itemsWithCA = exportData.filter(item => item.caNumber && item.caNumber !== "").length;
@@ -5530,7 +5586,7 @@ export default {
                 console.log("✅ All CA data found in cache");
                 this.updateLoadingDialog({
                     status: "All CA data cached - no API calls needed",
-                    progressLabel: `Cache coverage: 100%`,
+                    progressLabel: "Cache coverage: 100%",
                     phasesCompleted: 1,
                     targetPercent: CA_LOADING_START_PERCENT + CA_LOADING_RANGE,
                     progressInterval: PROGRESS_UPDATE_INTERVAL
@@ -5564,7 +5620,7 @@ export default {
                     });
                 });
             } catch (error) {
-                console.warn('⚠️ EXPRESS MODE failed, falling back to standard batching:', error);
+                console.warn("⚠️ EXPRESS MODE failed, falling back to standard batching:", error);
                 await this.performStandardCADataExport(itemsNeedingCAData);
             }
             
@@ -5712,7 +5768,7 @@ export default {
             
             // Wait for all batches to complete
             await Promise.all(batchPromises);
-            console.log('✅ FALLBACK: Standard CA data export processing completed');
+            console.log("✅ FALLBACK: Standard CA data export processing completed");
         },
 
         // ===== EXPORT LOGIC MOVED TO ExportService =====
@@ -6307,7 +6363,6 @@ export default {
             console.log(`🍌 Starting background CA preloading for ${physIds.length} items`);
             
             // Constants for timeout delays
-            const COMPLETION_DISPLAY_TIME = 3000; // 3 seconds to show completion
             const ERROR_DISPLAY_TIME = 2000; // 2 seconds to show error
             
             this.backgroundPreloadingCA = true;
@@ -6327,13 +6382,15 @@ export default {
                     };
                 });
                 
-                // Show completion status for specified time
+                // Mark completion and clear spinner immediately
                 this.preloadingProgress.phase = "completed";
-                console.log("🍌 Background CA preloading completed successfully");
+                this.backgroundPreloadingCA = false;
+                console.log("🍌 Background CA preloading completed - spinner cleared, retries running in background");
                 
-                setTimeout(() => {
-                    this.backgroundPreloadingCA = false;
-                }, COMPLETION_DISPLAY_TIME);
+                // Fire retry asynchronously without blocking spinner (silent background work)
+                this.retryFailedCAItems().catch(err => {
+                    console.warn("⚠️ Background retry failed (non-blocking):", err);
+                });
                 
             } catch (error) {
                 console.error("❌ Background CA preloading failed:", error);
@@ -6369,13 +6426,15 @@ export default {
                     };
                 });
                 
+                // Mark completion and clear spinner immediately
                 this.preloadingProgress.phase = "express-completed";
-                console.log("🚀 EXPRESS CA preloading completed successfully");
+                this.backgroundPreloadingCA = false;
+                console.log("🚀 EXPRESS CA preloading completed - spinner cleared, retries running in background");
                 
-                const EXPRESS_COMPLETION_DISPLAY_TIME = 2000;
-                setTimeout(() => {
-                    this.backgroundPreloadingCA = false;
-                }, EXPRESS_COMPLETION_DISPLAY_TIME);
+                // Fire retry asynchronously without blocking spinner (silent background work)
+                this.retryFailedCAItems().catch(err => {
+                    console.warn("⚠️ Background retry failed (non-blocking):", err);
+                });
                 
             } catch (error) {
                 console.error("❌ EXPRESS CA preloading failed:", error);
@@ -6385,6 +6444,91 @@ export default {
                 setTimeout(() => {
                     this.backgroundPreloadingCA = false;
                 }, EXPRESS_ERROR_DISPLAY_TIME);
+            }
+        },
+        
+        /**
+         * Retry fetching CA data for items that failed during preloading
+         * Sets "No Data" for items that still fail after retry
+         */
+        async retryFailedCAItems() {
+            if (this.currentDataType !== "parts") return;
+            
+            console.log("🔄 Checking for failed CA data loads...");
+            
+            // Scan tableData for items with physId but missing CA data
+            const failedItems = this.tableData.filter(item => 
+                item.physId && (!item.caNumber || item.caNumber === "")
+            );
+            
+            if (failedItems.length === 0) {
+                console.log("✅ No failed CA data loads found");
+                return;
+            }
+            
+            console.log(`🔄 Retrying ${failedItems.length} failed CA data loads...`);
+            
+            const RETRY_DELAY = 500; // 500ms delay before retry
+            
+            // Retry each failed item
+            for (const item of failedItems) {
+                try {
+                    console.log(`🔄 Retrying CA data for physId: ${item.physId}`);
+                    
+                    // Small delay to avoid overwhelming the API
+                    await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                    
+                    const result = await ApiService.fetchChangeAction(item.physId, item.physId, 0);
+                    
+                    if (result && result.caNumber) {
+                        // Find and update the item in tableData
+                        const rowIndex = this.tableData.findIndex(row => 
+                            (row.physId && row.physId === item.physId) || 
+                            (row.objId && row.objId === item.physId)
+                        );
+                        
+                        if (rowIndex !== -1) {
+                            const updatedItem = dataTransformationService.updateCaData(this.tableData[rowIndex], {
+                                caNumber: result.caNumber,
+                                caState: result.caState,
+                                caLink: result.caLink,
+                                caRespEngr: result.caRespEngr
+                            });
+                            this.$set(this.tableData, rowIndex, updatedItem);
+                            console.log(`✅ Retry successful for ${item.physId}: ${result.caNumber}`);
+                        }
+                    } else {
+                        // Set "No Data" for items that still fail
+                        this.setNoDataForItem(item);
+                    }
+                } catch (error) {
+                    // Set "No Data" for items that fail after retry
+                    console.warn(`❌ Retry failed for ${item.physId}, setting "No Data":`, error.message);
+                    this.setNoDataForItem(item);
+                }
+            }
+            
+            console.log(`✅ CA data retry completed. Processed ${failedItems.length} items.`);
+        },
+        
+        /**
+         * Set "No Data" for an item that failed to load CA data
+         */
+        setNoDataForItem(item) {
+            const rowIndex = this.tableData.findIndex(row => 
+                (row.physId && row.physId === item.physId) || 
+                (row.objId && row.objId === item.physId)
+            );
+            
+            if (rowIndex !== -1) {
+                const updatedItem = dataTransformationService.updateCaData(this.tableData[rowIndex], {
+                    caNumber: "No Data",
+                    caState: "",
+                    caLink: "#",
+                    caRespEngr: ""
+                });
+                this.$set(this.tableData, rowIndex, updatedItem);
+                console.log(`⚠️ Set "No Data" for ${item.physId}`);
             }
         },
         
@@ -6603,6 +6747,19 @@ export default {
                     caRespEngr: caData.caRespEngr
                 });
                 this.$set(this.tableData, rowIndex, updatedItem);
+                
+                // Debounce chart refresh to prevent "dancing bars" during CA data loading
+                // Clear existing timeout and set new one
+                if (this._caLoadDebounceTimeout) {
+                    clearTimeout(this._caLoadDebounceTimeout);
+                }
+                
+                // Only update charts after CA loading settles (300ms of no new data)
+                this._caLoadDebounceTimeout = setTimeout(() => {
+                    // Force minimal re-render by only updating the refresh key
+                    // This updates the table cells without recalculating chart data
+                    this.changeActionRefreshKey++;
+                }, 300);
             }
         },
 

@@ -419,24 +419,8 @@
                     <v-card-text class="pa-2" :class="isKioskMode ? 'kiosk-chart-content' : ''">
                         <!-- Reduce chart height by 25% -->
                         <div style="height: 285px; width: 100%; display: flex; flex-direction: column;">
-                            <!-- Show message when viewing No Critical items -->
-                            <div v-if="isViewingNoCriticalItems" class="no-chart-data d-flex flex-column align-center justify-center" style="flex: 1;">
-                                <v-icon size="64" color="grey lighten-2">mdi-calendar-remove</v-icon>
-                                <h4 class="mt-4">No Timeline Data</h4>
-                                <p class="text-center mt-2 mx-4">Items without critical dates cannot be displayed on a timeline chart.<br/>View the table below for details.</p>
-                                <v-btn
-                                    color="primary"
-                                    outlined
-                                    small
-                                    class="mt-3"
-                                    @click="resetLateReleaseChart()"
-                                >
-                                    <v-icon small left>mdi-filter-remove-outline</v-icon>
-                                    Clear Filter
-                                </v-btn>
-                            </div>
                             <ReleaseChart
-                                v-else-if="chartData.labels?.length > 0"
+                                v-if="chartData.labels?.length > 0"
                                 ref="lineChart"
                                 :chart-data="focusedChartData"
                                 :chart-options="dynamicChartOptions"

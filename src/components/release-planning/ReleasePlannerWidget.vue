@@ -3847,9 +3847,9 @@ export default {
                     this.isLateReleaseChartZoomed = true;
                     this.zoomedTimeBucket = timeBucket;
                     
-                    // Set filter state (for table filtering)
+                    // Set filter state (for table filtering) - use actual dataset type
                     this.selectedTimeBucket = timeBucket;
-                    this.selectedDatasetType = "BOTH";
+                    this.selectedDatasetType = datasetType; // Use actual dataset label, not "BOTH"
                     
                     // Create zoomed chart data with only the clicked bucket
                     const bucketIndex = this.lateReleaseChartData.labels.indexOf(timeBucket);
@@ -3947,11 +3947,11 @@ export default {
                     // Match bar chart logic: treat null, empty, "N/A" as no critical date
                     const hasNoCriticalDate = !criticalDate || criticalDate === "N/A" || criticalDate === "" || criticalDate === null;
                     
-                    // For "No Critical", we want parts from the filtered phase that have no critical release date
-                    const hasPhase = item.phase && item.phase.trim() !== "";
-                    const result = hasPhase && hasNoCriticalDate;
+                    // For "No Critical", filter items that have no critical release date (matching bar chart logic)
+                    // Note: We don't check phase here because the bar chart doesn't either
+                    const result = hasNoCriticalDate;
                     
-                    if (hasPhase || hasNoCriticalDate) {
+                    if (hasNoCriticalDate) {
                         console.log(result ? "✅" : "❌", "No Critical check:", {
                             partNo: item.partNoWithRev,
                             phase: item.phase,
@@ -3959,7 +3959,6 @@ export default {
                             criticalReleaseDate: item.criticalReleaseDate,
                             criticalDateFound: criticalDate,
                             hasNoCriticalDate,
-                            hasPhase,
                             result
                         });
                     }

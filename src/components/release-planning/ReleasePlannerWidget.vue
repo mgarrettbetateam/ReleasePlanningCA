@@ -497,8 +497,8 @@
                             />
                         </v-overlay>
                         
-                        <!-- Reduce chart height by 25% -->
-                        <div style="height: 285px; width: 100%; position: relative;">
+                        <!-- Increase chart height to fill available space -->
+                        <div style="height: 380px; width: 100%; position: relative;">
                             <!-- Direct Chart.js v4 canvas - following candle bar pattern -->
                             <canvas 
                                 ref="lateReleaseChartCanvas"
@@ -2909,11 +2909,13 @@ export default {
                         },
                         ticks: {
                             maxRotation: 45,
-                            minRotation: 0
+                            minRotation: 0,
+                            padding: 5
                         },
                         scaleLabel: {
                             display: true,
-                            labelString: "Time Buckets"
+                            labelString: "Time Buckets",
+                            padding: 8
                         }
                     }],
                     yAxes: [{
@@ -2922,11 +2924,13 @@ export default {
                             color: "#e0e0e0"
                         },
                         ticks: {
-                            beginAtZero: true
+                            beginAtZero: true,
+                            padding: 8
                         },
                         scaleLabel: {
                             display: true,
-                            labelString: "Number of Parts"
+                            labelString: "Number of Parts",
+                            padding: 8
                         }
                     }]
                 },
@@ -3851,11 +3855,20 @@ export default {
                     
                     this.lateReleaseChartData = zoomedData;
                     
-                    // ALWAYS use key increment for reliable chart recreation
-                    console.log("🔄 Force re-initializing chart with key increment");
-                    this.$nextTick(() => {
-                        this.lateReleaseChartKey++;
-                    });
+                    // Update chart directly without destroying it to prevent visual jump
+                    if (this.lateReleaseChart) {
+                        console.log("🔄 Updating existing chart data directly");
+                        this.lateReleaseChart.data = zoomedData;
+                        this.lateReleaseChart.update({
+                            duration: 300,
+                            easing: 'easeOutQuart'
+                        });
+                    } else {
+                        console.log("🔄 No chart instance found, will recreate on next tick");
+                        this.$nextTick(() => {
+                            this.lateReleaseChartKey++;
+                        });
+                    }
                     
                     console.log("✅ Zoomed to bucket:", timeBucket);
                 }
@@ -3891,8 +3904,8 @@ export default {
             });
 
             // Special handling for "No Critical" bucket
-            if (timeBucket === "No Critical" || datasetType.toLowerCase().includes("parts with deliverable")) {
-                console.log("🎯 Handling No Critical bucket");
+            if (timeBucket === "No Critical" || datasetType.toLowerCase().includes("parts with phase") || datasetType.toLowerCase().includes("no critical")) {
+                console.log("🎯 Handling No Critical bucket - Dataset type:", datasetType);
                 
                 const noCriticalResults = data.filter(item => {
                     // Match bar chart logic: check multiple field names for critical date
@@ -6534,8 +6547,9 @@ export default {
         
         /**
          * Extract physIds from table data and trigger background preloading
+         * Uses EXPRESS mode for speed, falls back to standard if needed
          */
-        triggerBackgroundCAPreloading() {
+        async triggerBackgroundCAPreloading() {
             if (this.currentDataType !== "parts") {
                 return; // CA data only relevant for parts
             }
@@ -6546,14 +6560,100 @@ export default {
                 .map(item => item.physId);
             
             if (physIdsNeedingCA.length > 0) {
-                console.log(`🍌 Found ${physIdsNeedingCA.length} items needing CA data preloading`);
+                console.log(`🚀 Found ${physIdsNeedingCA.length} items - using EXPRESS mode for background CA preloading`);
                 // Minimal delay for faster startup
                 const PRELOAD_STARTUP_DELAY = 1000;
-                setTimeout(() => {
-                    this.startBackgroundCAPreloading(physIdsNeedingCA);
+                setTimeout(async () => {
+                    await this.startBackgroundCAPreloadingWithFallback(physIdsNeedingCA);
                 }, PRELOAD_STARTUP_DELAY);
             } else {
                 console.log("🍌 No CA data preloading needed - all items already have CA data");
+            }
+        },
+        
+        /**
+         * Start background CA preloading with EXPRESS mode and fallback to standard if needed
+         */
+        async startBackgroundCAPreloadingWithFallback(physIds) {
+            if (!physIds || physIds.length === 0) return;
+            
+            const initialItemsNeedingCA = physIds.length;
+            console.log(`🚀 Starting EXPRESS mode for ${initialItemsNeedingCA} items`);
+            
+            this.backgroundPreloadingCA = true;
+            this.preloadingProgress = {
+                current: 0,
+                total: physIds.length,
+                phase: "express-mode"
+            };
+            
+            try {
+                // Try EXPRESS mode first
+                await ApiService.preloadCADataExpress(physIds, (current, total, phase) => {
+                    this.preloadingProgress = { 
+                        current: Math.min(current, total), 
+                        total, 
+                        phase 
+                    };
+                });
+                
+                // Mark completion and clear spinner immediately
+                this.preloadingProgress.phase = "express-completed";
+                this.backgroundPreloadingCA = false;
+                
+                // Check for 500 errors or high failure rate after EXPRESS completes
+                const itemsStillMissing = this.tableData.filter(item => 
+                    item.physId && physIds.includes(item.physId) && (!item.caNumber || item.caNumber === "")
+                ).length;
+                
+                const failureRate = itemsStillMissing / initialItemsNeedingCA;
+                const HIGH_FAILURE_THRESHOLD = 0.3; // 30% failure rate
+                
+                console.log(`📊 EXPRESS mode complete. Missing: ${itemsStillMissing}/${initialItemsNeedingCA} (${(failureRate * 100).toFixed(1)}%)`);
+                
+                if (failureRate > HIGH_FAILURE_THRESHOLD) {
+                    console.warn(`⚠️ High failure rate (${(failureRate * 100).toFixed(1)}%) detected - falling back to STANDARD mode`);
+                    
+                    // Get physIds still missing after EXPRESS
+                    const physIdsStillMissing = this.tableData
+                        .filter(item => item.physId && physIds.includes(item.physId) && (!item.caNumber || item.caNumber === ""))
+                        .map(item => item.physId);
+                    
+                    if (physIdsStillMissing.length > 0) {
+                        await this.startBackgroundCAPreloading(physIdsStillMissing);
+                    }
+                } else {
+                    console.log("🚀 EXPRESS mode successful - starting background retry for any remaining items");
+                    // Fire retry asynchronously without blocking (silent background work)
+                    this.retryFailedCAItems().catch(err => {
+                        console.warn("⚠️ Background retry failed (non-blocking):", err);
+                    });
+                }
+                
+            } catch (error) {
+                console.error(`❌ EXPRESS mode failed: ${error.message}`);
+                
+                // Check if it's a 500 error or server error
+                const is500Error = error.message.includes("500") || error.message.includes("Server Error") || error.message.includes("Internal Server");
+                
+                if (is500Error) {
+                    console.warn("⚠️ 500 error detected - falling back to STANDARD mode immediately");
+                    this.preloadingProgress.phase = "fallback-to-standard";
+                    
+                    try {
+                        await this.startBackgroundCAPreloading(physIds);
+                    } catch (fallbackError) {
+                        console.error("❌ Fallback to STANDARD mode also failed:", fallbackError);
+                        this.preloadingProgress.phase = "error";
+                        this.backgroundPreloadingCA = false;
+                    }
+                } else {
+                    this.preloadingProgress.phase = "error";
+                    const ERROR_DISPLAY_TIME = 2000;
+                    setTimeout(() => {
+                        this.backgroundPreloadingCA = false;
+                    }, ERROR_DISPLAY_TIME);
+                }
             }
         },
 
@@ -6685,6 +6785,14 @@ export default {
          */
         updateChartFromFiltered() {
             console.log("🔄 Updating chart from filtered data using ChartDataService...");
+            
+            // Skip line chart update for No Critical items - they can't be plotted on timeline
+            if (this.isViewingNoCriticalItems) {
+                console.log("⏭️ Skipping line chart update - viewing No Critical items (no timeline data)");
+                this.chartData = { labels: [], datasets: [] };
+                this.chartKey += 1;
+                return;
+            }
             
             // Debug: Check what data we're passing to ChartDataService
             console.log("🔍 DEBUG - updateChartFromFiltered data check:", {

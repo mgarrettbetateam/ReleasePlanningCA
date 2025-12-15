@@ -499,6 +499,18 @@
                         
                         <!-- Increase chart height to fill available space -->
                         <div style="height: 380px; width: 100%; position: relative;">
+                            <!-- Beta Badge - Large angled watermark style -->
+                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-25deg); z-index: 10; pointer-events: none;">
+                                <v-chip
+                                    large
+                                    color="orange"
+                                    text-color="white"
+                                    style="opacity: 0.15; font-size: 48px; font-weight: bold; height: 80px; padding: 0 40px; letter-spacing: 8px;"
+                                >
+                                    <v-icon left style="font-size: 48px; margin-right: 16px;">mdi-flask-outline</v-icon>
+                                    BETA
+                                </v-chip>
+                            </div>
                             <!-- Direct Chart.js v4 canvas - following candle bar pattern -->
                             <canvas 
                                 ref="lateReleaseChartCanvas"
@@ -3572,17 +3584,38 @@ export default {
         // Force chart refresh when bar chart legend toggles change
         showUnreleasedBar: {
             handler() {
-                this.lateReleaseChartKey++;
+                console.log("🔄 showUnreleasedBar toggled, updating chart directly");
+                if (this.lateReleaseChart) {
+                    this.lateReleaseChartData = this.generateLateReleaseChartData;
+                    this.lateReleaseChart.data = this.lateReleaseChartData;
+                    this.lateReleaseChart.update({ duration: 300, easing: 'easeOutQuart' });
+                } else {
+                    this.lateReleaseChartKey++;
+                }
             }
         },
         showReleasedBar: {
             handler() {
-                this.lateReleaseChartKey++;
+                console.log("🔄 showReleasedBar toggled, updating chart directly");
+                if (this.lateReleaseChart) {
+                    this.lateReleaseChartData = this.generateLateReleaseChartData;
+                    this.lateReleaseChart.data = this.lateReleaseChartData;
+                    this.lateReleaseChart.update({ duration: 300, easing: 'easeOutQuart' });
+                } else {
+                    this.lateReleaseChartKey++;
+                }
             }
         },
         showNoCriticalBar: {
             handler() {
-                this.lateReleaseChartKey++;
+                console.log("🔄 showNoCriticalBar toggled, updating chart directly");
+                if (this.lateReleaseChart) {
+                    this.lateReleaseChartData = this.generateLateReleaseChartData;
+                    this.lateReleaseChart.data = this.lateReleaseChartData;
+                    this.lateReleaseChart.update({ duration: 300, easing: 'easeOutQuart' });
+                } else {
+                    this.lateReleaseChartKey++;
+                }
             }
         },
 
@@ -6368,54 +6401,6 @@ export default {
         },
 
         /**
-         * Start background CA data preloading with dancing banana indicator
-         */
-        async startBackgroundCAPreloading(physIds) {
-            if (!physIds || physIds.length === 0) return;
-            
-            console.log(`🍌 Starting background CA preloading for ${physIds.length} items`);
-            
-            // Constants for timeout delays
-            const ERROR_DISPLAY_TIME = 2000; // 2 seconds to show error
-            
-            this.backgroundPreloadingCA = true;
-            this.preloadingProgress = {
-                current: 0,
-                total: physIds.length,
-                phase: "starting"
-            };
-            
-            try {
-                // Call ApiService preloading with progress callback
-                await ApiService.preloadCAData(physIds, (current, total, phase) => {
-                    this.preloadingProgress = { 
-                        current: Math.min(current, total), 
-                        total, 
-                        phase 
-                    };
-                });
-                
-                // Mark completion and clear spinner immediately
-                this.preloadingProgress.phase = "completed";
-                this.backgroundPreloadingCA = false;
-                console.log("🍌 Background CA preloading completed - spinner cleared, retries running in background");
-                
-                // Fire retry asynchronously without blocking spinner (silent background work)
-                this.retryFailedCAItems().catch(err => {
-                    console.warn("⚠️ Background retry failed (non-blocking):", err);
-                });
-                
-            } catch (error) {
-                console.error("❌ Background CA preloading failed:", error);
-                this.preloadingProgress.phase = "error";
-                
-                setTimeout(() => {
-                    this.backgroundPreloadingCA = false;
-                }, ERROR_DISPLAY_TIME);
-            }
-        },
-
-        /**
          * Trigger express CA preloading for critical export scenarios
          */
         async triggerExpressCAPreloading(physIds) {
@@ -6546,8 +6531,32 @@ export default {
         },
         
         /**
+         * Check failure rate for a given set of physIds
+         * @param {Array<string>} originalPhysIds - Original list of physIds attempted
+         * @returns {number} Failure rate between 0 and 1
+         */
+        checkFailureRate(originalPhysIds) {
+            const itemsStillMissing = this.tableData.filter(item => 
+                item.physId && originalPhysIds.includes(item.physId) && (!item.caNumber || item.caNumber === "")
+            ).length;
+            
+            return itemsStillMissing / originalPhysIds.length;
+        },
+        
+        /**
+         * Get list of physIds that are still missing CA data
+         * @param {Array<string>} originalPhysIds - Original list of physIds attempted
+         * @returns {Array<string>} List of physIds still missing CA data
+         */
+        getMissingItems(originalPhysIds) {
+            return this.tableData
+                .filter(item => item.physId && originalPhysIds.includes(item.physId) && (!item.caNumber || item.caNumber === ""))
+                .map(item => item.physId);
+        },
+        
+        /**
          * Extract physIds from table data and trigger background preloading
-         * Uses EXPRESS mode for speed, falls back to standard if needed
+         * Uses three-tier fallback: EXPRESS → FAST → STANDARD
          */
         async triggerBackgroundCAPreloading() {
             if (this.currentDataType !== "parts") {
@@ -6572,14 +6581,16 @@ export default {
         },
         
         /**
-         * Start background CA preloading with EXPRESS mode and fallback to standard if needed
+         * Start background CA preloading with three-tier fallback: EXPRESS → FAST → STANDARD
          */
         async startBackgroundCAPreloadingWithFallback(physIds) {
             if (!physIds || physIds.length === 0) return;
             
             const initialItemsNeedingCA = physIds.length;
-            console.log(`🚀 Starting EXPRESS mode for ${initialItemsNeedingCA} items`);
+            console.log(`🚀 Starting three-tier fallback for ${initialItemsNeedingCA} items`);
             
+            // TIER 1: Try EXPRESS mode first
+            console.log(`🚀 TIER 1: Starting EXPRESS mode for ${initialItemsNeedingCA} items`);
             this.backgroundPreloadingCA = true;
             this.preloadingProgress = {
                 current: 0,
@@ -6588,7 +6599,6 @@ export default {
             };
             
             try {
-                // Try EXPRESS mode first
                 await ApiService.preloadCADataExpress(physIds, (current, total, phase) => {
                     this.preloadingProgress = { 
                         current: Math.min(current, total), 
@@ -6597,63 +6607,139 @@ export default {
                     };
                 });
                 
-                // Mark completion and clear spinner immediately
                 this.preloadingProgress.phase = "express-completed";
-                this.backgroundPreloadingCA = false;
                 
-                // Check for 500 errors or high failure rate after EXPRESS completes
-                const itemsStillMissing = this.tableData.filter(item => 
-                    item.physId && physIds.includes(item.physId) && (!item.caNumber || item.caNumber === "")
-                ).length;
+                // Check EXPRESS failure rate
+                const expressFailureRate = this.checkFailureRate(physIds);
+                const EXPRESS_FAILURE_THRESHOLD = 0.20; // 20% failure rate
                 
-                const failureRate = itemsStillMissing / initialItemsNeedingCA;
-                const HIGH_FAILURE_THRESHOLD = 0.3; // 30% failure rate
+                console.log(`📊 EXPRESS complete. Failure rate: ${(expressFailureRate * 100).toFixed(1)}%`);
                 
-                console.log(`📊 EXPRESS mode complete. Missing: ${itemsStillMissing}/${initialItemsNeedingCA} (${(failureRate * 100).toFixed(1)}%)`);
-                
-                if (failureRate > HIGH_FAILURE_THRESHOLD) {
-                    console.warn(`⚠️ High failure rate (${(failureRate * 100).toFixed(1)}%) detected - falling back to STANDARD mode`);
-                    
-                    // Get physIds still missing after EXPRESS
-                    const physIdsStillMissing = this.tableData
-                        .filter(item => item.physId && physIds.includes(item.physId) && (!item.caNumber || item.caNumber === ""))
-                        .map(item => item.physId);
-                    
-                    if (physIdsStillMissing.length > 0) {
-                        await this.startBackgroundCAPreloading(physIdsStillMissing);
-                    }
-                } else {
-                    console.log("🚀 EXPRESS mode successful - starting background retry for any remaining items");
-                    // Fire retry asynchronously without blocking (silent background work)
+                if (expressFailureRate <= EXPRESS_FAILURE_THRESHOLD) {
+                    // EXPRESS succeeded - clear spinner and do background retry
+                    this.backgroundPreloadingCA = false;
+                    console.log("🚀 EXPRESS mode successful - starting background retry");
                     this.retryFailedCAItems().catch(err => {
                         console.warn("⚠️ Background retry failed (non-blocking):", err);
                     });
+                    return;
                 }
+                
+                // EXPRESS had high failure rate - try FAST mode
+                console.warn(`⚠️ EXPRESS failure rate too high (${(expressFailureRate * 100).toFixed(1)}%) - falling back to FAST mode`);
                 
             } catch (error) {
-                console.error(`❌ EXPRESS mode failed: ${error.message}`);
+                console.error(`❌ EXPRESS mode failed: ${error.message} - falling back to FAST mode`);
+            }
+            
+            // TIER 2: Try FAST mode
+            const physIdsAfterExpress = this.getMissingItems(physIds);
+            
+            if (physIdsAfterExpress.length === 0) {
+                this.backgroundPreloadingCA = false;
+                console.log("✅ No items missing after EXPRESS - skipping FAST and STANDARD");
+                return;
+            }
+            
+            console.log(`⚡ TIER 2: Starting FAST mode for ${physIdsAfterExpress.length} remaining items`);
+            this.preloadingProgress = {
+                current: 0,
+                total: physIdsAfterExpress.length,
+                phase: "fast-mode"
+            };
+            
+            try {
+                await ApiService.preloadCADataFast(physIdsAfterExpress, (current, total, phase) => {
+                    this.preloadingProgress = { 
+                        current: Math.min(current, total), 
+                        total, 
+                        phase 
+                    };
+                });
                 
-                // Check if it's a 500 error or server error
-                const is500Error = error.message.includes("500") || error.message.includes("Server Error") || error.message.includes("Internal Server");
+                this.preloadingProgress.phase = "fast-completed";
                 
-                if (is500Error) {
-                    console.warn("⚠️ 500 error detected - falling back to STANDARD mode immediately");
-                    this.preloadingProgress.phase = "fallback-to-standard";
-                    
-                    try {
-                        await this.startBackgroundCAPreloading(physIds);
-                    } catch (fallbackError) {
-                        console.error("❌ Fallback to STANDARD mode also failed:", fallbackError);
-                        this.preloadingProgress.phase = "error";
-                        this.backgroundPreloadingCA = false;
-                    }
-                } else {
-                    this.preloadingProgress.phase = "error";
-                    const ERROR_DISPLAY_TIME = 2000;
-                    setTimeout(() => {
-                        this.backgroundPreloadingCA = false;
-                    }, ERROR_DISPLAY_TIME);
+                // Check FAST failure rate
+                const fastFailureRate = this.checkFailureRate(physIdsAfterExpress);
+                const FAST_FAILURE_THRESHOLD = 0.30; // 30% failure rate
+                
+                console.log(`📊 FAST complete. Failure rate: ${(fastFailureRate * 100).toFixed(1)}%`);
+                
+                if (fastFailureRate <= FAST_FAILURE_THRESHOLD) {
+                    // FAST succeeded - clear spinner and do background retry
+                    this.backgroundPreloadingCA = false;
+                    console.log("⚡ FAST mode successful - starting background retry");
+                    this.retryFailedCAItems().catch(err => {
+                        console.warn("⚠️ Background retry failed (non-blocking):", err);
+                    });
+                    return;
                 }
+                
+                // FAST had high failure rate - try STANDARD mode
+                console.warn(`⚠️ FAST failure rate too high (${(fastFailureRate * 100).toFixed(1)}%) - falling back to STANDARD mode`);
+                
+            } catch (error) {
+                console.error(`❌ FAST mode failed: ${error.message} - falling back to STANDARD mode`);
+            }
+            
+            // TIER 3: Fall back to STANDARD mode
+            const physIdsAfterFast = this.getMissingItems(physIds);
+            
+            if (physIdsAfterFast.length === 0) {
+                this.backgroundPreloadingCA = false;
+                console.log("✅ No items missing after FAST - skipping STANDARD");
+                return;
+            }
+            
+            console.log(`🐢 TIER 3: Starting STANDARD mode for ${physIdsAfterFast.length} remaining items`);
+            await this.startBackgroundCAPreloading(physIdsAfterFast);
+        },
+        
+        /**
+         * Start background CA preloading using STANDARD mode
+         */
+        async startBackgroundCAPreloading(physIds) {
+            if (!physIds || physIds.length === 0) return;
+            
+            console.log(`🐢 Starting STANDARD mode CA preloading for ${physIds.length} items`);
+            
+            // Constants for timeout delays
+            const ERROR_DISPLAY_TIME = 2000; // 2 seconds to show error
+            
+            this.backgroundPreloadingCA = true;
+            this.preloadingProgress = {
+                current: 0,
+                total: physIds.length,
+                phase: "standard-mode"
+            };
+            
+            try {
+                // Call ApiService preloading with progress callback
+                await ApiService.preloadCAData(physIds, (current, total, phase) => {
+                    this.preloadingProgress = { 
+                        current: Math.min(current, total), 
+                        total, 
+                        phase 
+                    };
+                });
+                
+                // Mark completion and clear spinner immediately
+                this.preloadingProgress.phase = "completed";
+                this.backgroundPreloadingCA = false;
+                console.log("🐢 STANDARD mode CA preloading completed - spinner cleared, retries running in background");
+                
+                // Fire retry asynchronously without blocking spinner (silent background work)
+                this.retryFailedCAItems().catch(err => {
+                    console.warn("⚠️ Background retry failed (non-blocking):", err);
+                });
+                
+            } catch (error) {
+                console.error("❌ STANDARD mode CA preloading failed:", error);
+                this.preloadingProgress.phase = "error";
+                
+                setTimeout(() => {
+                    this.backgroundPreloadingCA = false;
+                }, ERROR_DISPLAY_TIME);
             }
         },
 
@@ -6786,12 +6872,9 @@ export default {
         updateChartFromFiltered() {
             console.log("🔄 Updating chart from filtered data using ChartDataService...");
             
-            // Skip line chart update for No Critical items - they can't be plotted on timeline
+            // No Critical items will be plotted using their target dates by ChartDataService
             if (this.isViewingNoCriticalItems) {
-                console.log("⏭️ Skipping line chart update - viewing No Critical items (no timeline data)");
-                this.chartData = { labels: [], datasets: [] };
-                this.chartKey += 1;
-                return;
+                console.log("📊 Plotting No Critical items using target dates");
             }
             
             // Debug: Check what data we're passing to ChartDataService

@@ -957,6 +957,90 @@ class ApiService {
   }
 
   /**
+   * Preload CA data in FAST mode (middle tier between EXPRESS and STANDARD)
+   * Uses 25-item batches with 4 parallel batches for balanced performance
+   * @param {Array<string>} physIds - Array of physIds to load CA data for
+   * @param {Function} progressCallback - Optional callback(current, total, phase)
+   */
+  async preloadCADataFast(physIds, progressCallback = null) {
+    if (!physIds || physIds.length === 0) return;
+    
+    console.log(`⚡ FAST MODE: Starting batch preload for ${physIds.length} items`);
+    
+    // Filter out items already in cache
+    const cache = await this.openCACache();
+    const cachedPhysIds = new Set();
+    
+    await new Promise((resolve, reject) => {
+      const transaction = cache.transaction(['ca_data'], 'readonly');
+      const store = transaction.objectStore('ca_data');
+      const cursorRequest = store.openCursor();
+      
+      cursorRequest.onsuccess = (event) => {
+        const cursor = event.target.result;
+        if (cursor) {
+          cachedPhysIds.add(cursor.value.physId);
+          cursor.continue();
+        }
+      };
+      
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+    
+    const uncachedPhysIds = physIds.filter(id => !cachedPhysIds.has(id));
+    console.log(`⚡ FAST MODE: ${cachedPhysIds.size} cached, ${uncachedPhysIds.length} need fetching`);
+    
+    if (uncachedPhysIds.length === 0) {
+      if (progressCallback) progressCallback(physIds.length, physIds.length, "fast-completed");
+      return;
+    }
+    
+    // Split into 25-item batches
+    const FAST_BATCH_SIZE = 25;
+    const PARALLEL_BATCHES = 4;
+    const batches = [];
+    for (let i = 0; i < uncachedPhysIds.length; i += FAST_BATCH_SIZE) {
+      batches.push(uncachedPhysIds.slice(i, i + FAST_BATCH_SIZE));
+    }
+    
+    console.log(`⚡ FAST MODE: Processing ${batches.length} batches with ${PARALLEL_BATCHES} parallel batches`);
+    
+    let completedCount = 0;
+    
+    // Process batches in groups of PARALLEL_BATCHES
+    for (let i = 0; i < batches.length; i += PARALLEL_BATCHES) {
+      const batchGroup = batches.slice(i, i + PARALLEL_BATCHES);
+      
+      // Process this group in parallel
+      const batchPromises = batchGroup.map(async (batch) => {
+        const batchPromises = batch.map(physId => 
+          this.getCAsByPhysId(physId).catch(err => {
+            console.warn(`⚠️ FAST MODE: Failed to fetch CA for ${physId}:`, err);
+            return null;
+          })
+        );
+        
+        await Promise.all(batchPromises);
+        completedCount += batch.length;
+        
+        if (progressCallback) {
+          progressCallback(
+            Math.min(completedCount + cachedPhysIds.size, physIds.length),
+            physIds.length,
+            "fast-loading"
+          );
+        }
+      });
+      
+      await Promise.all(batchPromises);
+    }
+    
+    if (progressCallback) progressCallback(physIds.length, physIds.length, "fast-completed");
+    console.log(`⚡ FAST MODE: Completed all ${physIds.length} items in balanced batch mode`);
+  }
+
+  /**
    * Update status comment for any item type (parts, cas, crs)
    * @param {string} objectId - The object ID (physId/objId)
    * @param {string} statusComment - The updated comment text
